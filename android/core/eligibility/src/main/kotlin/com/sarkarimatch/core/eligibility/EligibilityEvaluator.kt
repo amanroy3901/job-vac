@@ -1,6 +1,8 @@
 package com.sarkarimatch.core.eligibility
 
 import com.sarkarimatch.core.model.Category
+import com.sarkarimatch.core.model.Gender
+import com.sarkarimatch.core.model.LocalizedText
 import com.sarkarimatch.core.model.PercentageBand
 import com.sarkarimatch.core.model.QualificationStatus
 import com.sarkarimatch.core.model.Verdict
@@ -252,9 +254,10 @@ class EligibilityEvaluator(
         d.note?.let { add(RuleLine(RuleKind.DOMICILE, LineResult.INFO, ReasonCode.OTHER_ADVISORY, text = it)) }
     }
 
-    private fun evaluateGender(allowed: List<com.sarkarimatch.core.model.Gender>, p: EligibilityProfile): RuleLine = when {
+    private fun evaluateGender(allowed: List<Gender>, p: EligibilityProfile): RuleLine = when {
         p.gender == null -> RuleLine(RuleKind.GENDER, LineResult.CHECK, ReasonCode.GENDER_UNKNOWN)
-        p.gender in allowed -> RuleLine(RuleKind.GENDER, LineResult.PASS, ReasonCode.GENDER_OK, mapOf("allowed" to allowed.joinToString(",")))
+        p.gender in allowed ->
+            RuleLine(RuleKind.GENDER, LineResult.PASS, ReasonCode.GENDER_OK, mapOf("allowed" to allowed.joinToString(",")))
         else -> fail(RuleKind.GENDER, ReasonCode.GENDER_NOT_ALLOWED)
     }
 
@@ -289,7 +292,7 @@ class EligibilityEvaluator(
         kind: RuleKind,
         code: ReasonCode,
         params: Map<String, String> = emptyMap(),
-        text: com.sarkarimatch.core.model.LocalizedText? = null,
+        text: LocalizedText? = null,
     ) = RuleLine(kind, LineResult.FAIL, code, params, text)
 
     private fun rank(r: LineResult) = when (r) {

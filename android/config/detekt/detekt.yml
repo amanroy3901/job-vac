@@ -11,7 +11,11 @@ complexity:
     ignoreDefaultParameters: true
     ignoreAnnotated: ['Composable']
   CyclomaticComplexMethod:
-    threshold: 25
+    # Rule evaluators are branchy by nature; keep them readable, not split for the metric.
+    threshold: 40
+    ignoreSimpleWhenEntries: true
+  ComplexCondition:
+    threshold: 5
   TooManyFunctions:
     active: false
 
@@ -33,6 +37,8 @@ style:
   UnusedPrivateMember:
     ignoreAnnotated: ['Preview']
   ReturnCount:
-    max: 6
+    active: false
+  LoopWithTooManyJumpStatements:
+    maxJumpCount: 3
   ForbiddenComment:
     active: false

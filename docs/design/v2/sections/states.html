@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sarkari Match · States, account, dark, a11y, locales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Hind:wght@400;600&family=Inter:wght@400;600&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..500,0..1,0&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600&family=Noto+Nastaliq+Urdu:wght@400;600&family=Noto+Naskh+Arabic:wght@400;600&family=Roboto:wght@500&display=block" rel="stylesheet">
+<link rel="stylesheet" href="../marigold.css">
+<style>
+/* ---------- page furniture ---------- */
+.st-intro{grid-template-columns:1.25fr 1fr 1fr}
+.st-intro p,.st-intro li{font-size:15px;line-height:1.55}
+.st-intro ul{padding-left:18px}
+.st-intro li{margin-bottom:6px}
+.st-block{margin-bottom:72px}
+.st-h2{font-family:'Baloo 2',Hind,sans-serif;font-weight:600;font-size:32px;line-height:40px;margin:6px 0 6px}
+.st-lead{font:400 15px/1.55 'Inter',system-ui,sans-serif;max-width:1180px;opacity:.85;margin-bottom:28px}
+.st-cap2{font-weight:400;opacity:.85}
+.fr figcaption b{font-weight:600}
+.st-wide{grid-column:span 2}
+.st-wide>.st-pair{display:flex;gap:40px;align-items:flex-start}
+.st-tok{font:500 12px/1.5 ui-monospace,Menlo,monospace}
+.st-tok td{padding:2px 10px 2px 0;vertical-align:top}
+.st-tok i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:6px;box-shadow:inset 0 0 0 1px rgba(128,128,128,.35)}
+
+/* ---------- extra theme tokens (st-) ---------- */
+.ph.light{--st-inv:#2A1E14;--st-onInv:#FBF5EC;--st-invA:#F4B755;--st-dlg:#FFFFFF;--st-outline:#8F7B66;--st-scrim:rgba(42,30,20,.52);--st-skel:#EFE4D4;--st-ann:#C2185B}
+.ph.dark{--st-inv:#F6EDE1;--st-onInv:#2A1E14;--st-invA:#1E5B46;--st-dlg:#2D241B;--st-outline:#8C7A66;--st-scrim:rgba(0,0,0,.62);--st-skel:#3A2F24;--st-ann:#FF7EB0}
+
+/* ---------- banners O01–O03 ---------- */
+.dir-c .st-ban{margin:4px 16px 6px;padding:10px 8px 10px 12px;border-radius:18px;display:flex;align-items:center;gap:10px;font-size:14px;line-height:20px;font-weight:600}
+.dir-c .ph[lang=hi] .st-ban{line-height:22px}
+.dir-c .st-ban>.ms{font-size:22px;align-self:flex-start;margin-top:1px}
+.dir-c .st-ban .sub{display:block;font-weight:400}
+.dir-c .st-ban.off{background:var(--sunk);color:var(--tx)}
+.dir-c .st-ban.warn{background:var(--qC);color:var(--q)}
+.dir-c .st-ban.warn .sub{color:var(--tx)}
+.dir-c .st-ban.err{background:var(--tcC);color:var(--onTc)}
+.dir-c .st-ban.ok{background:var(--priC);color:var(--pri)}
+.dir-c .st-ban.ok .sub{color:var(--tx)}
+.dir-c .st-ban .act{margin-inline-start:auto;flex-shrink:0;min-height:44px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;background:var(--card);color:var(--tx);font-weight:600;white-space:nowrap;box-shadow:0 1px 2px rgba(120,70,10,.12)}
+
+/* ---------- snackbar, scrim, sheet, dialog ---------- */
+.dir-c .st-snack{position:absolute;left:12px;right:12px;bottom:92px;z-index:6;background:var(--st-inv);color:var(--st-onInv);border-radius:16px;min-height:52px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:8px;font-size:15px;line-height:21px;box-shadow:0 10px 28px rgba(0,0,0,.28)}
+.dir-c .st-snack .a{margin-inline-start:auto;flex-shrink:0;color:var(--st-invA);font-weight:600;min-height:44px;padding:0 12px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.dir-c .st-snack .a .ms{font-size:20px}
+.dir-c .st-snack .tmr{width:22px;height:22px;border-radius:50%;flex-shrink:0;background:conic-gradient(var(--st-invA) 0 62%,transparent 62% 100%);-webkit-mask:radial-gradient(circle,transparent 7px,#000 8px);mask:radial-gradient(circle,transparent 7px,#000 8px)}
+.dir-c .st-scrim{position:absolute;inset:0;background:var(--st-scrim);z-index:4}
+.dir-c .st-sheet{position:absolute;left:0;right:0;bottom:0;z-index:5;background:var(--bg);border-radius:28px 28px 0 0;padding:6px 16px 20px;box-shadow:0 -10px 30px rgba(0,0,0,.18)}
+.dir-c .st-hdl{width:36px;height:4px;border-radius:2px;background:var(--st-outline);opacity:.7;margin:6px auto 14px}
+.dir-c .st-dlg{position:absolute;left:20px;right:20px;z-index:5;background:var(--st-dlg);border-radius:28px;padding:22px 20px 10px;box-shadow:0 24px 60px rgba(0,0,0,.32)}
+.dir-c .st-di{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;margin-bottom:12px}
+.dir-c .st-di .ms{font-size:26px}
+.dir-c .st-da{display:flex;justify-content:flex-end;gap:4px;margin-top:14px;flex-wrap:wrap}
+.dir-c .st-tbtn{min-height:48px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;gap:6px;font-size:16px;font-weight:600;color:var(--pri);white-space:nowrap}
+.dir-c .st-tbtn .ms{font-size:20px}
+.dir-c .st-tbtn.danger{color:var(--tc)}
+.dir-c .st-tbtn.dis{color:var(--mut);opacity:.55}
+.dir-c .btn.st-danger{background:var(--card);color:var(--tc);box-shadow:inset 0 0 0 1.5px var(--tc)}
+
+/* ---------- lists / settings rows ---------- */
+.dir-c .st-list{margin:12px 16px 0;border-radius:24px;background:var(--card);box-shadow:var(--sh);overflow:hidden}
+.dir-c .st-lh{display:flex;align-items:center;gap:6px;padding:20px 20px 2px;font-size:14px;line-height:20px;font-weight:600;color:var(--mut)}
+.dir-c .st-lh.danger{color:var(--tc)}
+.dir-c .st-lh .ms{font-size:18px}
+.dir-c .st-row{display:flex;align-items:center;gap:14px;min-height:60px;padding:9px 16px}
+.dir-c .st-row+.st-row{box-shadow:0 -1px 0 var(--hair)}
+.dir-c .st-ri{width:40px;height:40px;border-radius:12px;background:var(--sunk);display:grid;place-items:center;color:var(--tx);flex-shrink:0}
+.dir-c .st-ri .ms{font-size:22px}
+.dir-c .st-row .chev{color:var(--mut);font-size:22px}
+.dir-c .st-row.danger{color:var(--tc)}
+.dir-c .st-row.danger .st-ri{background:var(--tcC);color:var(--tc)}
+.dir-c .st-row.off .st-ri{color:var(--mut)}
+.dir-c .st-tag{display:inline-flex;align-items:center;gap:3px;height:26px;padding:0 9px;border-radius:999px;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;background:var(--sunk);color:var(--mut);flex-shrink:0}
+.dir-c .st-tag .ms{font-size:14px}
+.dir-c .st-tag.pri{background:var(--priC);color:var(--pri)}
+.dir-c .st-sw{width:52px;height:32px;border-radius:16px;flex-shrink:0;position:relative;box-shadow:inset 0 0 0 2px var(--st-outline);background:var(--sunk)}
+.dir-c .st-sw:after{content:'';position:absolute;top:8px;left:8px;width:16px;height:16px;border-radius:50%;background:var(--st-outline)}
+.dir-c .st-sw.on{background:var(--pri);box-shadow:none}
+.dir-c .st-sw.on:after{left:24px;top:4px;width:24px;height:24px;background:var(--onPri)}
+.dir-c .st-note{display:flex;gap:10px;align-items:flex-start;margin:10px 16px 0;padding:12px 14px;border-radius:18px;background:var(--priC);color:var(--tx)}
+.dir-c .st-note>.ms{color:var(--pri);font-size:22px}
+.dir-c .st-note.q{background:var(--qC)}
+.dir-c .st-note.q>.ms{color:var(--q)}
+.dir-c .st-note.mut{background:var(--sunk)}
+.dir-c .st-note.mut>.ms{color:var(--mut)}
+
+/* ---------- Google button (official colours, never re-tinted) ---------- */
+.dir-c .st-g{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:48px;padding:0 18px;border-radius:999px;background:#FFFFFF;color:#1F1F1F;box-shadow:inset 0 0 0 1px #747775;font:500 15px/20px Roboto,Hind,sans-serif;white-space:nowrap}
+.dir-c .ph.dark .st-g{background:#131314;color:#E3E3E3;box-shadow:inset 0 0 0 1px #8E918F}
+.dir-c .st-g svg{width:20px;height:20px;flex-shrink:0}
+
+/* ---------- full-screen states ---------- */
+.dir-c .st-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px 28px 24px}
+.dir-c .st-illu{width:140px;height:140px;border-radius:50%;display:grid;place-items:center;position:relative;margin-bottom:24px}
+.dir-c .st-illu:before{content:'';position:absolute;inset:-14px;border-radius:50%;border:2px dashed currentColor;opacity:.28}
+.dir-c .st-illu .ms{font-size:64px}
+.dir-c .st-sk{background:var(--st-skel);border-radius:8px;height:14px}
+.dir-c .st-av{width:56px;height:56px;border-radius:50%;background:var(--pri);color:var(--onPri);display:grid;place-items:center;font-family:'Baloo 2',Hind,sans-serif;font-size:26px;font-weight:600;flex-shrink:0}
+.dir-c .st-av.guest{background:var(--sunk);color:var(--mut)}
+.dir-c .st-av.guest .ms{font-size:32px}
+.dir-c .st-sub{display:flex;align-items:center;gap:8px;margin:14px 0 6px;font-weight:600}
+.dir-c .st-sub .ms{font-size:22px}
+.dir-c .st-mini{display:flex;align-items:center;gap:12px;padding:8px 0}
+.dir-c .st-mini .tile{width:40px;height:40px;border-radius:12px}
+.dir-c .st-mini .tile .ms{font-size:22px}
+.dir-c .vchip.no{background:var(--tcC);color:var(--onTc)}
+.dir-c .wy.no .bub{background:var(--tcC);color:var(--tc)}
+.dir-c .st-old{text-decoration:line-through;color:var(--mut);font-weight:400}
+.dir-c .st-chg-tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;background:var(--qC);color:var(--q);font-size:12px;font-weight:600;margin-inline-start:6px;vertical-align:1px}
+.dir-c .st-field{margin-top:14px;border-radius:14px;box-shadow:inset 0 0 0 2px var(--pri);padding:7px 14px 9px;background:var(--st-dlg)}
+.dir-c .st-field .lbl{font-size:12px;line-height:16px;color:var(--pri);font-weight:600}
+.dir-c .st-field .val{font-size:18px;line-height:28px;font-weight:600;letter-spacing:.02em}
+.dir-c .st-caret{display:inline-block;width:2px;height:22px;background:var(--pri);vertical-align:-4px;margin-left:2px}
+.dir-c .st-kb{position:absolute;left:0;right:0;bottom:0;z-index:5;background:#D8CFC4;padding:8px 4px 10px;display:flex;flex-direction:column;gap:8px}
+.dir-c .ph.dark .st-kb{background:#2B2620}
+.dir-c .st-kb div{display:flex;gap:5px;justify-content:center}
+.dir-c .st-kb span{width:30px;height:42px;border-radius:6px;background:#FFFFFF;color:#2A1E14;display:grid;place-items:center;font:400 18px/1 Roboto,sans-serif;box-shadow:0 1px 0 rgba(0,0,0,.2)}
+.dir-c .ph.dark .st-kb span{background:#4A433B;color:#F6EDE1}
+.dir-c .st-kb span.w{width:46px;background:#BDB3A6}
+.dir-c .st-kb span.sp{width:150px}
+.dir-c .st-kb span.ok{width:46px;background:var(--pri);color:var(--onPri)}
+.dir-c .st-radio{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border-radius:18px;background:var(--card);box-shadow:inset 0 0 0 1.5px var(--hair);margin:0 16px 8px}
+.dir-c .st-radio i{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--st-outline);flex-shrink:0}
+.dir-c .st-radio.sel{box-shadow:inset 0 0 0 2.5px var(--pri);background:var(--priC)}
+.dir-c .st-radio.sel i{box-shadow:inset 0 0 0 2px var(--pri),inset 0 0 0 6px var(--card),inset 0 0 0 12px var(--pri)}
+.dir-c .st-tbt{font-family:'Baloo 2',Hind,sans-serif;font-size:19px;font-weight:600;line-height:26px}
+.dir-c .ph[lang=hi] .st-tbt{line-height:30px}
+
+/* ---------- 200% font scale (Android 14 non-linear: 14→28, 16→30, 19→34, 28→47) ---------- */
+.dir-c .ph.st-tall{height:auto}
+.dir-c .ph.st-tall .scr{height:auto}
+.dir-c .st-fs2 .t28{font-size:47px;line-height:58px}
+.dir-c .st-fs2 .t19,.dir-c .st-fs2 .logo{font-size:34px;line-height:44px}
+.dir-c .st-fs2 .t16{font-size:30px;line-height:40px}
+.dir-c .st-fs2 .t14{font-size:28px;line-height:38px}
+.dir-c .st-fs2[lang=hi] .t19,.dir-c .st-fs2[lang=hi] .logo{line-height:50px}
+.dir-c .st-fs2[lang=hi] .t16{line-height:46px}
+.dir-c .st-fs2[lang=hi] .t14{line-height:42px}
+.dir-c .st-fs2 .rib{font-size:28px;line-height:38px;align-items:flex-start;padding:10px 16px}
+.dir-c .st-fs2[lang=hi] .rib{line-height:42px}
+.dir-c .st-fs2 .rib .ms{margin-top:8px}
+.dir-c .st-fs2 .sh{align-items:flex-start}
+.dir-c .st-fs2 .sh .ms{margin-top:10px}
+.dir-c .st-fs2 .facts{flex-direction:column}
+.dir-c .st-fs2 .facts div{font-size:30px;line-height:40px;white-space:normal;flex:none!important}
+.dir-c .st-fs2 .facts .ms{font-size:24px}
+.dir-c .st-fs2 .acts,.dir-c .st-fs2 .st-stack{flex-direction:column}
+.dir-c .st-fs2 .btn{height:auto;min-height:64px;font-size:30px;line-height:40px;white-space:normal;padding:10px 22px;width:100%;flex:none!important}
+.dir-c .st-fs2[lang=hi] .btn{line-height:46px}
+.dir-c .st-fs2 .vchip,.dir-c .st-fs2 .left{height:auto;min-height:48px;font-size:28px;line-height:38px;padding:4px 14px}
+.dir-c .st-fs2 .vchip .ms,.dir-c .st-fs2 .left .ms{font-size:24px}
+.dir-c .st-fs2 .chg{font-size:28px;line-height:38px;align-items:flex-start}
+.dir-c .st-fs2 .cal{width:96px}
+.dir-c .st-fs2 .cal .m{font-size:22px;line-height:32px}
+.dir-c .st-fs2 .cal .dd{font-size:40px;line-height:48px}
+.dir-c .st-fs2 .cal .wd{font-size:22px;line-height:30px}
+.dir-c .st-fs2 .nav{height:auto;min-height:96px;padding:10px 4px}
+.dir-c .st-fs2 .nav div{font-size:21px;line-height:26px;text-align:center}
+.dir-c .st-fs2 .abar .ni{font-size:28px;height:auto;min-height:56px}
+.dir-c .st-fs2 .sh .n{font-size:24px;min-width:40px;height:40px;border-radius:20px}
+
+/* ---------- annotation (TalkBack) ---------- */
+.dir-c .st-fo{position:absolute;border:2.5px solid var(--st-ann);border-radius:26px;z-index:3;pointer-events:none}
+.dir-c .st-fo.d{border-style:dashed;border-width:2px}
+.dir-c .st-fo b{position:absolute;top:-13px;left:-11px;width:26px;height:26px;border-radius:50%;background:var(--st-ann);color:#fff;font:600 14px/26px Inter,sans-serif;text-align:center}
+.st-anno{width:376px;border-radius:28px;padding:22px;background:#FBF5EC;box-shadow:0 2px 4px rgba(120,70,10,.05),0 16px 40px rgba(120,70,10,.08);font-family:Inter,Hind,sans-serif;color:#2A1E14}
+.st-anno h4{font:600 11px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.65;margin:16px 0 8px}
+.st-anno h4:first-child{margin-top:0}
+.st-anno ol{list-style:none}
+.st-anno li{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;line-height:1.5}
+.st-anno li b.n{width:24px;height:24px;border-radius:50%;background:#C2185B;color:#fff;font:600 13px/24px Inter,sans-serif;text-align:center;flex-shrink:0}
+.st-anno q{display:block;font-family:Hind,sans-serif;font-size:14px;line-height:1.5;background:#fff;border-radius:12px;padding:8px 10px;margin-top:4px;quotes:none;box-shadow:inset 0 0 0 1px #EFE4D4}
+.st-anno p{font-size:13.5px;line-height:1.5;margin-bottom:6px}
+.st-anno code{font:500 12px ui-monospace,Menlo,monospace;background:#F1E7D8;border-radius:4px;padding:0 4px}
+
+/* ---------- localization previews ---------- */
+.dir-c .st-pv{display:flex;flex-direction:column;gap:2px;margin:2px 16px 6px;padding:6px 12px;border-radius:12px;background:var(--tx);color:var(--bg);font:600 12px/16px Inter,sans-serif}
+.dir-c .st-pv span{font-weight:400}
+/* Tamil: Noto Sans Tamil, Latin falls back to Hind/Baloo; line height x1.05 */
+.dir-c .ph.st-ta{font-family:Hind,'Noto Sans Tamil',sans-serif}
+.dir-c .ph.st-ta .t28,.dir-c .ph.st-ta .t19,.dir-c .ph.st-ta .logo,.dir-c .ph.st-ta .cal .dd{font-family:'Baloo 2','Noto Sans Tamil',Hind,sans-serif}
+.dir-c .ph.st-ta .st-pv span,.dir-c .ph.st-ta .st-pv{font-family:Inter,'Noto Sans Tamil',sans-serif}
+.dir-c .ph.st-ta .t28{line-height:38px}.dir-c .ph.st-ta .t19{line-height:28px}.dir-c .ph.st-ta .t16{line-height:26px}.dir-c .ph.st-ta .t14{line-height:22px}
+.dir-c .ph.st-ta .btn{height:auto;min-height:52px;white-space:normal;line-height:22px;padding:8px 16px;text-align:center}
+.dir-c .ph.st-ta .btn.sm{min-height:44px;font-size:15px}
+.dir-c .ph.st-ta .rib,.dir-c .ph.st-ta .facts div,.dir-c .ph.st-ta .nav div{line-height:21px}
+.dir-c .ph.st-ta .nav div{font-size:13px;text-align:center}
+.dir-c .ph.st-ta .nav{height:88px}
+/* Urdu: Noto Nastaliq Urdu, line height x1.6, RTL inside the app window (status bar stays LTR) */
+.dir-c .ph.st-ur{font-family:Hind,'Noto Nastaliq Urdu','Noto Naskh Arabic',sans-serif}
+.dir-c .ph.st-ur .t28,.dir-c .ph.st-ur .t19,.dir-c .ph.st-ur .cal .dd{font-family:'Baloo 2','Noto Nastaliq Urdu',Hind,sans-serif}
+.dir-c .ph.st-ur .st-pv{font-family:Inter,'Noto Nastaliq Urdu',sans-serif;line-height:28px}
+.dir-c .ph.st-ur .t28{line-height:58px}.dir-c .ph.st-ur .t19{line-height:42px}.dir-c .ph.st-ur .t16{line-height:38px}.dir-c .ph.st-ur .t14{line-height:32px;font-weight:400}
+.dir-c .ph.st-ur .pill,.dir-c .ph.st-ur .vchip,.dir-c .ph.st-ur .left{height:auto;min-height:36px;line-height:32px}
+.dir-c .ph.st-ur .rib{line-height:34px;padding:4px 16px}
+.dir-c .ph.st-ur .facts div{line-height:32px;padding:4px 10px}
+.dir-c .ph.st-ur .btn{height:auto;min-height:52px;line-height:34px}
+.dir-c .ph.st-ur .btn.sm{min-height:44px}
+.dir-c .ph.st-ur .nav div{line-height:30px;font-size:14px}
+.dir-c .ph.st-ur .chg{line-height:32px}
+.dir-c .ph.st-ur .cal .m{line-height:26px;font-size:13px}
+.dir-c .ph.st-ur .cal .wd{line-height:24px}
+.dir-c .ph.st-ur .abar .ni{line-height:30px;height:44px}
+.dir-c .ph.st-ur .dt b{font-family:'Baloo 2','Noto Nastaliq Urdu',sans-serif}
+.dir-c .scr[dir=rtl] .tb{padding:0 16px 0 8px}
+.dir-c .scr[dir=rtl] .dot{right:auto;left:10px}
+.dir-c .scr[dir=rtl] .greet svg{right:auto;left:-12px;transform:scaleX(-1)}
+.dir-c .scr[dir=rtl] .nav .bdg{right:auto;left:8px}
+.dir-c .st-mir{transform:scaleX(-1)}
+bdi.st-ltr{unicode-bidi:isolate;direction:ltr}
+</style>
+</head>
+<body class="dir-c">
+<div class="toggle"><button onclick="document.body.classList.remove('only-hi');document.body.classList.add('only-en')">English</button><button onclick="document.body.classList.remove('only-en');document.body.classList.add('only-hi')">हिंदी</button><button onclick="document.body.classList.remove('only-en','only-hi')">Both</button></div>
+
+<header class="hd st-intro">
+  <div><div class="kicker">Sarkari Match · Design v2 · Direction C · Marigold Home</div><h1>States, account, dark, a11y and locales</h1>
+  <p class="mood">Everything that is not the happy path: offline, outage, permission off, notices that change under you, account and data rights, minor mode, dark theme, 200% text, TalkBack order, and Tamil and Urdu previews. Same tokens and components as the direction C reference; new pieces are prefixed <code>st-</code>.</p>
+  <ul class="traits"><li>One banner at a time on Home (outage &gt; offline &gt; notifications off &gt; delivery &gt; trial &gt; profile)</li><li>Profile and matching live on the phone, so offline and outage states still show correct matches; copy says so</li><li>Destructive actions are terracotta text or outline, never the filled green button</li><li>No OTP anywhere: guests type a word, signed-in users confirm with Google</li><li>Minor mode (under 18): matching and reminders work; account, Pro, ads and telemetry are off and say so</li></ul></div>
+  <div><h3>Extra tokens (st-) · light / dark</h3>
+  <table class="st-tok"><tr><td>snackbar bg</td><td><i style="background:#2A1E14"></i>#2A1E14</td><td><i style="background:#F6EDE1"></i>#F6EDE1</td></tr><tr><td>snackbar action</td><td><i style="background:#F4B755"></i>#F4B755</td><td><i style="background:#1E5B46"></i>#1E5B46</td></tr><tr><td>dialog surface</td><td><i style="background:#FFFFFF"></i>#FFFFFF</td><td><i style="background:#2D241B"></i>#2D241B</td></tr><tr><td>outline (3:1 UI)</td><td><i style="background:#8F7B66"></i>#8F7B66</td><td><i style="background:#8C7A66"></i>#8C7A66</td></tr><tr><td>scrim</td><td>cocoa 52%</td><td>black 62%</td></tr><tr><td>skeleton</td><td><i style="background:#EFE4D4"></i>#EFE4D4</td><td><i style="background:#3A2F24"></i>#3A2F24</td></tr><tr><td>danger text</td><td><i style="background:#B3361E"></i>#B3361E</td><td><i style="background:#FF8A6B"></i>#FF8A6B</td></tr></table>
+  <p style="margin-top:14px;font-size:14px">Dark text pairs checked at WCAG AA: muted on card 8.1:1, forest on its container 7.8:1, ochre ? 8.5:1, terracotta on card 7.3:1, today ribbon 7.7:1. The hairline (1.3:1) is decoration only; switches, radios and fields use the outline token (≥ 3.7:1).</p></div>
+  <div><h3>Accessibility and languages</h3>
+  <ul class="traits" style="margin-top:0"><li>200% text uses Android 14 non-linear scaling (14→28, 16→30, 19→34, 28→47 sp); two-button rows stack, facts stack, chips wrap, nothing truncates</li><li>Match card = one TalkBack stop that reads the deadline first, then title, verdict, fee and the age rule, with custom actions</li><li>Tamil: Noto Sans Tamil, line height ×1.05; Urdu: Noto Nastaliq Urdu, ×1.6, mirrored inside the app (status bar not), LTR runs isolated</li><li>Notice titles stay as published (English/Hindi); the UI around them is translated</li></ul></div>
+</header>
+
+<div id="out"></div>
+
+<script>
+/* ======================================================================
+   One content source → en + hi frames (same split as tokens vs composables)
+   ====================================================================== */
+let L='en';
+const t=(e,h)=>L==='hi'?h:e;
+const ms=(n,o='',st='')=>`<span class="ms ${o}" aria-hidden="true"${st?` style="${st}"`:''}>${n}</span>`;
+const SB=`<div class="sb"><span>9:41</span><span class="sbi">${ms('signal_cellular_alt')}${ms('wifi')}${ms('battery_full')}</span></div>`;
+const G=`<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>`;
+const gbtn=(label,st='')=>`<span class="st-g" style="${st}">${G}${label}</span>`;
+
+function phone(o){
+  const cls=[o.theme||'light',o.cls||''].join(' ');
+  return `<figure class="fr ${o.wide?'st-wide':''}">${o.pre||''}<div class="ph ${cls}" lang="${o.lang||L}">${SB}<div class="scr" ${o.dir?`dir="${o.dir}"`:''}>${o.scr}</div><div class="gb"><i></i></div></div>${o.post||''}<figcaption><b>${o.id}</b> · ${o.name} (${o.p})${o.note?`<br><span class="st-cap2">${o.note}</span>`:''}</figcaption></figure>`;
+}
+const tbHome=(dot=true)=>`<div class="tb"><span class="logo"><i>${ms('notifications_active')}</i>Sarkari Match</span><span class="grow"></span><span class="ib">${ms('help','o')}</span><span class="ib">${ms('notifications','o')}${dot?'<span class="dot"></span>':''}</span></div>`;
+const tbBack=(title='',acts='')=>`<div class="tb" style="padding-left:8px;gap:2px"><span class="ib">${ms('arrow_back','o')}</span><span class="st-tbt grow nw" style="overflow:hidden;text-overflow:ellipsis">${title}</span>${acts}</div>`;
+const tbDetail=()=>`<div class="tb" style="padding-left:8px"><span class="ib c">${ms('arrow_back','o')}</span><span class="grow"></span><span class="ib c">${ms('share','o')}</span><span class="ib c">${ms('more_vert','o')}</span></div>`;
+const nav=(on='jobs',bdg=5)=>{
+  const it=(k,ic,lab)=>`<div class="${on===k?'on':''}"><span class="pp">${ms(ic,on===k?'':'o')}${k==='jobs'&&bdg?`<span class="bdg">${bdg}</span>`:''}</span>${lab}</div>`;
+  return `<div class="nav">${it('jobs','work',t('Jobs','नौकरियाँ'))}${it('forms','assignment_turned_in',t('My forms','मेरे फ़ॉर्म'))}${it('profile','account_circle',t('Profile','प्रोफ़ाइल'))}</div>`;
+};
+const sh=(kind,icon,label,n)=>`<div class="sh ${kind} t19">${ms(icon)}<span>${label}</span>${n!=null?`<span class="n">${n}</span>`:''}</div>`;
+const cardPolice=()=>({kind:'today',rib:t('Last day today · until 11 pm','आज आखिरी दिन · रात 11 बजे तक'),tile:'police',ic:'local_police',title:t('UP Police Constable 2026','UP Police कांस्टेबल भर्ती 2026'),sub:t('UPPRPB · 19,220 posts','UPPRPB · 19,220 पद'),fee:'400',edu:t('Class 12','12वीं पास'),why:t('23 (limit 22, OBC +5 = 27)','23 (सीमा 22, OBC +5 = 27)')});
+const cardSSC=()=>({kind:'urgent',rib:t('Only 2 days left · until 21 Nov','सिर्फ़ 2 दिन बाकी · 21 नवं तक'),tile:'ssc',ic:'account_balance',title:t('SSC GD Constable 2027','SSC GD कांस्टेबल भर्ती 2027'),sub:t('Staff Selection Commission · 39,481 posts','कर्मचारी चयन आयोग · 39,481 पद'),fee:'100',edu:t('Class 10','10वीं पास'),why:t('23 (limit 23, OBC +3 = 26)','23 (सीमा 23, OBC +3 = 26)')});
+function card(c,acts=true){
+  return `<div class="card">${c.rib?`<div class="rib ${c.kind}">${ms(c.kind==='today'?'alarm':'timer')}<span>${c.rib}</span></div>`:''}<div class="cb">
+  <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ${c.tile}">${ms(c.ic)}</span><div class="grow"><div class="t19">${c.title}</div><div class="t14 mut">${c.sub}</div></div></div>
+  <div class="facts"><div>${ms('currency_rupee')}<span class="tnum">${c.fee}</span></div><div style="flex:1.6">${ms('school')}${c.edu}</div></div>
+  <div class="why ok t16">${ms('check_circle')}<span><span class="b">${t('Age:','उम्र:')}</span> ${c.why}</span></div>
+  ${acts?`<div class="acts"><span class="btn pri sm" style="flex:1">${ms('task_alt')}${t('Applied','फ़ॉर्म भर दिया')}</span><span class="btn ton sm">${ms('snooze')}${t('Later','बाद में')}</span></div>`:''}</div></div>`;
+}
+const lr=(tile,ic,title,meta,chips)=>`<div class="lr"><span class="tile ${tile}">${ms(ic)}</span><div class="grow"><div class="t16 b">${title}</div><div class="t14 mut tnum">${meta}</div>${chips?`<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">${chips}</div>`:''}</div></div>`;
+const chipOk=()=>`<span class="vchip ok">${ms('check_circle')}${t('Eligible','योग्य')}</span>`;
+const greet=()=>`<div class="greet"><svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle cx="80" cy="40" r="26" fill="#F2A93B" opacity=".35"/><circle cx="80" cy="40" r="44" fill="none" stroke="#F2A93B" stroke-opacity=".25" stroke-width="2" stroke-dasharray="2 8"/></svg><div class="t28" style="position:relative">${t('Hi, Ravi','नमस्ते, Ravi')}</div><div class="t16 mut" style="position:relative;max-width:260px">${t('Thu, 19 Nov · 5 jobs need your reply','आज 19 नवंबर · 5 नौकरियाँ आपका जवाब माँग रही हैं')}</div>
+  <div class="pills"><span class="pill today">${ms('alarm')}<span class="tnum">1</span> ${t('Today','आज')}</span><span class="pill urgent">${ms('timer')}<span class="tnum">1</span> ${t('In 3 days','3 दिन में')}</span><span class="pill">${ms('event')}<span class="tnum">3</span> ${t('Later','बाद में')}</span></div></div>`;
+const abar=(ni=true)=>`<div class="abar">${ni?`<div class="ni">${ms('visibility_off','o')}${t('Not interested','मुझे इसमें रुचि नहीं')}</div>`:''}<div class="row" style="gap:8px">${ni?'':''}<span class="btn pri" style="flex:1.5">${ms('task_alt')}${t('Applied','फ़ॉर्म भर दिया')}</span><span class="btn out" style="flex:1">${ms('snooze','o')}${t('Later','बाद में')}</span></div></div>`;
+const scr=(fill,after='')=>`<div class="fill">${fill}</div>${after}`;
+
+/* ====================== A · STATES & EDGE CASES ====================== */
+const S={};
+S.offline=()=>phone({id:'O01 · S20',name:t('Offline banner + cached list + queued action','Offline banner + cached list + queued action'),p:'P0',note:'Banner shows cache age; matches stay correct because matching runs on the phone. Snackbar confirms the Applied tap was saved locally.',
+ scr:scr(`${tbHome()}<div class="st-ban off">${ms('cloud_off')}<span>${t('No internet · info from 2 hours ago','इंटरनेट नहीं है · 2 घंटे पहले की जानकारी')}<span class="sub mut">${t('Your matches still work: they are worked out on this phone.','आपके मैच फिर भी सही हैं: मिलान इसी फ़ोन पर होता है।')}</span></span></div>
+  ${sh('today','alarm',t('Last day today','आज आखिरी दिन'),1)}${card(cardPolice())}${sh('urgent','timer',t('Closing in 3 days','3 दिन में'),1)}${card(cardSSC())}`,
+  `<div class="st-snack">${ms('cloud_upload','o','font-size:20px;opacity:.8')}<span>${t('Saved. Alerts for this form start when you’re online','सेव हो गया। इस फ़ॉर्म के अलर्ट इंटरनेट आते ही शुरू होंगे')}</span></div>${nav()}`)});
+
+S.notifOff=()=>phone({id:'O02 + O04 · S20',name:t('Notifications denied banner + undo snackbar','Notifications denied banner + undo snackbar'),p:'P0',note:'Banner stays until fixed (tap → S13 or D01). Undo snackbar after “Not interested”: 6 s, timer ring, announced politely.',
+ scr:scr(`${tbHome()}<div class="st-ban warn">${ms('notifications_off')}<span>${t('Notifications are off','सूचना बंद है')}<span class="sub">${t('You won’t get last-date reminders.','आखिरी तारीख की याद नहीं आएगी।')}</span></span><span class="act">${t('Turn on','चालू करें')}</span></div>
+  ${sh('urgent','timer',t('Closing in 3 days','3 दिन में'),1)}${card(cardSSC())}${sh('','event',t('Later','बाद में'),2)}
+  <div class="card">${lr('rail','train',t('RRB NTPC Graduate 2026','RRB NTPC ग्रेजुएट 2026'),t('₹500 · Graduate · Last date 25 Nov','₹500 · ग्रेजुएट · आखिरी तारीख 25 नवं'),chipOk())}${lr('state','location_city',t('UPSSSC Junior Assistant','UPSSSC जूनियर असिस्टेंट'),t('₹25 · Class 12 + CCC · Last date 10 Dec','₹25 · 12वीं + CCC · आखिरी तारीख 10 दिसं'),'')}</div>`,
+  `<div class="st-snack"><span class="grow">${t('Hidden: IBPS Clerk 2026','छुपा दिया: IBPS क्लर्क 2026')}</span><span class="tmr" aria-hidden="true"></span><span class="a">${ms('undo')}${t('Undo','वापस लाएँ')}</span></div>${nav('jobs',4)}`)});
+
+S.outageBan=()=>phone({id:'O03 · S20',name:t('Server outage banner, cache present','Server outage banner, cache present'),p:'P0',note:'Our fault, not the user’s: terracotta container, no action button. Reads still work from cache; writes queue.',
+ scr:scr(`${tbHome()}<div class="st-ban err">${ms('report')}<span>${t('Our server has a problem','हमारे सर्वर में दिक्कत है')}<span class="sub">${t('Saved jobs still work. New notices and alerts may be late.','सेव की हुई नौकरियाँ दिख रही हैं। नए नोटिस और अलर्ट देर से आ सकते हैं।')}</span></span></div>${greet()}
+  ${sh('today','alarm',t('Last day today','आज आखिरी दिन'),1)}${card(cardPolice())}`,nav())});
+
+S.outage=()=>phone({id:'S42',name:t('Service problem, full screen (no cache)','Service problem, full screen (no cache)'),p:'P0',note:'Only on a fresh install with nothing cached. Remote-config message slot; support code in small type.',
+ scr:scr(`<div class="tb"><span class="logo"><i>${ms('notifications_active')}</i>Sarkari Match</span></div><div class="st-center">
+  <div class="st-illu" style="background:var(--tcC);color:var(--tc)">${ms('cloud_off')}</div>
+  <div class="t28">${t('Our server isn’t working right now','अभी हमारा सर्वर काम नहीं कर रहा')}</div>
+  <div class="t16 mut" style="margin-top:8px">${t('Please try again in a little while. Nothing on your phone is lost.','थोड़ी देर में फिर कोशिश करें। आपके फ़ोन पर कुछ नहीं खोया।')}</div>
+  <div class="st-note mut" style="margin:18px 0 0;text-align:start">${ms('campaign')}<span class="t14"><span class="b">${t('From our team:','हमारी टीम का संदेश:')}</span> ${t('Should be fixed by 6 pm today.','आज शाम 6 बजे तक ठीक हो जाएगा।')}</span></div>
+  <span class="btn pri full" style="margin-top:22px">${ms('refresh')}${t('Try again','फिर कोशिश करें')}</span>
+  <div class="t14 mut" style="margin-top:10px">${t('Code','कोड')}: E-503</div></div>`)});
+
+S.force=()=>phone({id:'S41',name:t('Force update (blocking)','Force update (blocking)'),p:'P0',note:'No back, no close. Play In-App Update IMMEDIATE; falls back to the Play Store page.',
+ scr:scr(`<div class="st-center">
+  <div class="st-illu" style="background:var(--mariC);color:#B06E00">${ms('system_update')}</div>
+  <div class="t28">${t('Update required','ज़रूरी अपडेट')}</div>
+  <div class="t16 mut" style="margin-top:8px">${t('The new version sends alerts at the right time. Update to continue.','नए वर्ज़न में अलर्ट सही समय पर आते हैं। आगे बढ़ने के लिए अपडेट करें।')}</div>
+  <div class="row t14" style="gap:8px;margin-top:18px;padding:8px 14px;border-radius:14px;background:var(--sunk)"><span class="mut">${t('Your version','आपका वर्ज़न')}</span><span class="b tnum">1.0.0</span>${ms('arrow_forward','','font-size:18px;color:var(--mut)')}<span class="b tnum">1.2.0</span></div>
+  <span class="btn pri full" style="margin-top:24px">${ms('download')}${t('Update','अपडेट करें')}</span>
+  <div class="t14 mut" style="margin-top:10px">${t('Opens Google Play · about 9 MB','Google Play खुलेगा · लगभग 9 MB')}</div></div>`)});
+
+S.rematch=()=>phone({id:'S27 → B10',name:t('Profile edit → re-match result','Profile edit → re-match result'),p:'P0',note:'Re-match runs on the phone (&lt; 1 s, skeleton only if slower). Applied forms are never removed.',
+ scr:scr(`${tbBack(t('Change state','राज्य बदलें'),`<span class="st-tbtn">${t('Save','सेव करें')}</span>`)}
+  <div class="t16 b" style="padding:6px 20px 10px">${t('Which state are you a resident of?','आप किस राज्य के निवासी हैं?')}</div>
+  <div class="st-radio sel"><i></i><span class="t16 b">${t('Uttar Pradesh','उत्तर प्रदेश')}</span></div><div class="st-radio"><i></i><span class="t16">${t('Bihar','बिहार')}</span></div>`,
+  `<div class="st-scrim"></div><div class="st-sheet"><div class="st-hdl"></div>
+  <div class="row" style="gap:10px">${ms('check_circle','','font-size:30px;color:var(--pri)')}<div><div class="t19">${t('Profile saved','प्रोफ़ाइल सेव हो गई')}</div><div class="t14 mut">${t('Checked again on this phone','इसी फ़ोन पर दोबारा मिलाया')}</div></div></div>
+  <div class="st-sub t16" style="color:var(--pri)">${ms('add_circle')}${t('2 new jobs for you','2 नई नौकरियाँ आपके लिए')}</div>
+  <div class="st-mini"><span class="tile state">${ms('location_city')}</span><div class="grow"><div class="t16 b">${t('UPSSSC Junior Assistant','UPSSSC जूनियर असिस्टेंट')}</div><div class="t14 mut">${t('Last date 10 Dec','आखिरी तारीख 10 दिसं')}</div></div>${chipOk()}</div>
+  <div class="st-mini"><span class="tile police">${ms('local_police')}</span><div class="grow"><div class="t16 b">${t('UP Police Computer Operator','UP पुलिस कंप्यूटर ऑपरेटर')}</div><div class="t14 mut">${t('Last date 2 Dec','आखिरी तारीख 2 दिसं')}</div></div>${chipOk()}</div>
+  <div class="st-sub t16" style="color:var(--tc)">${ms('remove_circle')}${t('1 job no longer for you','1 नौकरी अब आपके लिए नहीं')}</div>
+  <div class="st-mini"><span class="tile police">${ms('local_police')}</span><div class="grow"><div class="t16 b">${t('Bihar Police Constable','बिहार पुलिस कांस्टेबल')}</div><div class="t14 mut">${t('Needs Bihar domicile','बिहार का निवास ज़रूरी')}</div></div></div>
+  <div class="t14 mut row" style="gap:6px;margin:6px 0 14px">${ms('info','o','font-size:18px')}${t('Forms you’ve applied for are never removed.','भरे हुए फ़ॉर्म नहीं हटते।')}</div>
+  <div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5">${t('See new jobs','नई नौकरियाँ देखें')}</span><span class="btn out" style="flex:1">${t('OK','ठीक है')}</span></div></div>`)});
+
+S.newElig=()=>phone({id:'S21 · N-11c',name:t('Newly eligible after a corrigendum','Newly eligible after a corrigendum'),p:'P0',note:'Celebratory but factual: green “new chance” strip, the changed rule tagged inside Why you match, diff one tap away (B07).',
+ scr:scr(`${tbDetail()}<div class="dh">
+  <div class="st-ban ok" style="margin:-4px -4px 12px">${ms('new_releases')}<span>${t('New chance! You’re eligible now','नया मौका! अब आप योग्य हैं')}<span class="sub">${t('The notice changed on 18 Nov.','नोटिस 18 नवं को बदला।')}</span></span></div>
+  <div class="row" style="gap:12px;align-items:flex-start"><span class="tile state">${ms('location_city')}</span><div class="grow"><div class="t19">${t('BSSC Inter Level 2026','BSSC इंटर लेवल 2026')}</div><div class="t14 mut">${t('Bihar Staff Selection Commission · 12,199 posts','बिहार कर्मचारी चयन आयोग · 12,199 पद')}</div></div></div>
+  <div class="row" style="gap:14px;margin-top:14px"><div class="cal"><div class="m">${t('NOV','नवंबर')}</div><div class="dd tnum">25</div><div class="wd">${t('Wednesday','बुधवार')}</div></div>
+  <div class="grow">${chipOk()}<div style="margin-top:8px"><span class="left">${ms('timer')}${t('6 days left','6 दिन बाकी')}</span></div></div></div>
+  <div class="chg">${ms('update')}<span class="grow">${t('Domicile: Bihar only → all states','निवास: सिर्फ़ बिहार → सभी राज्य')}</span>${ms('chevron_right','','font-size:20px')}</div></div>
+  <div class="sec"><div class="st"><span class="ic">${ms('fact_check')}</span><span class="t19">${t('Why you match','आप योग्य क्यों हैं')}</span></div>
+  <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">${t('Domicile:','निवास:')}</span> ${t('open to all states now','अब सभी राज्यों के लिए खुला')}<span class="st-chg-tag">${t('Changed','बदला')}</span></span></div>
+  <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">${t('Age:','उम्र:')}</span> ${t('23 on 1 Aug 2026 — limit 37','1 अग 2026 को 23 — सीमा 37')}</span></div>
+  <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">${t('Education:','पढ़ाई:')}</span> ${t('Class 12 needed — you have it','12वीं पास चाहिए — आपके पास है')}</span></div></div>`,abar())});
+
+S.noElig=()=>phone({id:'S21 · N-11a',name:t('No longer eligible after a corrigendum','No longer eligible after a corrigendum'),p:'P0',note:'Verdict flips to a terracotta “not eligible now”; the failing rule is listed first. Applied actions are replaced; job moves to Past jobs.',
+ scr:scr(`${tbDetail()}<div class="dh">
+  <div class="row" style="gap:12px;align-items:flex-start"><span class="tile state">${ms('location_city')}</span><div class="grow"><div class="t19">${t('UPSSSC VDO 2026','UPSSSC VDO भर्ती 2026')}</div><div class="t14 mut">${t('UP Subordinate Services Selection Commission · 1,468 posts','UP अधीनस्थ सेवा चयन आयोग · 1,468 पद')}</div></div></div>
+  <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap"><span class="vchip no">${ms('cancel')}${t('Not eligible now','अब योग्य नहीं')}</span><span class="vchip n">${ms('event')}${t('Until 25 Nov','25 नवं तक')}</span></div>
+  <div class="st-ban err" style="margin:12px 0 0">${ms('update')}<span>${t('Notice changed (18 Nov)','नोटिस बदला (18 नवं)')}<span class="sub">${t('A UPSSSC PET 2025 score is now required.','अब UPSSSC PET 2025 का स्कोर ज़रूरी है।')}</span></span></div></div>
+  <div class="sec"><div class="st"><span class="ic">${ms('fact_check')}</span><span class="t19">${t('Why you don’t match now','अब आप योग्य क्यों नहीं')}</span></div>
+  <div class="wy no t16"><span class="bub">${ms('close')}</span><span><span class="b">PET 2025:</span> ${t('score needed — your profile says “not taken”','स्कोर ज़रूरी — आपकी प्रोफ़ाइल में ‘PET नहीं दिया’')}</span></div>
+  <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">${t('Age:','उम्र:')}</span> ${t('23 on 1 Jul 2026 — limit 18–40','1 जुलाई 2026 को 23 — सीमा 18–40')}</span></div>
+  <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">${t('Education:','पढ़ाई:')}</span> ${t('Class 12 — OK','12वीं पास — ठीक')}</span></div>
+  <div class="t14 mut row" style="gap:6px;margin-top:8px">${ms('inventory_2','o','font-size:18px')}${t('Moved to Past jobs · reminders stopped','पुरानी नौकरियों में गई · रिमाइंडर बंद')}</div></div>`,
+  `<div class="abar"><div class="ni" style="color:var(--pri)">${ms('flag','o')}${t('I think I’m still eligible','मुझे लगता है मैं अब भी योग्य हूँ')}</div><div class="row" style="gap:8px"><span class="btn out" style="flex:1.3">${ms('picture_as_pdf','o')}${t('Change (PDF)','बदलाव (PDF)')}</span><span class="btn pri" style="flex:1">${t('OK','ठीक है')}</span></div></div>`)});
+
+S.didApply=()=>phone({id:'S20 · SC-17',name:t('Deadline passed: “Did you fill these forms?”','Deadline passed: “Did you fill these forms?”'),p:'P0',note:'One grouped card for up to 3 expired, unanswered jobs, placed after “Closing soon”. No push. “Yes” backfills Applied (and may open B02).',
+ scr:scr(`${tbHome(false)}${sh('urgent','timer',t('Closing in 3 days','3 दिन में'),1)}${card(cardSSC())}
+  <div class="card"><div class="cb">
+  <div class="row" style="gap:12px;align-items:flex-start"><span class="tile" style="background:var(--qC);color:var(--q)">${ms('event_busy')}</span><div class="grow"><div class="t19">${t('Did you fill these forms?','क्या आपने ये फ़ॉर्म भरे थे?')}</div><div class="t14 mut">${t('The last date has passed. If you did, we’ll track what comes next.','आखिरी तारीख निकल गई। भरा था तो आगे की सूचना हम देंगे।')}</div></div></div>
+  <div style="margin-top:12px;padding-top:10px;box-shadow:0 -1px 0 var(--hair)"><div class="t16 b">${t('RRB Group D 2026','RRB ग्रुप D 2026')}</div><div class="t14 mut">${t('Last date was 17 Nov','आखिरी तारीख 17 नवं थी')}</div>
+  <div class="row" style="gap:8px;margin-top:8px"><span class="btn pri sm" style="flex:1">${ms('task_alt')}${t('Yes, I applied','हाँ, भरा था')}</span><span class="btn out sm" style="flex:.7">${t('No','नहीं')}</span></div></div>
+  <div style="margin-top:12px;padding-top:10px;box-shadow:0 -1px 0 var(--hair)"><div class="t16 b">${t('Bihar Police SI 2026','बिहार पुलिस SI 2026')}</div><div class="t14 mut">${t('Last date was 15 Nov','आखिरी तारीख 15 नवं थी')}</div>
+  <div class="row" style="gap:8px;margin-top:8px"><span class="btn pri sm" style="flex:1">${ms('task_alt')}${t('Yes, I applied','हाँ, भरा था')}</span><span class="btn out sm" style="flex:.7">${t('No','नहीं')}</span></div></div></div></div>`,nav('jobs',3))});
+
+S.cancelled=()=>phone({id:'S21 · SC-18',name:t('Notice cancelled (user had applied)','Notice cancelled (user had applied)'),p:'P0',note:'All actions removed. We never promise a refund; we point to the cancellation notice. Job moves to Past jobs.',
+ scr:scr(`${tbDetail()}<div class="dh">
+  <div class="row" style="gap:12px;align-items:flex-start"><span class="tile police">${ms('local_police')}</span><div class="grow"><div class="t19">${t('Bihar Police Driver Constable 2026','बिहार पुलिस ड्राइवर कांस्टेबल 2026')}</div><div class="t14 mut">${t('CSBC Bihar · 4,361 posts','CSBC बिहार · 4,361 पद')}</div></div></div>
+  <div class="st-ban err" style="margin:14px 0 0;padding:12px">${ms('block')}<span class="t16">${t('This recruitment was cancelled','यह भर्ती रद्द हो गई है')}<span class="sub t14">${t('Official notice of 17 Nov 2026. Reminders have stopped.','17 नवं 2026 का आधिकारिक नोटिस। रिमाइंडर बंद हो गए।')}</span></span></div></div>
+  <div class="sec"><div class="st"><span class="ic">${ms('task_alt')}</span><span class="t19">${t('You had applied','आपने फ़ॉर्म भरा था')}</span></div>
+  <div class="t16">${t('You marked this as applied on 2 Nov. For the fee refund, read the cancellation notice. We can’t promise a refund.','आपने 2 नवं को इसे भरा हुआ बताया था। फ़ीस वापसी की जानकारी रद्द करने वाले नोटिस में देखें। हम वापसी का वादा नहीं कर सकते।')}</div></div>
+  <div class="sec" style="padding:4px 16px"><div class="lnk"><span class="tile rail" style="width:40px;height:40px;border-radius:12px">${ms('picture_as_pdf')}</span><div class="grow"><div class="t16 b">${t('Cancellation notice (PDF)','रद्द करने का नोटिस (PDF)')}</div><div class="t14 mut">csbc.bih.nic.in · 380 KB</div></div>${ms('download','o')}</div></div>
+  <div class="disc t14" style="margin-top:12px">${ms('inventory_2','o')}<span>${t('Moved to My forms → Completed and to Past jobs','मेरे फ़ॉर्म → पूरे हुए और पुरानी नौकरियों में गई')}</span></div>`,
+  `<div class="abar" style="padding-top:12px"><span class="btn out full">${t('Back to jobs','नौकरियों पर वापस')}</span></div>`)});
+
+S.age=()=>phone({id:'B14',name:t('Age limit crossed (supportive)','Age limit crossed (supportive)'),p:'P1',note:'Once per exam family. Never “too old”: leads with what is still open, each with the user’s own limit.',
+ scr:scr(`${tbHome(false)}${greet()}`,`<div class="st-scrim"></div><div class="st-sheet"><div class="st-hdl"></div>
+  <span class="tile" style="background:var(--mariC);color:#B06E00;width:52px;height:52px">${ms('hourglass_bottom')}</span>
+  <div class="t19" style="margin-top:10px">${t('SSC CGL’s age limit has passed for you','SSC CGL की उम्र सीमा अब पार हो गई')}</div>
+  <div class="t16 mut" style="margin-top:4px">${t('OBC candidates can apply up to 35. We’ll stop matching SSC CGL, but many exams still have room for you:','OBC के लिए सीमा 35 साल है। SSC CGL अब नहीं दिखेगा, पर कई परीक्षाएँ अभी भी आपके लिए खुली हैं:')}</div>
+  <div class="st-sub t14 mut" style="margin-top:12px">${t('Still open to you','आपके लिए अभी खुली')}</div>
+  <div class="st-mini"><span class="tile state">${ms('location_city')}</span><div class="grow"><div class="t16 b">${t('RSMSSB Patwari','RSMSSB पटवारी')}</div><div class="t14 mut">${t('Your limit: 43 (OBC +3)','आपकी सीमा: 43 (OBC +3)')}</div></div>${chipOk()}</div>
+  <div class="st-mini"><span class="tile rail">${ms('train')}</span><div class="grow"><div class="t16 b">${t('RRB NTPC Graduate','RRB NTPC ग्रेजुएट')}</div><div class="t14 mut">${t('Your limit: 36 (OBC +3)','आपकी सीमा: 36 (OBC +3)')}</div></div>${chipOk()}</div>
+  <div class="st-mini"><span class="tile state">${ms('account_balance')}</span><div class="grow"><div class="t16 b">${t('RPSC RAS','RPSC RAS')}</div><div class="t14 mut">${t('Your limit: 45 (OBC +5)','आपकी सीमा: 45 (OBC +5)')}</div></div>${chipOk()}</div>
+  <div class="row" style="gap:8px;margin-top:14px"><span class="btn pri" style="flex:1.6">${t('See jobs open to me','मेरे लिए खुली नौकरियाँ')}</span><span class="btn out" style="flex:1">${t('Close','बंद करें')}</span></div></div>`)});
+
+S.ads=()=>phone({id:'B17 · O10',name:t('Why ads? (ads notice)','Why ads? (ads notice)'),p:'P0',note:'From the ad slot’s “Why?” link and from S47. Non-personalised ads only; never in reminders, job details, notifications, Pro or minor mode.',
+ scr:scr(`${tbHome(false)}${sh('','event',t('Later','बाद में'),3)}<div class="card">${lr('rail','train',t('RRB NTPC Graduate 2026','RRB NTPC ग्रेजुएट 2026'),t('₹500 · Graduate · Last date 25 Nov','₹500 · ग्रेजुएट · आखिरी तारीख 25 नवं'),chipOk())}</div>
+  <div class="ad"><span class="adimg">${ms('storefront','o')}</span><div class="grow"><div class="row" style="gap:6px"><span class="adl">${t('Ad','विज्ञापन')}</span><span class="t14 b" style="color:var(--pri)">${t('Why?','क्यों?')}</span></div><div class="t16 b">${t('Kisan Mobile Store','किसान मोबाइल स्टोर')}</div></div><span class="btn out sm">${t('View','देखें')}</span></div>`,
+  `<div class="st-scrim"></div><div class="st-sheet"><div class="st-hdl"></div><div class="t19" style="margin-bottom:10px">${t('Why do I see an ad?','विज्ञापन क्यों दिखता है?')}</div>
+  <div class="bn t16" style="align-items:flex-start;padding:6px 0"><span class="bi">${ms('payments')}</span><span><span class="b">${t('It pays for free alerts','मुफ़्त अलर्ट का ख़र्च')}</span><br><span class="t14 mut">${t('Servers and checking every notice cost money.','सर्वर और हर नोटिस जाँचने का ख़र्च इसी से निकलता है।')}</span></span></div>
+  <div class="bn t16" style="align-items:flex-start;padding:6px 0"><span class="bi">${ms('visibility_off')}</span><span><span class="b">${t('Your details stay on your phone','आपकी जानकारी फ़ोन पर ही रहती है')}</span><br><span class="t14 mut">${t('Advertisers never get your profile, age or state. Ads are not chosen for you.','विज्ञापन वालों को आपकी प्रोफ़ाइल, उम्र या राज्य नहीं मिलता। विज्ञापन आपके हिसाब से नहीं चुने जाते।')}</span></span></div>
+  <div class="bn t16" style="align-items:flex-start;padding:6px 0"><span class="bi">${ms('block')}</span><span><span class="b">${t('Never where it matters','ज़रूरी जगह कभी नहीं')}</span><br><span class="t14 mut">${t('No ads in reminders, job details or notifications.','रिमाइंडर, नौकरी के ब्योरे और सूचनाओं में कभी नहीं।')}</span></span></div>
+  <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap"><span class="st-tbtn" style="padding:0 8px">${ms('flag','o')}${t('Report this ad','यह विज्ञापन ठीक नहीं')}</span><span class="btn mari sm" style="margin-inline-start:auto">${ms('workspace_premium')}${t('No ads with Pro','Pro में विज्ञापन नहीं')}</span></div></div>`)});
+
+/* ====================== B · ACCOUNT & DATA ====================== */
+const s38bg=(signed=true)=>`${tbBack(t('Account & data','अकाउंट और डेटा'))}
+  <div class="sec" style="margin-top:4px">${signed?`<div class="row" style="gap:14px"><span class="st-av">R</span><div class="grow"><div class="t19">Ravi Kumar</div><div class="t14 mut">ravi.k@gmail.com</div></div></div>
+  <div class="row" style="gap:8px;margin-top:10px"><span class="st-tag pri">${ms('verified_user')}${t('Signed in with Google','Google से साइन इन')}</span></div>
+  <div class="st-row" style="padding:8px 0 0;min-height:52px">${ms('switch_account','o','color:var(--mut)')}<span class="t16 b grow">${t('Switch Google account','Google अकाउंट बदलें')}</span>${ms('chevron_right','','font-size:22px;color:var(--mut)')}</div>`
+  :`<div class="row" style="gap:14px;align-items:flex-start"><span class="st-av guest">${ms('person')}</span><div class="grow"><div class="t19">${t('You’re using the app as a guest','आप मेहमान के रूप में इस्तेमाल कर रहे हैं')}</div><div class="t14 mut" style="margin-top:2px">${t('Your profile is only on this phone. Change phones without signing in and you’ll fill it again (2 min).','आपकी प्रोफ़ाइल सिर्फ़ इसी फ़ोन पर है। साइन इन किए बिना फ़ोन बदला तो दोबारा भरनी होगी (2 मिनट)।')}</div></div></div>
+  ${gbtn(t('Sign in with Google','Google से साइन इन करें'),'width:100%;margin-top:12px')}`}</div>
+  <div class="st-list"><div class="st-lh">${ms('smartphone')}${t('Your profile and matches are stored only on this phone','आपकी प्रोफ़ाइल और मैच सिर्फ़ इसी फ़ोन पर रहते हैं')}</div>
+  ${signed?`<div class="st-row"><span class="st-ri">${ms('phone_android','o')}</span><div class="grow"><div class="t16 b">${t('Phone that gets alerts','अलर्ट पाने वाला फ़ोन')}</div><div class="t14 mut">${t('This phone (Redmi Note 12)','यही फ़ोन (Redmi Note 12)')}</div></div></div>
+  <div class="st-row"><span class="st-ri">${ms('cloud_done','o')}</span><div class="grow"><div class="t16 b">${t('Encrypted backup','सुरक्षित बैकअप')}</div><div class="t14 mut">${t('On · 18 Nov · only you can open it','चालू · 18 नवं · सिर्फ़ आप खोल सकते हैं')}</div></div><span class="st-sw on"></span></div>`:''}
+  <div class="st-row"><span class="st-ri">${ms('privacy_tip','o')}</span><div class="grow"><div class="t16 b">${t('Privacy notice','प्राइवेसी नोटिस')}</div><div class="t14 mut">${t('What we keep and why','हम क्या रखते हैं और क्यों')}</div></div>${ms('chevron_right','','font-size:22px;color:var(--mut)')}</div>
+  <div class="st-row"><span class="st-ri">${ms('download','o')}</span><div class="grow"><div class="t16 b">${t('Download my data','मेरा डेटा डाउनलोड करें')}</div><div class="t14 mut">${t('JSON file, made on this phone','JSON फ़ाइल, इसी फ़ोन पर बनती है')}</div></div>${ms('chevron_right','','font-size:22px;color:var(--mut)')}</div></div>`;
+const danger=(signed=true,expanded=false)=>`<div class="st-list"><div class="st-lh danger">${ms('warning')}${t('Careful','सावधानी')}</div>
+  ${signed?`<div class="st-row"><span class="st-ri">${ms('logout')}</span><span class="t16 b grow">${t('Sign out','साइन आउट')}</span></div>`:''}
+  <div class="st-row danger"><span class="st-ri">${ms('delete_forever')}</span><span class="t16 b grow">${t('Delete account and data','अकाउंट और डेटा हमेशा के लिए हटाएँ')}</span>${ms(expanded?'expand_less':'expand_more','','font-size:22px')}</div>
+  ${expanded?`<div style="padding:0 16px 16px"><div class="t14" style="padding:12px 14px;border-radius:16px;background:var(--tcC);color:var(--onTc)"><span class="b">${t('What gets deleted:','क्या हटेगा:')}</span> ${t('your profile, forms, alert history and reminders. From this phone right away; anything on our server within 7 days.','प्रोफ़ाइल, फ़ॉर्म, सूचनाओं का इतिहास और रिमाइंडर। इस फ़ोन से तुरंत; हमारे सर्वर से 7 दिन में।')}</div>
+  <span class="btn st-danger full" style="margin-top:10px">${ms('delete_forever')}${t('Delete everything','सब कुछ हटाएँ')}</span></div>`:''}</div>`;
+
+const A={};
+A.signed=()=>phone({id:'S38',name:t('Account & data — signed in with Google','Account & data — signed in with Google'),p:'P0',note:'Header line states the data model plainly. Sign out and delete live in a separate “Careful” card.',
+ scr:scr(s38bg(true)+danger(true))});
+A.guest=()=>phone({id:'S38 · guest',name:t('Account & data — guest, delete explained','Account & data — guest, delete explained'),p:'P0',note:'Guests have no sign-out (it would orphan the profile). Tapping delete expands what will go before any dialog.',
+ scr:scr(s38bg(false)+danger(false,true))});
+A.exp=()=>phone({id:'D04',name:t('Export ready — made on this phone','Export ready — made on this phone'),p:'P0',note:'Export is local (Room → JSON); server-side data is only the account summary. Saved through the system file picker.',
+ scr:scr(s38bg(true),`<div class="st-scrim"></div><div class="st-dlg" style="top:170px"><div class="st-di" style="background:var(--priC);color:var(--pri)">${ms('download_done')}</div>
+  <div class="t19">${t('Your data is ready','आपका डेटा तैयार है')}</div><div class="t16 mut" style="margin-top:6px">${t('Your profile, your replies to jobs and your alert history. Made on this phone; nothing was sent to us.','आपकी प्रोफ़ाइल, नौकरियों पर आपके जवाब और सूचनाओं का इतिहास। इसी फ़ोन पर बना; हमें कुछ नहीं भेजा गया।')}</div>
+  <div class="row" style="gap:10px;margin-top:14px;padding:10px 12px;border-radius:14px;background:var(--sunk)">${ms('data_object','o','color:var(--mut)')}<div class="grow"><div class="t14 b">sarkari-match-data.json</div><div class="t14 mut">14 KB</div></div></div>
+  <div class="st-da"><span class="st-tbtn">${t('Close','बंद करें')}</span><span class="st-tbtn">${ms('save','o')}${t('Save file','फ़ाइल सेव करें')}</span></div></div>`)});
+A.delG=()=>phone({id:'D03 · Google',name:t('Delete account — signed in, Google re-auth (no OTP)','Delete account — signed in, Google re-auth (no OTP)'),p:'P0',note:'Delete stays disabled until Google confirms it is you (Credential Manager). Active Pro adds the Play step first.',
+ scr:scr(s38bg(true),`<div class="st-scrim"></div><div class="st-dlg" style="top:64px"><div class="st-di" style="background:var(--tcC);color:var(--tc)">${ms('delete_forever')}</div>
+  <div class="t19">${t('Delete account forever?','अकाउंट हमेशा के लिए हटाएँ?')}</div><div class="t16 mut" style="margin-top:4px">${t('This can’t be undone.','यह वापस नहीं होगा।')}</div>
+  <div class="why t14" style="margin-top:10px">${ms('smartphone','o','font-size:18px;color:var(--mut)')}<span>${t('Profile, forms and reminders on this phone: right away','इस फ़ोन से प्रोफ़ाइल, फ़ॉर्म और रिमाइंडर: तुरंत')}</span></div>
+  <div class="why t14" style="margin-top:6px">${ms('cloud_off','o','font-size:18px;color:var(--mut)')}<span>${t('Google link, backup and family links on our server: within 7 days','हमारे सर्वर से Google जुड़ाव, बैकअप और परिवार लिंक: 7 दिन में')}</span></div>
+  <div class="st-note q" style="margin:12px 0 0;padding:10px 12px">${ms('workspace_premium')}<div class="t14"><span class="b">${t('Pro is not refunded automatically.','Pro का पैसा अपने-आप वापस नहीं होगा।')}</span> ${t('Cancel the subscription in Play Store first.','पहले Play Store में सब्सक्रिप्शन बंद करें।')}<div class="b" style="color:var(--pri);margin-top:4px;display:flex;align-items:center;gap:4px;min-height:32px">${t('Open Play subscriptions','Play सब्सक्रिप्शन खोलें')}${ms('open_in_new','','font-size:16px')}</div></div></div>
+  ${gbtn(t('Confirm with Google','Google से पुष्टि करें'),'width:100%;margin-top:14px')}
+  <div class="st-da"><span class="st-tbtn">${t('Cancel','रद्द करें')}</span><span class="st-tbtn danger dis">${t('Delete','हटाएँ')}</span></div></div>`)});
+A.delT=()=>phone({id:'D03 · guest',name:t('Delete data — guest types to confirm','Delete data — guest types to confirm'),p:'P0',note:'Word is localised (“हटाएँ” in Hindi). Button turns active terracotta only when the text matches.',
+ scr:scr(s38bg(false),`<div class="st-scrim"></div><div class="st-dlg" style="top:58px"><div class="st-di" style="background:var(--tcC);color:var(--tc)">${ms('delete_forever')}</div>
+  <div class="t19">${t('Delete all your data?','सारा डेटा हमेशा के लिए हटाएँ?')}</div><div class="t16 mut" style="margin-top:4px">${t('This can’t be undone. Type DELETE below to confirm.','यह वापस नहीं होगा। पुष्टि के लिए नीचे ‘हटाएँ’ लिखें।')}</div>
+  <div class="st-field"><div class="lbl">${t('Type DELETE','‘हटाएँ’ लिखें')}</div><div class="val">${t('DELETE','हटाएँ')}<span class="st-caret"></span></div></div>
+  <div class="st-da"><span class="st-tbtn">${t('Cancel','रद्द करें')}</span><span class="st-tbtn danger">${ms('delete_forever')}${t('Delete','हटाएँ')}</span></div></div>
+  <div class="st-kb" aria-hidden="true"><div>${'qwertyuiop'.split('').map(k=>`<span>${k}</span>`).join('')}</div><div>${'asdfghjkl'.split('').map(k=>`<span>${k}</span>`).join('')}</div><div><span class="w">⇧</span>${'zxcvbnm'.split('').map(k=>`<span>${k}</span>`).join('')}<span class="w">⌫</span></div><div><span class="w">?123</span><span class="sp"> </span><span class="ok">✓</span></div></div>`)});
+A.signout=()=>phone({id:'D02',name:t('Sign out — profile stays on this phone','Sign out — profile stays on this phone'),p:'P0',note:'On-device model: signing out keeps the local profile (user becomes a guest) unless the box is ticked. Confirm is terracotta text.',
+ scr:scr(s38bg(true)+danger(true),`<div class="st-scrim"></div><div class="st-dlg" style="top:150px"><div class="st-di" style="background:var(--sunk);color:var(--tx)">${ms('logout')}</div>
+  <div class="t19">${t('Sign out?','साइन आउट करें?')}</div><div class="t16 mut" style="margin-top:6px">${t('Alerts linked to ravi.k@gmail.com stop on this phone. Your profile and forms stay here as a guest. Your backup stays in your Google account.','ravi.k@gmail.com से जुड़े अलर्ट इस फ़ोन पर बंद होंगे। प्रोफ़ाइल और फ़ॉर्म मेहमान के रूप में यहीं रहेंगे। बैकअप आपके Google अकाउंट में रहेगा।')}</div>
+  <div class="chk t16" style="margin-top:10px"><span class="cbx" style="box-shadow:inset 0 0 0 2px var(--st-outline)"></span><span>${t('Also delete everything from this phone','इस फ़ोन से सब कुछ भी हटाएँ')}</span></div>
+  <div class="st-da"><span class="st-tbtn">${t('Cancel','रद्द करें')}</span><span class="st-tbtn danger">${t('Sign out','साइन आउट')}</span></div></div>`)});
+A.minor=()=>phone({id:'S10 · minor',name:t('Minor mode explained (under 18)','Minor mode explained (under 18)'),p:'P0',note:'Shown instead of the sign-in step when the DOB on the phone is under 18. Same screen opens from S26 “What’s off?”.',
+ scr:scr(`<div style="padding:20px 20px 0"><span class="tile" style="background:var(--priC);color:var(--pri);width:56px;height:56px;border-radius:18px">${ms('shield_person','','font-size:30px')}</span>
+  <div class="t28" style="margin-top:12px">${t('You’re 17 — the app works fully','आप 17 साल के हैं — ऐप पूरा काम करेगा')}</div>
+  <div class="t16 mut" style="margin-top:6px">${t('Because you’re under 18, nothing about you is sent to us. Your details stay on this phone.','आप 18 से कम हैं, इसलिए आपकी कोई जानकारी हमें नहीं भेजी जाती। सब कुछ इसी फ़ोन पर रहता है।')}</div></div>
+  <div class="sec"><div class="t14 b mut" style="margin-bottom:4px">${t('Works for you','आपके लिए चालू')}</div>
+  ${[t('7 jobs you can apply for, with reasons','7 नौकरियाँ जिनके आप योग्य हैं, कारण के साथ'),t('Reminders until the last date','आखिरी तारीख तक याद'),t('Fee, documents and official links','फ़ीस, दस्तावेज़ और आधिकारिक लिंक')].map(x=>`<div class="wy ok t16"><span class="bub">${ms('check')}</span><span>${x}</span></div>`).join('')}</div>
+  <div class="sec"><div class="t14 b mut" style="margin-bottom:4px">${t('Off until you turn 18','18 साल होने तक बंद')}</div>
+  ${[[ 'account_circle',t('Google sign-in and backup','Google साइन इन और बैकअप')],['workspace_premium',t('Pro and free trial','Pro और मुफ़्त ट्रायल')],['ad_off',t('Ads — you’ll see none','विज्ञापन — कोई नहीं दिखेगा')],['bug_report',t('Crash reports and usage counts','क्रैश रिपोर्ट और इस्तेमाल की गिनती')]].map(([i,x])=>`<div class="wy t16"><span class="bub" style="background:var(--sunk);color:var(--mut)">${ms(i,'','font-size:17px')}</span><span>${x}</span></div>`).join('')}
+  <div class="t14 mut" style="margin-top:6px">${t('On 12 Mar 2027 we’ll ask once if you want these.','12 मार्च 2027 को हम एक बार पूछेंगे कि क्या आप इन्हें चालू करना चाहते हैं।')}</div></div>`,
+  `<div class="abar" style="padding-top:12px"><span class="btn pri full">${ms('notifications_active')}${t('Turn on reminders','याद दिलाना चालू करें')}</span></div>`)});
+A.minorProfile=()=>phone({id:'S26 · minor',name:t('Profile in minor mode — what’s off','Profile in minor mode — what’s off'),p:'P0',note:'Disabled rows stay visible with a “From 18” tag, so nothing looks broken; export and delete always work.',
+ scr:scr(`<div class="tb"><span class="t28">${t('Profile','प्रोफ़ाइल')}</span></div>
+  <div class="greet" style="padding:14px 16px"><div class="row" style="gap:12px;position:relative"><span class="tile" style="background:var(--card);color:var(--pri)">${ms('shield_person')}</span><div class="grow"><div class="t19">${t('Minor mode','माइनर मोड')}</div><div class="t14 mut">${t('Until 12 Mar 2027 · nothing leaves this phone','12 मार्च 2027 तक · कुछ भी फ़ोन से बाहर नहीं जाता')}</div></div></div>
+  <div class="t14 b" style="color:var(--pri);margin-top:8px;display:flex;align-items:center;gap:4px;min-height:32px;position:relative">${t('What’s off?','क्या बंद है?')}${ms('chevron_right','','font-size:18px')}</div></div>
+  <div class="st-list"><div class="st-lh">${t('My details','मेरी जानकारी')}</div>
+  <div class="st-row"><span class="st-ri">${ms('work','o')}</span><div class="grow"><div class="t16 b">${t('Exams','कौन-सी नौकरियाँ')}</div><div class="t14 mut">${t('Defence, SSC, Police','डिफ़ेंस, SSC, पुलिस')}</div></div>${ms('chevron_right','','font-size:22px;color:var(--mut)')}</div>
+  <div class="st-row"><span class="st-ri">${ms('cake','o')}</span><div class="grow"><div class="t16 b">${t('Date of birth','जन्मतिथि')}</div><div class="t14 mut tnum">${t('12/03/2009 · 17 years','12/03/2009 · 17 साल')}</div></div>${ms('chevron_right','','font-size:22px;color:var(--mut)')}</div></div>
+  <div class="st-list"><div class="st-lh">${t('Account','अकाउंट')}</div>
+  <div class="st-row off"><span class="st-ri">${ms('account_circle','o')}</span><span class="t16 grow mut">${t('Sign in with Google','Google से साइन इन')}</span><span class="st-tag">${ms('lock')}${t('From 18','18 के बाद')}</span></div>
+  <div class="st-row off"><span class="st-ri">${ms('workspace_premium','o')}</span><span class="t16 grow mut">Pro</span><span class="st-tag">${ms('lock')}${t('From 18','18 के बाद')}</span></div>
+  <div class="st-row"><span class="st-ri">${ms('download','o')}</span><span class="t16 b grow">${t('Download my data','मेरा डेटा डाउनलोड करें')}</span>${ms('chevron_right','','font-size:22px;color:var(--mut)')}</div></div>`,nav('profile',3))});
+
+/* ====================== C · ACCESSIBILITY ====================== */
+const X={};
+X.home2=()=>phone({id:'S20 @200%',name:t('Home card at font scale 2.0 (full scroll capture)','Home card at font scale 2.0 (full scroll capture)'),p:'P0',cls:'st-tall st-fs2',note:'Ribbon and title wrap, facts and actions stack full width, icons stay 24 dp. Nav labels capped at 1.5× (open question).',
+ scr:scr(`${tbHome()}${sh('today','alarm',t('Last day today','आज आखिरी दिन'),1)}${card(cardPolice())}`,nav())});
+X.det2=()=>phone({id:'S21 @200%',name:t('Job detail at font scale 2.0 (full scroll capture)','Job detail at font scale 2.0 (full scroll capture)'),p:'P0',cls:'st-tall st-fs2',note:'Calendar sits above the chips; the sticky action bar stacks (≈ 26% of the screen) and “Not interested” moves to the overflow.',
+ scr:scr(`${tbDetail()}<div class="dh">
+  <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ssc">${ms('account_balance')}</span><div class="grow"><div class="t19">${t('SSC GD Constable 2027','SSC GD कांस्टेबल भर्ती 2027')}</div></div></div>
+  <div class="t14 mut" style="margin-top:6px">${t('Staff Selection Commission · 39,481 posts','कर्मचारी चयन आयोग · 39,481 पद')}</div>
+  <div class="cal" style="margin-top:14px"><div class="m">${t('NOV','नवंबर')}</div><div class="dd tnum">21</div><div class="wd">${t('Saturday','शनिवार')}</div></div>
+  <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">${chipOk()}<span class="left">${ms('timer')}${t('2 days left','2 दिन बाकी')}</span></div>
+  <div class="t14 mut" style="margin-top:6px">${t('until 11 pm','रात 11 बजे तक')}</div></div>
+  <div class="sec"><div class="st"><span class="ic">${ms('fact_check')}</span><span class="t19">${t('Why you match','आप योग्य क्यों हैं')}</span></div>
+  <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">${t('Age:','उम्र:')}</span> ${t('23 y 9 m on 1 Jan 2027 — limit 23, OBC +3 = 26','23 साल 9 महीने — सीमा 23, OBC +3 = 26 तक')}</span></div>
+  <div class="wy q t16"><span class="bub">${ms('question_mark')}</span><span><span class="b">${t('Physical standard:','शारीरिक मानक:')}</span> ${t('check yourself — notice p. 12','ख़ुद जाँचें — नोटिस पेज 12')}</span></div></div><div style="height:16px"></div>`,
+  `<div class="abar" style="position:relative;padding-top:12px"><div class="row st-stack" style="gap:8px"><span class="btn pri">${ms('task_alt')}${t('Applied','फ़ॉर्म भर दिया')}</span><span class="btn out">${ms('snooze','o')}${t('Later','बाद में')}</span></div></div>`)});
+X.tb=()=>{
+  const pre='';
+  const phoneHtml=phone({id:'S20 · TalkBack',name:t('Focus order and announcement for the match card','Focus order and announcement for the match card'),p:'P0',
+   scr:scr(`${tbHome()}<div style="position:relative">${sh('today','alarm',t('Last day today','आज आखिरी दिन'),1)}<div class="st-fo" style="left:8px;right:8px;top:8px;bottom:0;border-radius:16px"><b>1</b></div></div>
+   <div style="position:relative">${card(cardPolice())}<div class="st-fo" style="left:8px;right:8px;top:-6px;bottom:6px"><b>2</b></div>
+   <div class="st-fo d" style="left:26px;width:206px;bottom:16px;height:56px;border-radius:999px"><b>3</b></div><div class="st-fo d" style="right:26px;width:116px;bottom:16px;height:56px;border-radius:999px"><b>4</b></div></div>
+   <div style="position:relative">${sh('urgent','timer',t('Closing in 3 days','3 दिन में'),1)}<div class="st-fo" style="left:8px;right:8px;top:8px;bottom:0;border-radius:16px"><b>5</b></div></div>`,nav())}).replace('<figcaption>','<figcaption style="display:none">');
+  const ann=`<div class="st-anno"><h4>${t('Focus order (swipe right)','फ़ोकस क्रम (दाएँ स्वाइप)')}</h4><ol>
+   <li><b class="n">1</b><span>${t('Section header, marked as heading.','सेक्शन हेडर, heading के रूप में।')}<q>${t('“Last day today, 1 job. Heading.”','“आज आखिरी दिन, 1 नौकरी। हेडिंग।”')}</q></span></li>
+   <li><b class="n">2</b><span>${t('Whole card = one stop (merged semantics). Deadline first, then title, verdict, fee, education, the age rule. Icons silent; ₹ and “+” spoken as words.','पूरा कार्ड = एक स्टॉप। पहले आखिरी तारीख, फिर नाम, योग्यता, फ़ीस, पढ़ाई, उम्र का नियम। आइकन चुप; ₹ और “+” शब्दों में।')}<q>${t('“Last day today, until 11 pm. UP Police Constable 2026. UPPRPB, 19,220 posts. You are eligible. Fee 400 rupees. Class 12. Age 23: limit 22, plus 5 for OBC, so 27. Double-tap to open. Actions available.”','“आज आखिरी दिन, रात 11 बजे तक। UP Police कांस्टेबल भर्ती 2026। UPPRPB, 19,220 पद। आप योग्य हैं। फ़ीस 400 रुपये। 12वीं पास। उम्र 23: सीमा 22, OBC के 5 साल जोड़कर 27। खोलने के लिए दो बार टैप करें। ऐक्शन उपलब्ध हैं।”')}</q></span></li>
+   <li><b class="n">3</b><span>${t('Button, 48 dp target (44 visual).','बटन, 48 dp टच (44 दिखता)।')}<q>${t('“Applied, button. Confirms you filled the form.”','“फ़ॉर्म भर दिया, बटन। पुष्टि करता है कि आपने फ़ॉर्म भरा।”')}</q></span></li>
+   <li><b class="n">4</b><span><q>${t('“Later, button. Remind me later.”','“बाद में, बटन। बाद में याद दिलाएँ।”')}</q></span></li>
+   <li><b class="n">5</b><span>${t('Next section heading.','अगला सेक्शन हेडिंग।')}</span></li></ol>
+   <h4>${t('Custom actions on stop 2','स्टॉप 2 पर कस्टम ऐक्शन')}</h4><p>${t('Applied · Remind me later · Not interested · Wrong match? · Open details. Same verbs as the buttons, so swipe-up/down and the Actions menu match what sighted users see.','फ़ॉर्म भर दिया · बाद में याद दिलाएँ · रुचि नहीं · मैच गलत है? · पूरा ब्योरा खोलें।')}</p>
+   <h4>${t('Rules','नियम')}</h4><p>${t('English exam names inside Hindi get <code>LocaleSpan(en)</code>. Ribbon colour is never the only cue: the sentence says “Last day today”. Snackbars are polite live regions; banners are read once on screen open. Focus after navigation lands on the top-bar title.','हिंदी में अंग्रेज़ी परीक्षा-नाम पर <code>LocaleSpan(en)</code>। रंग अकेला संकेत नहीं: वाक्य “आज आखिरी दिन” कहता है। स्नैकबार polite live region।')}</p></div>`;
+  return `<figure class="fr st-wide"><div class="st-pair">${phoneHtml.replace(/^<figure class="fr ">|<\/figure>$/g,'')}${ann}</div><figcaption><b>S20 · TalkBack</b> · ${t('Focus order and announcement for the match card','Focus order and announcement for the match card')} (P0)<br><span class="st-cap2">Magenta = annotation only (not UI). Solid = focus stop, dashed = separate button inside the card.</span></figcaption></figure>`;
+};
+
+/* ====================== D · DARK MODE ====================== */
+const D={};
+D.home=()=>phone({theme:'dark',id:'S20 · dark',name:t('Home','Home'),p:'P0',note:'Ribbon text flips to dark cocoa on terracotta (7.7:1). Greeting gradient uses the dark marigold container.',
+ scr:scr(`${tbHome()}${greet()}${sh('today','alarm',t('Last day today','आज आखिरी दिन'),1)}${card(cardPolice())}${sh('urgent','timer',t('Closing in 3 days','3 दिन में'),1)}${card(cardSSC())}`,nav())});
+D.detail=()=>phone({theme:'dark',id:'S21 · dark',name:t('Job detail','Job detail'),p:'P0',note:'Calendar month band keeps terracotta with dark text; glass action bar uses bg at 90%.',
+ scr:scr(`${tbDetail()}<div class="dh">
+  <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ssc">${ms('account_balance')}</span><div class="grow"><div class="t19">${t('SSC GD Constable 2027','SSC GD कांस्टेबल भर्ती 2027')}</div><div class="t14 mut">${t('Staff Selection Commission · 39,481 posts · All India','कर्मचारी चयन आयोग · 39,481 पद · पूरे भारत में')}</div></div></div>
+  <div class="row" style="gap:14px;margin-top:14px"><div class="cal"><div class="m">${t('NOV','नवंबर')}</div><div class="dd tnum">21</div><div class="wd">${t('Saturday','शनिवार')}</div></div>
+  <div class="grow">${chipOk()}<div style="margin-top:8px"><span class="left">${ms('timer')}${t('2 days left','2 दिन बाकी')}</span></div><div class="t14 mut" style="margin-top:6px">${t('until 11 pm','रात 11 बजे तक')}</div></div></div>
+  <div class="chg">${ms('update')}<span>${t('Last date extended: 14 → 21 Nov','आखिरी तारीख बढ़ी: 14 → 21 नवंबर')}</span></div></div>
+  <div class="sec"><div class="st"><span class="ic">${ms('event')}</span><span class="t19">${t('Key dates','ज़रूरी तारीख़ें')}</span></div>
+  <div class="dts"><div class="dt past"><span class="t14 mut">${t('Form opened','फ़ॉर्म शुरू')}</span><b class="tnum">${t('5 Nov','5 नवं')}</b></div><div class="dt key"><span class="t14 mut">${t('Last date','आखिरी तारीख')}</span><b class="tnum">${t('21 Nov · 11 pm','21 नवं · रात 11')}</b></div><div class="dt"><span class="t14 mut">${t('Fee payment by','फ़ीस की आखिरी तारीख')}</span><b class="tnum">${t('22 Nov','22 नवं')}</b></div></div></div>
+  <div class="sec" style="padding:4px 16px"><div class="lnk"><span class="tile rail" style="width:40px;height:40px;border-radius:12px">${ms('picture_as_pdf')}</span><div class="grow"><div class="t16 b">${t('Official notice (PDF)','आधिकारिक नोटिस (PDF)')}</div><div class="t14 mut">ssc.gov.in · 2.1 MB</div></div>${ms('download','o')}</div></div>`,abar())});
+D.why=()=>phone({theme:'dark',id:'S21 · dark',name:t('Why you match + what you need','Why you match + what you need'),p:'P0',note:'Rule bubbles: forest ✓ 7.8:1, ochre ? 8.5:1 on their containers. Report link is a 48 dp row, not tiny text.',
+ scr:scr(`${tbDetail()}<div class="sec" style="margin-top:0"><div class="st"><span class="ic">${ms('fact_check')}</span><span class="t19">${t('Why you match','आप योग्य क्यों हैं')}</span></div>
+  <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">${t('Age:','उम्र:')}</span> ${t('23 y 9 m on 1 Jan 2027 — limit 23, OBC +3 = 26','23 साल 9 महीने — सीमा 23, OBC +3 = 26 तक')}</span></div>
+  <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">${t('Education:','पढ़ाई:')}</span> ${t('Class 10 needed — you are a graduate','10वीं पास चाहिए — आप ग्रेजुएट हैं')}</span></div>
+  <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">${t('Category:','वर्ग:')}</span> ${t('OBC (non-creamy layer) — central list','OBC (नॉन-क्रीमी लेयर) — केंद्र की सूची')}</span></div>
+  <div class="wy q t16"><span class="bub">${ms('question_mark')}</span><span><span class="b">${t('Physical standard:','शारीरिक मानक:')}</span> ${t('Check height/chest yourself — notice p. 12','ऊँचाई/छाती ख़ुद जाँचें — नोटिस पेज 12')}</span></div>
+  <div class="row t16 b" style="gap:8px;min-height:48px;color:var(--pri);margin-top:4px">${ms('flag','o','font-size:20px')}${t('Is this match wrong? Tell us','यह मैच गलत है? बताएँ')}</div></div>
+  <div class="sec"><div class="st"><span class="ic">${ms('checklist')}</span><span class="t19">${t('What you need','आपको क्या चाहिए')}</span></div>
+  <div class="row" style="gap:12px;padding:10px 12px;border-radius:16px;background:var(--sunk)"><span class="t28 tnum">₹100</span><div class="grow"><div class="t14 b">${t('Your fee · OBC, male','आपकी फ़ीस · OBC, पुरुष')}</div><div class="t14 mut">${t('SC/ST/women/ex-servicemen: no fee','SC/ST/महिला/पूर्व सैनिक: कोई फ़ीस नहीं')}</div></div></div>
+  <div class="chk t16" style="margin-top:8px"><span class="cbx on">${ms('check')}</span><span class="mut">${t('Class 10 marksheet','10वीं की मार्कशीट')}</span></div><div class="chk t16"><span class="cbx" style="box-shadow:inset 0 0 0 2px var(--st-outline)"></span><span>${t('OBC-NCL certificate (central format)','OBC-NCL सर्टिफ़िकेट (केंद्र वाला)')}</span></div></div>`,abar())});
+D.timeline=()=>phone({theme:'dark',id:'S23 · dark',name:t('My forms — application timeline (Pro)','My forms — application timeline (Pro)'),p:'P0',note:'Done = forest disc, next = marigold disc with halo, upcoming = outline (3:1). Date change uses the ochre change strip.',
+ scr:scr(`${tbBack(t('My form','मेरा फ़ॉर्म'))}<div class="sec" style="margin-top:0">
+  <div class="row" style="gap:12px"><span class="tile ssc">${ms('account_balance')}</span><div class="grow"><div class="t19">SSC CGL 2026</div><div class="t14 mut">${t('Applied 15 Jul','भरा: 15 जुलाई')}</div></div><span class="vchip" style="background:var(--mari);color:var(--onMari)">${ms('workspace_premium')}Pro</span></div>
+  <div class="chg">${ms('update')}<span>${t('Exam date changed: 9 → 12 Dec','परीक्षा की तारीख बदली: 9 → 12 दिसं')}</span></div>
+  <div class="path" style="margin-top:12px">
+  <div class="stp done"><span class="cc">${ms('check')}</span><div class="grow tt"><div class="t16 b">${t('Applied','फ़ॉर्म भरा')}</div><div class="t14 mut tnum">${t('15 Jul','15 जुलाई')}</div></div></div>
+  <div class="stp done"><span class="cc">${ms('check')}</span><div class="grow tt"><div class="t16 b">${t('City slip','सिटी स्लिप')}</div><div class="t14 mut tnum">${t('Out 18 Nov · Lucknow','18 नवं को आई · लखनऊ')}</div></div><span class="btn ton sm" style="height:40px;padding:0 12px;font-size:14px">${t('Open','खोलें')}</span></div>
+  <div class="stp next"><span class="cc">${ms('badge')}</span><div class="grow tt"><div class="t16 b">${t('Admit card','एडमिट कार्ड')} <span class="t14 mut">· ${t('next','अगला')}</span></div><div class="t14 mut tnum">${t('Expected 5 Dec · we’ll alert you','संभावित 5 दिसं · हम बताएँगे')}</div></div></div>
+  <div class="stp"><span class="cc">${ms('edit_note')}</span><div class="grow tt"><div class="t16">${t('Exam','परीक्षा')}</div><div class="t14 mut tnum">${t('12–26 Dec','12–26 दिसं')}</div></div></div>
+  <div class="stp"><span class="cc">${ms('key')}</span><div class="grow tt"><div class="t16">${t('Answer key','आंसर की')}</div><div class="t14 mut tnum">${t('Expected Jan','संभावित जनवरी')}</div></div></div>
+  <div class="stp"><span class="cc">${ms('emoji_events')}</span><div class="grow tt"><div class="t16">${t('Result','रिज़ल्ट')}</div><div class="t14 mut tnum">${t('Expected Feb','संभावित फ़रवरी')}</div></div></div>
+  <div class="stp"><span class="cc">${ms('fact_check')}</span><div class="grow tt"><div class="t16">${t('Document verification','DV (दस्तावेज़ जाँच)')}</div><div class="t14 mut tnum">${t('After result','रिज़ल्ट के बाद')}</div></div></div></div></div>`)});
+D.pay=()=>phone({theme:'dark',id:'S30 · dark',name:t('Paywall (Pro plans)','Paywall (Pro plans)'),p:'P0',note:'Marigold stays the Pro colour; card gradient uses the dark marigold container. Coming-soon benefits are tagged, not hidden.',
+ scr:scr(`<div class="tb" style="height:48px;padding-left:4px"><span class="ib">${ms('close','o')}</span><span class="grow"></span><span class="st-tbtn" style="font-size:14px">${t('Restore purchase','ख़रीद वापस लाएँ')}</span></div>
+  <div class="peak"><div class="medal" style="background:var(--mari);color:var(--onMari);box-shadow:0 0 0 8px var(--mariC)">${ms('workspace_premium')}</div><div class="t28">Sarkari Match Pro</div><div class="t14 mut">${t('Every alert after you apply, till the final list','फ़ॉर्म भरने के बाद की हर सूचना, आखिरी लिस्ट तक')}</div></div>
+  <div class="pcard"><div class="bn t14"><span class="bi">${ms('badge')}</span><span>${t('Admit card, exam date, answer key, result, DV','एडमिट कार्ड, परीक्षा की तारीख, आंसर की, रिज़ल्ट, DV')}</span></div>
+  <div class="bn t14"><span class="bi">${ms('block')}</span><span>${t('No ads, anywhere','कोई विज्ञापन नहीं')}</span></div>
+  <div class="bn t14"><span class="bi">${ms('event_repeat')}</span><span class="grow">${t('Exam clash alerts','परीक्षा टकराव अलर्ट')}</span><span class="st-tag">${ms('schedule')}${t('Soon','जल्द')}</span></div>
+  <div class="bn t14"><span class="bi">${ms('family_restroom')}</span><span class="grow">${t('Alerts for your family','परिवार को भी अलर्ट')}</span><span class="st-tag">${ms('schedule')}${t('Soon','जल्द')}</span></div>
+  <div class="plans"><div class="plan sel"><span class="bd">${t('Best value','सबसे सस्ता')}</span><span class="ck">${ms('check_circle')}</span><div class="t14 mut">${t('Yearly','साल भर')}</div><div class="pr tnum">₹199</div><div class="t14 mut">${t('Just ₹17/month','सिर्फ़ ₹17/महीना')}</div></div><div class="plan"><div class="t14 mut">${t('One season','एक सीज़न')}</div><div class="pr tnum">₹49</div><div class="t14 mut">${t('4 months','4 महीने')}</div></div></div>
+  <span class="btn pri full">${t('Try 14 days free','14 दिन मुफ़्त आज़माएँ')}</span>
+  <div class="t14 mut" style="text-align:center;margin-top:6px">${t('Then ₹199/year via Google Play. Cancel anytime in Play Store.','फिर ₹199/साल, Google Play से। Play Store में कभी भी बंद करें।')}</div></div>`)});
+D.settings=()=>phone({theme:'dark',id:'S28 · dark',name:t('Alert settings','Alert settings'),p:'P0',note:'Switch off-state uses the outline token (4.1:1) so it is visible on dark cards; on-state is forest with dark thumb.',
+ scr:scr(`${tbBack(t('Alert settings','अलर्ट सेटिंग'))}
+  <div class="st-list" style="margin-top:4px">
+  <div class="st-row"><span class="st-ri">${ms('bedtime','o')}</span><div class="grow"><div class="t16 b">${t('Quiet hours','चुप रहने का समय')}</div><div class="t14 mut">${t('10 pm – 7 am · last-day alerts can still come','रात 10 – सुबह 7 · आखिरी दिन की याद फिर भी आ सकती है')}</div></div><span class="st-sw on"></span></div>
+  <div class="st-row"><span class="st-ri">${ms('schedule','o')}</span><div class="grow"><div class="t16 b">${t('Reminder time','याद दिलाने का समय')}</div><div class="t14 mut">${t('7 pm','शाम 7 बजे')}</div></div>${ms('chevron_right','','font-size:22px;color:var(--mut)')}</div>
+  <div class="st-row"><span class="st-ri">${ms('summarize','o')}</span><div class="grow"><div class="t16 b">${t('Daily summary','रोज़ का सारांश')}</div><div class="t14 mut">${t('Off','बंद')}</div></div><span class="st-sw"></span></div>
+  <div class="st-row"><span class="st-ri">${ms('info','o')}</span><div class="grow"><div class="t16 b">${t('At most 3 alerts a day','दिन में ज़्यादा से ज़्यादा 3 सूचनाएँ')}</div><div class="t14 mut">${t('The rest come next day or in the summary','बाकी अगले दिन या सारांश में')}</div></div></div></div>
+  <div class="st-list"><div class="st-row"><span class="st-ri">${ms('alarm_on','o')}</span><div class="grow"><div class="t16 b">${t('Backup reminder on this phone','फ़ोन पर बैकअप रिमाइंडर')}</div><div class="t14 mut">${t('If a notification fails, the phone reminds you the day before and on the last day','सूचना न पहुँचे तो फ़ोन ख़ुद याद दिलाएगा: आखिरी दिन से एक दिन पहले और आखिरी दिन')}</div><span class="st-tag pri" style="margin-top:6px">${ms('check_circle')}${t('On time','समय पर')}</span></div><span class="st-sw on"></span></div>
+  <div class="st-row"><span class="st-ri">${ms('notifications','o')}</span><span class="t16 b grow">${t('Phone notification settings','फ़ोन की सूचना सेटिंग')}</span>${ms('open_in_new','','font-size:20px;color:var(--mut)')}</div></div>`)});
+
+/* ====================== E · LOCALIZATION (ta, ur) ====================== */
+const pv=(native)=>`<div class="st-pv">PREVIEW — translation not reviewed<span>${native}</span></div>`;
+function taHome(){return phone({lang:'ta',cls:'st-ta',id:'S20 · தமிழ்',name:'Home in Tamil',p:'preview, not a launch language',note:'Longest strings (×1.6): “Applied” becomes 21 characters, so the card’s action row wraps to two lines inside the button; nav grows to 88 dp.',
+ scr:scr(`<div class="tb"><span class="logo"><i>${ms('notifications_active')}</i>Sarkari Match</span><span class="grow"></span><span class="ib">${ms('notifications','o')}<span class="dot"></span></span></div>${pv('முன்னோட்டம் · மொழிபெயர்ப்பு சரிபார்க்கப்படவில்லை')}
+ <div class="greet" style="margin-top:4px"><svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle cx="80" cy="40" r="26" fill="#F2A93B" opacity=".35"/></svg><div class="t28" style="position:relative">வணக்கம், Ravi</div><div class="t16 mut" style="position:relative">வியா, 19 நவ. · 5 வேலைகள் உங்கள் பதிலுக்குக் காத்திருக்கின்றன</div></div>
+ ${'<div class="sh today t19">'+ms('alarm')+'<span>இன்றே கடைசி நாள்</span><span class="n">1</span></div>'}
+ <div class="card"><div class="rib today">${ms('alarm')}<span>இன்றே கடைசி நாள் · இரவு 11 மணி வரை</span></div><div class="cb">
+ <div class="row" style="gap:12px;align-items:flex-start"><span class="tile police">${ms('local_police')}</span><div class="grow"><div class="t19">UP Police Constable 2026</div><div class="t14 mut">UPPRPB · 19,220 பணியிடங்கள்</div></div></div>
+ <div class="facts"><div>${ms('currency_rupee')}<span class="tnum">400</span></div><div style="flex:1.6">${ms('school')}12ஆம் வகுப்பு</div></div>
+ <div class="why ok t16">${ms('check_circle')}<span><span class="b">வயது:</span> 23 (வரம்பு 22, OBC +5 = 27)</span></div>
+ <div class="acts"><span class="btn pri sm" style="flex:1.4">${ms('task_alt')}விண்ணப்பித்துவிட்டேன்</span><span class="btn ton sm" style="flex:1">${ms('snooze')}பிறகு</span></div></div></div>`,
+ `<div class="nav"><div class="on"><span class="pp">${ms('work')}<span class="bdg">5</span></span>வேலைகள்</div><div><span class="pp">${ms('assignment_turned_in','o')}</span>என் படிவங்கள்</div><div><span class="pp">${ms('account_circle','o')}</span>சுயவிவரம்</div></div>`)});}
+function taDetail(){return phone({lang:'ta',cls:'st-ta',id:'S21 · தமிழ்',name:'Job detail in Tamil',p:'preview, not a launch language',note:'Two-button bar stacks because “Remind me later” needs > 2 lines side by side (07 §3 rule 1). Exam name stays as published.',
+ scr:scr(`${tbDetail()}${pv('முன்னோட்டம் · மொழிபெயர்ப்பு சரிபார்க்கப்படவில்லை')}<div class="dh">
+ <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ssc">${ms('account_balance')}</span><div class="grow"><div class="t19">SSC GD Constable 2027</div><div class="t14 mut">பணியாளர் தேர்வு ஆணையம் · 39,481 பணியிடங்கள்</div></div></div>
+ <div class="row" style="gap:14px;margin-top:14px"><div class="cal"><div class="m">நவ.</div><div class="dd tnum">21</div><div class="wd">சனி</div></div>
+ <div class="grow"><span class="vchip ok">${ms('check_circle')}தகுதியானவர்</span><div style="margin-top:8px"><span class="left">${ms('timer')}2 நாட்கள் மீதம்</span></div><div class="t14 mut" style="margin-top:6px">இரவு 11 மணி வரை</div></div></div>
+ <div class="chg">${ms('update')}<span>கடைசி தேதி நீட்டிப்பு: 14 → 21 நவ.</span></div></div>
+ <div class="sec"><div class="st"><span class="ic">${ms('fact_check')}</span><span class="t19">நீங்கள் ஏன் தகுதியானவர்</span></div>
+ <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">வயது:</span> 1 ஜன. 2027 அன்று 23 வ. 9 மா. — வரம்பு 23, OBC +3 = 26</span></div>
+ <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">கல்வி:</span> 10ஆம் வகுப்பு தேவை — நீங்கள் பட்டதாரி</span></div>
+ <div class="wy q t16"><span class="bub">${ms('question_mark')}</span><span><span class="b">உடல் தகுதி:</span> உயரம்/மார்பு அளவை நீங்களே சரிபார்க்கவும் — அறிவிப்பு பக். 12</span></div></div>`,
+ `<div class="abar"><div class="ni">${ms('visibility_off','o')}எனக்கு ஆர்வம் இல்லை</div><div class="col" style="gap:8px"><span class="btn pri full">${ms('task_alt')}விண்ணப்பித்துவிட்டேன்</span><span class="btn out full">${ms('snooze','o')}பிறகு நினைவூட்டு</span></div></div>`)});}
+const b=(x)=>`<bdi class="st-ltr">${x}</bdi>`;
+function urHome(){return phone({lang:'ur',cls:'st-ur',dir:'rtl',id:'S20 · اردو',name:'Home in Urdu (RTL)',p:'preview, not a launch language',note:'Mirrored: logo and back on the right, badge and unread dot on the start side, ribbon icon leads from the right. Clock icons, ₹ and digits not mirrored; LTR runs isolated.',
+ scr:scr(`<div class="tb"><span class="logo"><i>${ms('notifications_active')}</i>Sarkari Match</span><span class="grow"></span><span class="ib">${ms('notifications','o')}<span class="dot"></span></span></div>${pv('پیش نظارہ · ترجمہ ابھی جانچا نہیں گیا')}
+ <div class="greet" style="margin-top:4px"><svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle cx="80" cy="40" r="26" fill="#F2A93B" opacity=".35"/></svg><div class="t28" style="position:relative">آداب، ${b('Ravi')}</div><div class="t16 mut" style="position:relative">جمعرات، 19 نومبر · 5 نوکریاں آپ کے جواب کی منتظر ہیں</div></div>
+ <div class="sh today t19">${ms('alarm')}<span>آج آخری دن</span><span class="n">1</span></div>
+ <div class="card"><div class="rib today">${ms('alarm')}<span>آج آخری دن · رات 11 بجے تک</span></div><div class="cb">
+ <div class="row" style="gap:12px;align-items:flex-start"><span class="tile police">${ms('local_police')}</span><div class="grow"><div class="t19">${b('UP Police Constable 2026')}</div><div class="t14 mut">${b('UPPRPB')} · 19,220 آسامیاں</div></div></div>
+ <div class="facts"><div>${ms('currency_rupee')}<span class="tnum">400</span></div><div style="flex:1.6">${ms('school')}بارہویں پاس</div></div>
+ <div class="why ok t16">${ms('check_circle')}<span><span class="b">عمر:</span> 23 (حد 22، ${b('OBC +5 = 27')})</span></div>
+ <div class="acts"><span class="btn pri sm" style="flex:1">${ms('task_alt')}فارم بھر دیا</span><span class="btn ton sm">${ms('snooze')}بعد میں</span></div></div></div>`,
+ `<div class="nav"><div class="on"><span class="pp">${ms('work')}<span class="bdg">5</span></span>نوکریاں</div><div><span class="pp">${ms('assignment_turned_in','o')}</span>میرے فارم</div><div><span class="pp">${ms('account_circle','o')}</span>پروفائل</div></div>`)});}
+function urDetail(){return phone({lang:'ur',cls:'st-ur',dir:'rtl',id:'S21 · اردو',name:'Job detail in Urdu (RTL)',p:'preview, not a launch language',note:'Back arrow mirrored (points right). The change arrow is mirrored so old → new reads right-to-left. ✓ and ? bubbles sit at the start (right).',
+ scr:scr(`<div class="tb" style="padding:0 8px"><span class="ib c">${ms('arrow_back','o st-mir')}</span><span class="grow"></span><span class="ib c">${ms('share','o')}</span><span class="ib c">${ms('more_vert','o')}</span></div>${pv('پیش نظارہ · ترجمہ ابھی جانچا نہیں گیا')}<div class="dh">
+ <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ssc">${ms('account_balance')}</span><div class="grow"><div class="t19">${b('SSC GD Constable 2027')}</div><div class="t14 mut">اسٹاف سلیکشن کمیشن · 39,481 آسامیاں</div></div></div>
+ <div class="row" style="gap:14px;margin-top:12px"><div class="cal"><div class="m">نومبر</div><div class="dd tnum">21</div><div class="wd">ہفتہ</div></div>
+ <div class="grow"><span class="vchip ok">${ms('check_circle')}اہل</span><div style="margin-top:8px"><span class="left">${ms('timer')}2 دن باقی</span></div><div class="t14 mut" style="margin-top:4px">رات 11 بجے تک</div></div></div>
+ <div class="chg">${ms('update')}<span>آخری تاریخ بڑھ گئی: 14 ← 21 نومبر</span></div></div>
+ <div class="sec"><div class="st"><span class="ic">${ms('fact_check')}</span><span class="t19">آپ اہل کیوں ہیں</span></div>
+ <div class="wy ok t16"><span class="bub">${ms('check')}</span><span><span class="b">عمر:</span> 1 جنوری 2027 کو 23 سال 9 ماہ — حد 23، ${b('OBC +3 = 26')}</span></div>
+ <div class="wy q t16"><span class="bub">${ms('question_mark')}</span><span><span class="b">جسمانی معیار:</span> قد اور سینہ خود جانچیں — نوٹس صفحہ 12</span></div></div>`,
+ `<div class="abar"><div class="ni">${ms('visibility_off','o')}مجھے دلچسپی نہیں</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5">${ms('task_alt')}فارم بھر دیا</span><span class="btn out" style="flex:1">${ms('snooze','o')}بعد میں</span></div></div>`)});}
+
+/* ====================== assemble ====================== */
+const sec=(id,cls,kicker,title,lead,frames)=>`<section class="langblock st-block ${cls}" id="${id}"><div class="langhd">${kicker}</div><div class="st-h2">${title}</div><p class="st-lead">${lead}</p><div class="grid">${frames}</div></section>`;
+let html='';
+for(const lang of ['en','hi']){
+  L=lang; const nm=lang==='en'?'English':'हिंदी · Hindi';
+  html+=sec('states-'+lang,lang,'A · '+nm,'States & edge cases','Banners, full-screen failures, re-match and the three corrigendum outcomes (newly eligible, no longer eligible, cancelled), the expired-deadline question, age crossing and the ads notice.',
+   [S.offline,S.notifOff,S.outageBan,S.outage,S.force,S.rematch,S.newElig,S.noElig,S.didApply,S.cancelled,S.age,S.ads].map(f=>f()).join(''));
+  html+=sec('account-'+lang,lang,'B · '+nm,'Account & data, minor mode','Sign-in state, export, delete (Google re-auth or typed word, never OTP), sign out, and minor mode. The data line under the account card is the same everywhere: the profile lives on this phone.',
+   [A.signed,A.guest,A.exp,A.delG,A.delT,A.signout,A.minor,A.minorProfile].map(f=>f()).join(''));
+  html+=sec('a11y-'+lang,lang,'C · '+nm,'Accessibility: 200% text and TalkBack','Font scale 2.0 captured at full scroll height so nothing hides below the fold; the TalkBack frame annotates focus order, the spoken sentence and custom actions for the match card.',
+   [X.home2,X.det2,X.tb].map(f=>f()).join(''));
+  html+=sec('dark-'+lang,lang,'D · '+nm,'Dark mode','Direction C dark palette (#17120D background, #231C15 cards). Same layouts; only tokens change, plus three fixes: text on terracotta becomes dark cocoa, marigold icons use the lighter marigold, and controls use the outline token.',
+   [D.home,D.detail,D.why,D.timeline,D.pay,D.settings].map(f=>f()).join(''));
+}
+L='en';
+html+=sec('locales','','E · Tamil and Urdu','Localization previews (not launch languages)','Strings, script font and line height change; components and tokens do not. Tamil uses Noto Sans Tamil (×1.05), Urdu Noto Nastaliq Urdu (×1.6) with the app window mirrored. Latin text (brand, exam names, “OBC”) falls back to Hind/Baloo 2 so it matches the launch languages. Sample translations for layout testing only.',
+  [taHome(),taDetail(),urHome(),urDetail()].join(''));
+document.getElementById('out').innerHTML=html;
+</script>
+</body>
+</html>
