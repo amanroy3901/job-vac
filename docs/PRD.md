@@ -2,6 +2,17 @@
 
 Source of truth: https://claude.ai/artifact/4CbSA4F9WK5zc94no2kUkb (this file is a repo copy, 2026-11-19).
 
+## Founder decisions (2026-11-19) — these override anything below
+
+1. **Languages:** design for all major Indian languages (Hindi, English, Bengali, Marathi, Telugu, Tamil, Gujarati, Kannada, Odia, Malayalam, Punjabi, Assamese, Urdu incl. RTL). Launch with Hindi + English only.
+2. **Login:** free only. Google Sign-In (Credential Manager / Firebase Auth Google provider) or continue as guest. No phone number, no OTP, no paid auth.
+3. **Domain:** sarkarimatch.in is a placeholder; availability not yet verified (lookup blocked from the build environment).
+4. **Payments:** Google Play Billing only (Play accepts UPI, cards, Play balance). No external UPI links or payment gateways.
+5. **Data & consent:** collect only what matching needs and nothing requiring heavy/special consent: no phone, no Aadhaar, no documents. Show our own clear privacy notice and notification-permission explanation. Minimise what leaves the device.
+6. **Ads:** light native ads in the free tier from day 1; Pro removes them.
+7. **No WhatsApp messaging at all** — no WhatsApp alerts, OTP or templates. Delivery = FCM push + on-device backup reminders. Pro value = lifecycle alerts after applying, no ads, clash/certificate/family alerts (family = push to a linked family member's own app).
+8. **Validation test:** run as a Play closed-testing build with Play Billing, not over WhatsApp.
+
 ## Summary
 
 Sarkari Match is a Hindi-first Android app that alerts a government-job aspirant only about jobs they are actually eligible for, and keeps reminding them until they apply or say "not interested". It is alert-only: no courses, test series or prep content.
