@@ -27,3 +27,19 @@ class ModelTest {
         assertEquals(AppLanguage.HI, AppLanguage.DEFAULT)
     }
 }
+
+class SmFormatTest {
+    @Test
+    fun `rupees use Indian grouping and western digits`() {
+        assertEquals("₹100", SmFormat.rupees(10_000))
+        assertEquals("₹1,00,000", SmFormat.rupees(10_000_000))
+        assertEquals("39,481", SmFormat.count(39_481))
+    }
+
+    @Test
+    fun `hindi dates keep western digits`() {
+        val text = SmFormat.longDate(java.time.LocalDate.of(2026, 8, 24), AppLanguage.HI)
+        kotlin.test.assertTrue(text.startsWith("24 "), text)
+        kotlin.test.assertTrue(text.endsWith(" 2026"), text)
+    }
+}

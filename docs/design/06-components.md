@@ -54,7 +54,7 @@ All buttons: pill (`CircleShape`), `labelLarge` 16 sp/600, icon 22 dp + 8 gap, h
 | B2 | `SmSecondaryButton` | `OutlinedButton` | *.btn.out* — 52/44 dp, container `card`, content `onSurface`, border **1.5 dp `hairline`**. Used for ad CTA, "PDF देखें", dialogs. |
 | B3 | `SmTonalButton` | `FilledTonalButton` | *.btn.ton* — 52/44 dp, container `sunken` (= `secondaryContainer`), content `onSurface`. The "Later / बाद में" action on cards; "रुचि नहीं" in the sticky bar. |
 | B4 | `SmTextButton` | `TextButton` | `text, onClick, icon?, destructive = false` — content `primary` (destructive → `error`); 48 dp touch. |
-| B5 | `BottomActionBar` *(.abar)* | `Surface(color = glass, tonalElevation = 0)` + 1 dp `hairline` top line | `primary, secondary?, tertiary?, caption?`. Background `glass` (background @ 90 %, add `Modifier.blur` only on API 31+ via `RenderEffect`, else plain 90 % fill). Padding 16 h, 4 top, 16 bottom + nav inset. Row: primary `weight(1f)` + tonal; at `fontScale ≥ 1.5` stacks. Optional caption row 40 dp (`labelMedium` `onSurfaceVariant` + 18 dp icon), e.g. "रुचि नहीं" as a text action under the buttons. |
+| B5 | `BottomActionBar` *(.abar)* | `Surface(color = background, tonalElevation = 0)` + 32 dp fade above | `primary, secondary?, tertiary?, caption?`. **Solid** `background` with a 32 dp gradient fade (transparent → background) above it, no blur (§M1: glass read as a glitch). Padding 16 h, 4 top, 16 bottom + nav inset. Row: primary `weight(1f)` + tonal; at `fontScale ≥ 1.5` stacks. Optional caption row 40 dp (`labelMedium` `onSurfaceVariant` + 18 dp icon), e.g. "रुचि नहीं" as a text action under the buttons. |
 | B6 | `JobActionBar` (S21) | B5 | `state: UserJobState, onApplied, onLater, onNotInterested, onUndoState, onOpenTimeline, onGetPro` — primary "फ़ॉर्म भर दिया" (`task_alt`), tonal "बाद में" (`snooze`), caption action "रुचि नहीं" (`visibility_off`, outlined icon). |
 | B7 | **`MarigoldButton`** *(.btn.mari)* | `Button` with `ButtonDefaults.buttonColors(marigold, onMarigold)` | 52/44/40 dp; `Modifier.ctaShadow(marigold)` with 45 % highlight. **Pro upsell only** (Pro strip "₹17/महीने से", Pro card when the plan list is hidden). Never next to a primary button; max one per screen (02 §2.1). |
 
@@ -120,9 +120,9 @@ All buttons: pill (`CircleShape`), `labelLarge` 16 sp/600, icon 22 dp + 8 gap, h
 ### C12 `CalendarTile` *(.cal)* — new
 - Tear-off calendar: width 76 dp (grows with font scale; never clips), radius 16, `card` body, `shadow.calendarTile` + 1 dp hairline bottom.
 - Band: `today` / `onToday`, `labelMedium`, 22 dp min, CLDR short month ("नवं" / "NOV").
-- Day: `displaySmall` Baloo 28, tnum, `onSurface`. Weekday: `labelSmall` muted ("शुक्रवार"), 6 bottom padding.
+- Day: `displaySmall` Baloo 28, tnum, `onSurface`. Weekday: `labelSmall` muted ("शनिवार"), 6 bottom padding.
 - Band stays terracotta for every level (it means "last date"); urgency is carried by the chip beside it.
-- One a11y node: "आखिरी तारीख शुक्रवार 21 नवंबर". Props: `date: LocalDate, locale`.
+- One a11y node: "आखिरी तारीख शनिवार 21 नवंबर". Props: `date: LocalDate, locale`.
 
 ### C13 `FactStrip` *(.facts)* — new
 - `Row` gap 8 of `FactChip`s: `sunken`, radius 16 (14 in prototype), padding 8×10→12, icon 18 `onSurfaceVariant` + `labelLarge` value (tnum for money). Second chip may take `weight(1.6f)`. At fontScale ≥ 1.3 or when a value would wrap, becomes a `FlowRow` (chips wrap, never shrink text).
@@ -173,16 +173,16 @@ All buttons: pill (`CircleShape`), `labelLarge` 16 sp/600, icon 22 dp + 8 gap, h
 
 | # | Component | Base | Notes |
 | --- | --- | --- | --- |
-| F1 | `StatusBanner` | `Surface(shape = small 12→16)` | `kind: Offline|NotifOff|Delivery|Outage|Trial|Profile`, icon 20 + `labelMedium` text + optional `SmTextButton` / dismiss. Colours: Offline/Outage → `sunken` + `onSurface`; NotifOff/Delivery → `warningContainer`; Trial → `marigoldContainer` + `onSurface` (counts as the screen's marigold surface); Profile → `primaryContainer`. Margin 16, polite live region on first show. |
+| F1 | `StatusBanner` | `Surface(shape = small 12→16)` | `kind: Offline|NotifOff|Delivery|Outage|Trial|Profile`, icon 20 + `labelMedium` text + optional `SmTextButton` / dismiss. Colours: Offline/Outage → `sunken` + `onSurface`; NotifOff → `urgentContainer` + pill action (§M2.18); Delivery → `warningContainer`; Trial → `marigoldContainer` + `onSurface` (counts as the screen's marigold surface); Profile → `primaryContainer`. Margin 16, polite live region on first show. |
 | F2 | `EmptyState` | `Column` centred, max width 320 | Illustration 120 dp: `IconTile`-style 88 dp circle in `marigoldContainer` with a 48 dp filled icon in `marigoldIcon` (dark: `marigold`), plus the decorative dashed sun ring from C15; title `titleLarge` Baloo 19; body `bodyLarge` muted; `SmPrimaryButton` / `SmTextButton`. Examples: S20 all answered "सब जवाब दे दिए — नई नौकरी आते ही बताएँगे" (`task_alt`); S22 empty "अभी कोई फ़ॉर्म नहीं भरा" (`assignment_turned_in`). |
 | F3 | `ErrorState` | F2 variant | icon `report` / `cloud_off` in `errorContainer` circle, retry `SmPrimaryButton`, optional code `E-xxx`. |
 | F4 | `Skeleton` | `Box` + shimmer brush `sunken → card` | `MatchCardSkeleton` keeps ribbon-less card geometry (24 radius, tile 48, two lines, fact strip, button pills). Static when reduced motion. |
-| F5 | Snackbars | `SnackbarHost` + custom `Snackbar` | container `inverseSurface`, content `inverseOnSurface`, action `inversePrimary`, shape `medium` (16), margin 16 above the bottom bar, `labelLarge` action "वापस लाएँ". `showUndo(...)` 6 s. Optional leading 20 dp icon (`task_alt` after Applied). |
+| F5 | Snackbars | `SnackbarHost` + custom `Snackbar` | container `inverseSurface`, content `inverseOnSurface`, action `ext.snackbarAction` (marigold on cocoa / dark marigold on cream, §M1), shape `medium` (16), margin 16 above the bottom bar, `labelLarge` action "वापस लाएँ". `showUndo(...)` 6 s. Optional leading 20 dp icon (`task_alt` after Applied). |
 | F6 | `DisclaimerNote` *(.disc)* | `Row` (no surface) | `info` outlined 18 muted + `bodySmall` muted; margin 4×20. Fixed copy (02 §8). |
 | F7 | `HealthCheckRow` | `ListItem` | status icon + word, `titleSmall`, value, action. Icons: `check_circle` primary / `warning` warning / `cancel` error / `help` muted. |
 | F8 | `SelfTestStepper` | `Column` of F7 rows | Idle / Running / Passed / Failed / NeedsUser. |
 | F9 | `ResultScreen` (S31, S41, S42) | `Column` | icon in 80 dp circle (`primaryContainer` / `errorContainer`), `headlineMedium`, `bodyLarge`, buttons. Purchase success reuses F10 without confetti. |
-| F10 | **`AppliedCelebration`** / **`ConfettiMedallion`** *(.peak, .medal)* — new | `Box` | Medallion 80 dp `primary` circle, `check` 44 filled `onPrimary`, 8 dp `primaryContainer` ring (`Modifier.border` outside or `drawBehind`), `shadow.medallion`, inner top highlight. Behind it a 300×120 dp `Canvas` with marigold / forest @ 55 % / terracotta @ 60 % confetti. Under it `headlineMedium` "शाबाश, फ़ॉर्म भर दिया!" / "Well done, applied!" + `bodySmall` muted "SSC GD Constable 2027 · मेरे फ़ॉर्म में जुड़ गया". Motion and reduced-motion fallback: 02 §7. Confetti and medallion are `invisibleToUser`; the headline is a polite live region. Used on B02 (top of the sheet/screen), never elsewhere. |
+| F10 | **`AppliedCelebration`** / **`ConfettiMedallion`** *(.peak, .medal)* — new | `Box` | Medallion 80 dp `primary` circle, `check` 44 filled `onPrimary`, 8 dp `primaryContainer` ring (`Modifier.border` outside or `drawBehind`), `shadow.medallion`, inner top highlight. Behind it a 300×120 dp `Canvas` with marigold / forest @ 55 % / terracotta @ 60 % confetti. Under it `headlineMedium` "शाबाश, फ़ॉर्म भर दिया!" / "Well done, applied!" + `bodySmall` muted "SSC GD Constable 2027 · मेरे फ़ॉर्म में जुड़ गया". Motion and reduced-motion fallback: 02 §7. Confetti and medallion are `invisibleToUser`; the headline is a polite live region. Used on B02 (Applied), S10 (matches peak) and S16 (self-test passed) only; waiting variant in §M1. |
 
 ## G. Pro & payments
 
@@ -201,7 +201,7 @@ All buttons: pill (`CircleShape`), `labelLarge` 16 sp/600, icon 22 dp + 8 gap, h
 
 | # | Component | Base | Notes |
 | --- | --- | --- | --- |
-| H1 | `SmBottomBar` *(.nav)* | `NavigationBar(containerColor = glass, tonalElevation = 0.dp)` + 1 dp `hairline` top line | 3 `NavigationBarItem`s; height 80 (88 with 2-line labels). **Marigold pill:** `NavigationBarItemDefaults.colors(indicatorColor = marigold, selectedIconColor = onMarigold, selectedTextColor = onSurface, unselectedIconColor = onSurfaceVariant, unselectedTextColor = onSurfaceVariant)`; indicator 64×32, radius 16. Selected icon **filled**, unselected **outlined**; selected label SemiBold, unselected Regular (`labelMedium` weights), `alwaysShowLabel = true`, `maxLines = 2`. Badge (`BadgedBox`): `today`/`onToday` (dark text in dark mode), `labelSmall`, min 20 dp, 2 dp ring in `background`, "9+" cap; a11y "नौकरियाँ, 5 जवाब बाकी". The nav pill does not count toward the one-marigold-surface rule. |
+| H1 | `SmBottomBar` *(.nav)* | `NavigationBar(containerColor = glass (97 %, §M1), tonalElevation = 0.dp)` + 1 dp `hairline` top line | 3 `NavigationBarItem`s; height 80 (88 with 2-line labels). **Marigold pill:** `NavigationBarItemDefaults.colors(indicatorColor = marigold, selectedIconColor = onMarigold, selectedTextColor = onSurface, unselectedIconColor = onSurfaceVariant, unselectedTextColor = onSurfaceVariant)`; indicator 64×32, radius 16. Selected icon **filled**, unselected **outlined**; selected label SemiBold, unselected Regular (`labelMedium` weights), `alwaysShowLabel = true`, `maxLines = 2`. Badge (`BadgedBox`): `today`/`onToday` (dark text in dark mode), `labelSmall`, min 20 dp, 2 dp ring in `background`, "9+" cap; a11y "नौकरियाँ, 5 जवाब बाकी". The nav pill does not count toward the one-marigold-surface rule. |
 | H2 | `SmTopBar` *(.tb)* | `TopAppBar(colors = transparent on background)` | 56 dp, no colour fill, no scroll elevation tint (`scrolledContainerColor = background`, 1 dp hairline appears on scroll). Variants: **Home** = wordmark (28 dp marigold `IconTile` radius 8 with `notifications_active` 18 `onMarigold` + "Sarkari Match" `titleLarge` Baloo) + `notifications` outlined action with 9 dp `today` dot; **Large title** = `headlineSmall` Baloo 28 as title (S22, S26); **Detail** = back `arrow_back` outlined (AutoMirrored) + actions in 48 dp `card` circles with `shadow.card` (*.ib.c*) over content. |
 | H3 | `SettingsRow` | `ListItem` inside `SmCard` groups | `IconTile` 36 (`sunken` + `onSurface` icon; destructive → `errorContainer` + `error`), `titleSmall`, value `bodySmall` muted, trailing chevron/switch. 56–72 dp; rows separated by hairline. `Switch` colours: checked track `primary`, thumb `onPrimary`; unchecked track `sunken`, border/thumb `outline`. |
 | H4 | Sheets | `ModalBottomSheet(containerColor = card, tonalElevation = 0.dp, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), scrimColor = scrim @ 50/60 %)` | `skipPartiallyExpanded = true`; drag handle 36×4 `hairline`→`outline` @ 50 %; header row: optional `IconTile` 36 + `titleLarge` Baloo + close `IconButton(close outlined)` "बंद करें"; content padding 24 h / 16 bottom + nav inset; actions full-width B1/B3 stacked (primary first). |
@@ -248,9 +248,54 @@ All buttons: pill (`CircleShape`), `labelLarge` 16 sp/600, icon 22 dp + 8 gap, h
 
 ## M. Patterns from the v2 screen redesign
 
-Folded in from `v2/sections/*-NOTES.md` (written by the screen agents). Each entry names its source note.
+Folded in from `v2/sections/*-NOTES.md` (screen agents' notes: `core-NOTES.md`, `onboarding-NOTES.md`; re-check `account`, `states` and others when their notes land). CSS prefixes `co-` / `ob-` are given in italics.
 
-_No notes had been published when this revision was written; see the v2 notes files and add entries here as they land._
+### M1 Rules that change components above
+- **Sticky bars are (near-)solid, not glass** (*ob-bar*, core `.abar` at 97 %): content scrolling under a 90 % glass bar read as a glitch. `BottomActionBar` (B5) = solid `background` + a 32 dp vertical fade (`background` 0 → 100 %) above the bar, no blur; the bottom nav (H1) keeps `glass` but at 97 %.
+- **Marigold icon colour darkened** to `#9A5B00` (token `ext.marigoldIcon`, 4.78:1 on marigoldContainer) for hero/bullet/section icons.
+- **Text-field / DOB box outlines use `onSurfaceVariant` 1.5 dp** (6.3:1) instead of hairline (*ob-field, ob-box*); focus = 2 dp `primary` ring.
+- **Snackbar = cocoa with marigold action** (*co-snk, ob-snack*): container `inverseSurface`, action `ext.snackbarAction` (6.52:1 light / 5.51:1 dark). Replaces `inversePrimary` in F5.
+- **Headline wrapping:** titles (28/19) use balanced wrapping, body uses "pretty" wrapping to avoid one-word orphans like "हैं". Compose: `TextStyle(lineBreak = LineBreak.Heading)` for display/headline/title styles, `LineBreak.Paragraph` for body (set in `appTypography`).
+- **Calendar weekday is computed, never copied:** 21 Nov 2026 is a Saturday (direction-c.html's "Friday" was wrong). Weekday comes from CLDR for the IST date.
+- **Medallion + confetti** (F10) is also used on **S10 matches peak** and **S16 self-test passed** (no confetti on failure). A waiting variant (*medal.ob-wait*: `sunken` medallion with a spinner ring) shows while on-device matching runs.
+
+### M2 New components
+| # | Component | Source | Spec |
+| --- | --- | --- | --- |
+| M2.1 | `StepHeader` | *ob-steprow, ob-prog* | Back in a 48 dp `card` circle (*ib.c*) + "चरण 2 / 6" `labelMedium` + 8 dp `primary` progress bar on `sunken`, rounded. Replaces E2's look. |
+| M2.2 | `QuestionHeader` | *ob-q, ob-help* | `headlineSmall` question + `bodyLarge` muted helper, 16 h padding. |
+| M2.3 | `HeroBadge` | *ob-hero* | 64 dp rounded (radius 20) icon badge, variants marigold / forest / terracotta container with matching icon colour; S13, S14, S47, D01. |
+| M2.4 | `SelectTile` (multi) | *ob-tiles, ob-tl* | `CategoryTile` + label + sub; selected = 2.5 dp `primary` ring + filled `check_circle` top-end (same as plan cards). Refines E3. |
+| M2.5 | `RadioCard` | *ob-opt, ob-rad, co-rad, ob-langc, ob-g2, ob-sub* | Single-select card 64 dp (language 72 dp; `.sm` in a 2-col grid); custom radio dot; selected card may **reveal a follow-up** inside itself (OBC certificate year, domicile Yes/No/Not sure, PwD type + 40 %). |
+| M2.6 | `ChoiceChip` / `FilterChip` | *ob-chip, co-fc* | 40 dp visual + 8 dp gaps = 48 touch; selected = forest **tint** + `check` (never filled — shape rule). |
+| M2.7 | `QuestionBlock` | *ob-qb, ob-qi, ob-skip* | `SmCard` per optional question with icon tile, label and its own "छोड़ें" text button (S09). |
+| M2.8 | `AgeBanner` | *ob-age* | `primaryContainer` strip with computed age "आज आपकी उम्र: 23 साल 4 महीने", polite live region. |
+| M2.9 | `InlineNote` | *ob-note (.q), co-local* | Icon + `bodySmall` on `sunken` (or `warningContainer` for warnings). **`LocalOnlyNote`** variant: `lock` icon + "यह सिर्फ़ आपके फ़ोन में रहता है" for anything kept on the device (DOB, B03 reasons, B04 snooze, S25, B06 confirmation). |
+| M2.10 | `IconBullet` | *ob-bul, ob-bi* | 40 dp marigold `IconTile` + `bodyLarge`; `.pri` forest variant. S03, S13. |
+| M2.11 | `NotificationMock` | *ob-panel, ob-notif, co-ntf, co-na* | Marigold-gradient panel with a static notification card (onboarding explanation only, not real UI). Real notification accent proposed: forest `#1E5B46`; critical terracotta `#B3361E`; family plum `#7A3D80` (05 still says `#1F4FB8` — to update). |
+| M2.12 | `PrivacyKeyFact` | *ob-key, ob-pv* | Lead fact on S47 "आपकी प्रोफ़ाइल आपके फ़ोन में रहती है · मिलान भी फ़ोन पर" in a `primaryContainer` card, then K4 rows; optional crash-report `Switch` (default off — open question). |
+| M2.13 | `ComingSoonGrid` | *ob-soon, ob-sgrid* | 3-column grid of native names (system Noto) with `schedule` + "जल्द"; refines L1's list. |
+| M2.14 | `MinorModeCard` | *ob-minor* | Marigold gradient + ring like `ProCard`: explains under-18 mode (no sign-in, ads, purchase); counts as the screen's marigold surface. |
+| M2.15 | `CompletenessRing` | *ob-comp, ob-ring* | Circular progress ring 40 dp (`primary` on `sunken`) + "प्रोफ़ाइल 90% पूरी" + missing chip. Refines E12. |
+| M2.16 | `OemStepCard` | *ob-oem, ob-num, ob-done, ob-brands* | `SmCard` per step: numbered 28 dp node (done = `primary` + check, next = marigold, upcoming = hairline ring — same as JourneyPath), instruction, "सेटिंग खोलें" button, "हो गया" checkbox; brand chip row when detection is unsure. |
+| M2.17 | `GoogleAccountSaved` | *ob-gsaved* | After upgrade: `check_circle` + "{email} से सेव" row replacing K1. |
+| M2.18 | `StatusBanner` (feed) | *co-ban* | Notifications-off banner on S20 uses `urgentContainer` tint + pill action button ("चालू करें"); offline/outage use the same shape with `cloud_off` / `report` on `sunken`. Updates F1. |
+| M2.19 | `FeedEnd` | *co-end, co-endc* | End-of-feed marker (hairline rule + "बस इतना ही" muted) and a calm info card (Pro users: "Pro · कोई विज्ञापन नहीं"). |
+| M2.20 | `NewTag` | *co-new* | Marigold `labelSmall` "नई" pill on the card title row; replaces separate "New" / "Waiting for reply" feed sections (open question to confirm). |
+| M2.21 | `AdSlot` label row | *co-ad* | J1 label row sits **above** the creative: "विज्ञापन · Ad" tag · "क्यों?" · "विज्ञापन हटाएँ". |
+| M2.22 | Rule rows ✗ / i | *wy.co-no, wy.co-in, vchip.co-no, vchip.co-ap* | ✗ bubble `errorContainer` + `close`; i bubble `sunken` + `info`; "भर दिया" chip = `primaryContainer` + `task_alt`. Legend row under Why-you-match; footer "आपके फ़ोन पर मिलाया गया". |
+| M2.23 | `CalendarTile` variants | *cal.co-caloff, cal.co-calq* | Not eligible / closed: band `surfaceContainerHighest` + `onSurfaceVariant`; check-yourself: band `warning` + `onWarning`. Extends C12 (terracotta stays the default). |
+| M2.24 | `ReturnFromSitePrompt` | *co-ret* | On return from the apply site: `SmCard` "फ़ॉर्म भर दिया?" + primary "हाँ, भर दिया" → B01 + text "अभी नहीं". |
+| M2.25 | `AppliedStrip` + `MiniJourney` | *co-done, co-mj* | S21 applied state: `primaryContainer` strip with `task_alt` "15 जुलाई को भरा" in the action-bar area + "अगले अलर्ट पाएँ — Pro"; B02 shows a 3-node mini `JourneyPath` (done / next / locked). |
+| M2.26 | `DiffRows`, `EffectBox` | *co-df, co-eff* | Corrigendum before → after rows (C9) and a `warningContainer` box "आप पर असर: …". |
+| M2.27 | `SheetHeader`, `SheetJobSummary` | *co-sheet, co-hdl, co-sth (.grn/.q), co-job* | H4 header with tinted `IconTile` (forest / ochre variants) + `titleLarge`; compact job row (CategoryTile 40 + title + deadline chip) at the top of action sheets. |
+| M2.28 | `CheckboxRow`, `TextField` | *co-cbrow, co-tf, ob-field, ob-sel, ob-search* | 48 dp checkbox rows; fields radius 12 (search: pill) with 1.5 dp `onSurfaceVariant` outline. |
+| M2.29 | `SyncStatusLine`, skeleton | *co-sync, co-sk, ob-skel* | "फ़ोन पर 312 खुले नोटिस मिलाए जा रहे हैं…" (count from the local catalog) + F4 skeleton. |
+| M2.30 | `SegmentedControl` (2 options) | *ob-seg* | Same visual as H6 (cocoa selected pill). |
+| M2.31 | `SettingsPathCrumbs` | D01 | Chip row "सेटिंग्स › ऐप › सूचनाएँ" (`sunken` chips, `chevron_right` auto-mirrors) + "सेटिंग खोलें". |
+
+### M3 Open questions raised by the screen agents (for the founder / owners)
+Core: drop "New"/"Waiting" as feed sections? · help icon moved into the overflow menu · B05 snackbar copy after removing the 24 h promise · count `confirm_eligible` anywhere? · no snooze on the last day (S21·today) · B02 trial copy "अपने-आप ख़त्म होगा" needs billing confirmation. Onboarding: crash-report switch on S47 vs S38 only · minor-mode end behaviour · D10 "saved on {date}" from backup metadata · R1 day-before backup time (7 pm?) · Vivo OEM steps need a device check.
 
 ## I. Tokens → component mapping cheat-sheet
 

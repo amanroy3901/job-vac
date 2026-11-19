@@ -170,6 +170,7 @@
 .st-anno{width:376px;border-radius:28px;padding:22px;background:#FBF5EC;box-shadow:0 2px 4px rgba(120,70,10,.05),0 16px 40px rgba(120,70,10,.08);font-family:Inter,Hind,sans-serif;color:#2A1E14}
 .st-anno h4{font:600 11px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.65;margin:16px 0 8px}
 .st-anno h4:first-child{margin-top:0}
+.st-anno[lang=hi] h4{letter-spacing:0;font:600 13px/1.2 Hind,sans-serif}
 .st-anno ol{list-style:none}
 .st-anno li{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;line-height:1.5}
 .st-anno li b.n{width:24px;height:24px;border-radius:50%;background:#C2185B;color:#fff;font:600 13px/24px Inter,sans-serif;text-align:center;flex-shrink:0}
@@ -214,6 +215,9 @@
 .dir-c .ph.st-ta .acts{flex-direction:column}
 .dir-c .ph.st-ta .acts .btn{width:100%;flex:none!important}
 .dir-c .st-mir{transform:scaleX(-1)}
+/* past date chip: muted text instead of 60% opacity (opacity dropped dark text to ~3:1) */
+.dir-c .dt.past{opacity:1}
+.dir-c .dt.past b{color:var(--mut)}
 bdi.st-ltr{unicode-bidi:isolate;direction:ltr}
 </style>
 </head>
@@ -432,8 +436,8 @@ A.signout=()=>phone({id:'D02',name:t('Sign out — profile stays on this phone',
   <div class="chk t16" style="margin-top:10px"><span class="cbx" style="box-shadow:inset 0 0 0 2px var(--st-outline)"></span><span>${t('Also delete everything from this phone','इस फ़ोन से सब कुछ भी हटाएँ')}</span></div>
   <div class="st-da"><span class="st-tbtn">${t('Cancel','रद्द करें')}</span><span class="st-tbtn danger">${t('Sign out','साइन आउट')}</span></div></div>`)});
 A.minor=()=>phone({id:'S10 · minor',name:t('Minor mode explained (under 18)','Minor mode explained (under 18)'),p:'P0',note:'Shown instead of the sign-in step when the DOB on the phone is under 18. Same screen opens from S26 “What’s off?”.',
- scr:scr(`<div style="padding:20px 20px 0"><span class="tile" style="background:var(--priC);color:var(--pri);width:56px;height:56px;border-radius:18px">${ms('shield_person','','font-size:30px')}</span>
-  <div class="t28" style="margin-top:12px">${t('You’re 17 — the app works fully','आप 17 साल के हैं — ऐप पूरा काम करेगा')}</div>
+ scr:scr(`<div style="padding:8px 20px 0"><span class="tile" style="background:var(--priC);color:var(--pri);width:48px;height:48px;border-radius:16px">${ms('shield_person','','font-size:28px')}</span>
+  <div class="t28" style="margin-top:8px">${t('You’re 17 — the app works fully','आप 17 साल के हैं — ऐप पूरा काम करेगा')}</div>
   <div class="t16 mut" style="margin-top:6px">${t('Because you’re under 18, nothing about you is sent to us. Your details stay on this phone.','आप 18 से कम हैं, इसलिए आपकी कोई जानकारी हमें नहीं भेजी जाती। सब कुछ इसी फ़ोन पर रहता है।')}</div></div>
   <div class="sec"><div class="t14 b mut" style="margin-bottom:4px">${t('Works for you','आपके लिए चालू')}</div>
   ${[t('7 jobs you can apply for, with reasons','7 नौकरियाँ जिनके आप योग्य हैं, कारण के साथ'),t('Reminders until the last date','आखिरी तारीख तक याद'),t('Fee, documents and official links','फ़ीस, दस्तावेज़ और आधिकारिक लिंक')].map(x=>`<div class="wy ok t16"><span class="bub">${ms('check')}</span><span>${x}</span></div>`).join('')}</div>
@@ -475,7 +479,7 @@ X.tb=()=>{
    <div style="position:relative">${card(cardPolice())}<div class="st-fo" style="left:8px;right:8px;top:-6px;bottom:6px"><b>2</b></div>
    <div class="st-fo d" style="left:26px;width:206px;bottom:16px;height:56px;border-radius:999px"><b>3</b></div><div class="st-fo d" style="right:26px;width:116px;bottom:16px;height:56px;border-radius:999px"><b>4</b></div></div>
    <div style="position:relative">${sh('urgent','timer',t('Closing in 3 days','3 दिन में'),1)}<div class="st-fo" style="left:8px;right:8px;top:8px;bottom:0;border-radius:16px"><b>5</b></div></div>`,nav())}).replace('<figcaption>','<figcaption style="display:none">');
-  const ann=`<div class="st-anno"><h4>${t('Focus order (swipe right)','फ़ोकस क्रम (दाएँ स्वाइप)')}</h4><ol>
+  const ann=`<div class="st-anno" lang="${L}"><h4>${t('Focus order (swipe right)','फ़ोकस क्रम (दाएँ स्वाइप)')}</h4><ol>
    <li><b class="n">1</b><span>${t('Section header, marked as heading.','सेक्शन हेडर, heading के रूप में।')}<q>${t('“Last day today, 1 job. Heading.”','“आज आखिरी दिन, 1 नौकरी। हेडिंग।”')}</q></span></li>
    <li><b class="n">2</b><span>${t('Whole card = one stop (merged semantics). Deadline first, then title, verdict, fee, education, the age rule. Icons silent; ₹ and “+” spoken as words.','पूरा कार्ड = एक स्टॉप। पहले आखिरी तारीख, फिर नाम, योग्यता, फ़ीस, पढ़ाई, उम्र का नियम। आइकन चुप; ₹ और “+” शब्दों में।')}<q>${t('“Last day today, until 11 pm. UP Police Constable 2026. UPPRPB, 19,220 posts. You are eligible. Fee 400 rupees. Class 12. Age 23: limit 22, plus 5 for OBC, so 27. Double-tap to open. Actions available.”','“आज आखिरी दिन, रात 11 बजे तक। UP Police कांस्टेबल भर्ती 2026। UPPRPB, 19,220 पद। आप योग्य हैं। फ़ीस 400 रुपये। 12वीं पास। उम्र 23: सीमा 22, OBC के 5 साल जोड़कर 27। खोलने के लिए दो बार टैप करें। ऐक्शन उपलब्ध हैं।”')}</q></span></li>
    <li><b class="n">3</b><span>${t('Button, 48 dp target (44 visual).','बटन, 48 dp टच (44 दिखता)।')}<q>${t('“Applied, button. Confirms you filled the form.”','“फ़ॉर्म भर दिया, बटन। पुष्टि करता है कि आपने फ़ॉर्म भरा।”')}</q></span></li>

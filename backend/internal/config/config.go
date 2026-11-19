@@ -34,11 +34,11 @@ type Config struct {
 	IAPAudience   string
 
 	// Pub/Sub push (RTDN) and Cloud Scheduler OIDC
-	PushAuthMode        string // oidc | off (local only)
-	RTDNAudience        string
-	RTDNServiceAccount  string
-	TickAudience        string
-	TickServiceAccount  string
+	PushAuthMode       string // oidc | off (local only)
+	RTDNAudience       string
+	RTDNServiceAccount string
+	TickAudience       string
+	TickServiceAccount string
 
 	// Play
 	PlayPackageName string

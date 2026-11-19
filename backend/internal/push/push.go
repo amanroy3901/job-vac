@@ -33,9 +33,9 @@ type Message struct {
 
 // Errors classified from FCM responses.
 var (
-	ErrUnregistered = errors.New("fcm: token unregistered")   // device token is dead → mark token_invalid_at
-	ErrRetryable    = errors.New("fcm: retryable error")      // QUOTA_EXCEEDED / UNAVAILABLE / INTERNAL
-	ErrInvalid      = errors.New("fcm: invalid message")      // INVALID_ARGUMENT etc.
+	ErrUnregistered = errors.New("fcm: token unregistered") // device token is dead → mark token_invalid_at
+	ErrRetryable    = errors.New("fcm: retryable error")    // QUOTA_EXCEEDED / UNAVAILABLE / INTERNAL
+	ErrInvalid      = errors.New("fcm: invalid message")    // INVALID_ARGUMENT etc.
 )
 
 // Sender sends one message and returns the FCM message name.

@@ -70,7 +70,7 @@ func DeadlinePushes(postID, noticeID string, applyEnd time.Time, lastDateTime st
 	matchID := "m_" + strings.TrimPrefix(postID, "p_")
 	type slot struct {
 		kind, typ, at, rank string
-		days               int
+		days                int
 	}
 	ss := []slot{{"d_minus_3", "reminder", slots.DMinus3, "5", 3}, {"d_minus_1", "deadline", slots.DMinus1, "2", 1},
 		{"last_day", "deadline", slots.LastDay, "1", 0}}

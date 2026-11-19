@@ -35,7 +35,7 @@ Sarkari Match · Material 3 for Jetpack Compose · machine-readable copy: [`toke
 
 **Rules of use**
 
-- **One marigold surface per screen** (nav pill excluded): the greeting card *or* the Pro upsell strip *or* the Pro card. Marigold is a *fill* colour; on light surfaces it is never used for text (2.0:1). Marigold text/icons use `onTertiaryContainer` `#8A5200` / `ext.marigoldIcon` `#B06E00`.
+- **One marigold surface per screen** (nav pill excluded): the greeting card *or* the Pro upsell strip *or* the Pro card. Marigold is a *fill* colour; on light surfaces it is never used for text (2.0:1). Marigold text/icons use `onTertiaryContainer` `#8A5200` / `ext.marigoldIcon` `#9A5B00`.
 - **Green = act and eligible.** They are kept apart by **shape**: the CTA is a *filled* pill, the eligible chip is a *tinted* pill with a `check_circle`. Never put a filled green chip next to a filled green button.
 - **Terracotta filled = today only.** Ribbons for 1–3 days are *tinted* (`urgentContainer`); the filled ribbon, calendar band and nav badge are the only solid terracotta.
 - **Dark mode** uses the warm darks above (not inverted lights). Text on terracotta and marigold fills in dark mode is **dark** (`#2A1205`, `#2A1A02`), never white — the prototype's white nav badge in dark mode is corrected to `onToday`.
@@ -105,7 +105,7 @@ Names kept from v1.1: `success*`, `warning*`, `urgent*`, `today/onToday`. **New 
 | card | `#FFFFFF` | `#231C15` | every card |
 | sunken | `#F5ECDF` | `#2D241B` | fact chips, date chips, tonal button, spec boxes |
 | hairline | `#EFE4D4` | `#3A2F24` | dividers, bar top line (decorative only) |
-| glass | background @ 90 % | background @ 90 % | bottom nav, sticky action bar |
+| glass | background @ 97 % | background @ 97 % | bottom nav (sticky action bar is solid + fade, 06 §M1) |
 | shadowTint | `#78460A` | `#000000` | shadow colour (§5.3) |
 
 **Category tiles** (`ext.category.*`; icon from `semantic.category`):
@@ -244,7 +244,7 @@ val LightSarkari = SarkariColors(
   marigold = Color(0xFFF2A93B), onMarigold = Color(0xFF3A2405), marigoldContainer = Color(0xFFFDEFD6), onMarigoldContainer = Color(0xFF8A5200),
   marigoldIcon = Color(0xFF9A5B00), snackbarAction = Color(0xFFF2A93B),
   card = Color.White, sunken = Color(0xFFF5ECDF), hairline = Color(0xFFEFE4D4),
-  glass = Color(0xE6FBF5EC), shadowTint = Color(0xFF78460A),
+  glass = Color(0xF7FBF5EC), shadowTint = Color(0xFF78460A),
   police = CategoryColors(Color(0xFFFDEBD3), Color(0xFF9A5B00)), ssc = CategoryColors(Color(0xFFE2F0E8), Color(0xFF1E5B46)),
   railway = CategoryColors(Color(0xFFFBE4DC), Color(0xFFA23A1E)), bank = CategoryColors(Color(0xFFE1EEF2), Color(0xFF1D5E73)),
   state = CategoryColors(Color(0xFFF1E4F2), Color(0xFF7A3D80)),
@@ -257,7 +257,7 @@ val DarkSarkari = SarkariColors(
   marigold = Color(0xFFF4B755), onMarigold = Color(0xFF2A1A02), marigoldContainer = Color(0xFF3A2A12), onMarigoldContainer = Color(0xFFF4B755),
   marigoldIcon = Color(0xFFF4B755), snackbarAction = Color(0xFF8A5200),
   card = Color(0xFF231C15), sunken = Color(0xFF2D241B), hairline = Color(0xFF3A2F24),
-  glass = Color(0xE617120D), shadowTint = Color(0xFF000000),
+  glass = Color(0xF717120D), shadowTint = Color(0xFF000000),
   police = CategoryColors(Color(0xFF3A2A14), Color(0xFFF4B755)), ssc = CategoryColors(Color(0xFF1D3329), Color(0xFF86D4B2)),
   railway = CategoryColors(Color(0xFF3E2018), Color(0xFFFF9F85)), bank = CategoryColors(Color(0xFF16303A), Color(0xFF8CCFE4)),
   state = CategoryColors(Color(0xFF33203A), Color(0xFFE3A8EA)),
@@ -323,6 +323,7 @@ Prototype normalisation: CSS 15 px (fact strip, compact buttons, segmented tabs)
 
 **Rules**
 - Every style: `PlatformTextStyle(includeFontPadding = false)`, `LineHeightStyle(Alignment.Center, Trim.None)`, `letterSpacing = 0.sp` (M3's label tracking overridden). No fixed text heights — `heightIn(min = …)`.
+- **Wrapping:** display/headline/title styles use `lineBreak = LineBreak.Heading` (balanced lines, no one-word orphans like "हैं"); body/label styles `LineBreak.Paragraph` (06 §M1).
 - No ALL-CAPS (the calendar band "NOV" is the CLDR short month, not uppercased; Hindi shows "नवं").
 - **Figures:** `fontFeatureSettings = "tnum"` on countdowns, prices, dates and counts (borrowed from direction B). Western digits in every locale, Indian grouping (`39,481`). Formatting rules: 07 §5.
 - **Font scale to 200 %:** text in `sp`; containers grow; buttons wrap to 2 lines then stack at `fontScale ≥ 1.5`; the calendar tile grows in height, never clips. Previews at 1.0 / 1.3 / 2.0.
@@ -608,7 +609,7 @@ Tokens (ms): instant 0 · short1 50 · short2 100 · short3 150 · short4 200 ·
 - Contrast per §2.6 (text ≥ 4.5:1, icons/boundaries ≥ 3:1). Touch ≥ 48 dp. Focus order = visual order.
 - **Never colour alone:** ribbons carry icon + sentence; chips icon + word; journey nodes differ by icon *and* fill; locked stages carry a "Pro" lock pill; category tiles always sit beside the job title/org.
 - Every MatchCard is one TalkBack stop (`mergeDescendants`) with custom actions (फ़ॉर्म भर दिया / बाद में / रुचि नहीं / खोलें); the ribbon text is read first ("आज आखिरी दिन, रात 11 बजे तक. UP Police Constable 2026 …").
-- Calendar tile = one node ("आखिरी तारीख शुक्रवार 21 नवंबर"); decorative confetti and greeting glow are `invisibleToUser`.
+- Calendar tile = one node ("आखिरी तारीख शनिवार 21 नवंबर"); decorative confetti and greeting glow are `invisibleToUser`.
 - Headings via `semantics { heading() }`; snackbars and result banners polite live regions; countdowns not live.
 - 200 % font scale and largest display size must not clip (`@PreviewFontScale`, `@PreviewScreenSizes`); pseudolocales `en-XA`, `ar-XB` in debug; `ta` and `ur` once strings exist.
 - Mixed-language text carries `LocaleSpan` so TalkBack uses the right voice (07 §8).

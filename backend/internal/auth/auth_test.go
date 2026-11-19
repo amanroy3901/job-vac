@@ -64,9 +64,9 @@ func TestFirebaseVerifier(t *testing.T) {
 	}
 
 	cases := map[string]func(jwt.MapClaims){
-		"wrong aud": func(c jwt.MapClaims) { c["aud"] = "other" },
-		"wrong iss": func(c jwt.MapClaims) { c["iss"] = "https://securetoken.google.com/other" },
-		"no sub":    func(c jwt.MapClaims) { c["sub"] = "" },
+		"wrong aud":        func(c jwt.MapClaims) { c["aud"] = "other" },
+		"wrong iss":        func(c jwt.MapClaims) { c["iss"] = "https://securetoken.google.com/other" },
+		"no sub":           func(c jwt.MapClaims) { c["sub"] = "" },
 		"future auth_time": func(c jwt.MapClaims) { c["auth_time"] = now.Add(time.Hour).Unix() },
 	}
 	for name, mut := range cases {

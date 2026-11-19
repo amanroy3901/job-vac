@@ -227,9 +227,9 @@ type Relaxation struct {
 
 // DOBWindow is age.printed_dob_window.
 type DOBWindow struct {
-	When          *Condition `json:"when"`
-	BornOnOrAfter Date       `json:"born_on_or_after"`
-	BornOnOrBefore Date      `json:"born_on_or_before"`
+	When           *Condition `json:"when"`
+	BornOnOrAfter  Date       `json:"born_on_or_after"`
+	BornOnOrBefore Date       `json:"born_on_or_before"`
 }
 
 // Age is the age block.

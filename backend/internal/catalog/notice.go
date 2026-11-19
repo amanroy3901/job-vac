@@ -212,12 +212,12 @@ func loadLifecycle(ctx context.Context, q db.Querier, noticeID string) ([]any, e
 	out := []any{}
 	for rows.Next() {
 		var (
-			id, typ, status                 string
-			stage, window                   *string
-			title, body, links              []byte
-			starts, ends, published         *time.Time
-			critical                        bool
-			postIDs, regions                []string
+			id, typ, status         string
+			stage, window           *string
+			title, body, links      []byte
+			starts, ends, published *time.Time
+			critical                bool
+			postIDs, regions        []string
 		)
 		if err := rows.Scan(&id, &typ, &stage, &title, &body, &status, &starts, &ends, &window, &links, &published,
 			&critical, &postIDs, &regions); err != nil {

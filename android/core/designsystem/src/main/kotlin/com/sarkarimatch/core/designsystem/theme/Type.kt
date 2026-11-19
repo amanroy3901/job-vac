@@ -3,6 +3,7 @@ package com.sarkarimatch.core.designsystem.theme
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.DeviceFontFamilyName
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -29,17 +30,19 @@ private val provider = GoogleFont.Provider(
 private val baloo2 = GoogleFont("Baloo 2")
 private val hind = GoogleFont("Hind")
 
+// Fallback while downloading / without GMS: the system sans (Roboto + Noto Sans Devanagari on Android 8+).
+private val systemSans = DeviceFontFamilyName("sans-serif")
+
 val DisplayFamily = FontFamily(
     Font(googleFont = baloo2, fontProvider = provider, weight = FontWeight.SemiBold),
-    // Fallback while downloading / without GMS: the system sans covers Devanagari + Latin.
-    Font(android.graphics.Typeface.SANS_SERIF.let { R.font.sm_fallback_sans }, FontWeight.SemiBold),
+    Font(familyName = systemSans, weight = FontWeight.SemiBold),
 )
 
 val PrimaryFamily = FontFamily(
     Font(googleFont = hind, fontProvider = provider, weight = FontWeight.Normal),
     Font(googleFont = hind, fontProvider = provider, weight = FontWeight.SemiBold),
-    Font(R.font.sm_fallback_sans, FontWeight.Normal),
-    Font(R.font.sm_fallback_sans, FontWeight.SemiBold),
+    Font(familyName = systemSans, weight = FontWeight.Normal),
+    Font(familyName = systemSans, weight = FontWeight.SemiBold),
 )
 
 private data class Role(val display: Boolean, val size: Int, val latin: Int, val devanagari: Int, val weight: FontWeight)

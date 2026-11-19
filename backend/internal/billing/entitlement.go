@@ -97,7 +97,9 @@ func Compute(grants []Grant, latest *PlayState, now time.Time) State {
 // ExpiresAtOrNil returns the expiry pointer.
 func (p *PlayState) ExpiresAtOrNil() *time.Time { return p.ExpiryAt }
 
-func isPlay(src string) bool { return src == "play_year" || src == "play_season" || src == "play_month" }
+func isPlay(src string) bool {
+	return src == "play_year" || src == "play_season" || src == "play_month"
+}
 
 // Features returns Entitlement.features for a plan.
 func Features(pro bool) map[string]bool {

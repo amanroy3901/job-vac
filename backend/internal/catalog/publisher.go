@@ -52,8 +52,12 @@ func (p *Publisher) now() time.Time {
 }
 
 // Keys of catalog objects.
-func BatchKey(seq int64, set string) string    { return fmt.Sprintf("catalog/batches/%d/%s.json", seq, set) }
-func SnapshotKey(seq int64, set string) string { return fmt.Sprintf("catalog/snapshots/%d/%s.json", seq, set) }
+func BatchKey(seq int64, set string) string {
+	return fmt.Sprintf("catalog/batches/%d/%s.json", seq, set)
+}
+func SnapshotKey(seq int64, set string) string {
+	return fmt.Sprintf("catalog/snapshots/%d/%s.json", seq, set)
+}
 
 const allSet = "all"
 
@@ -274,11 +278,11 @@ func (p *Publisher) writeHead(ctx context.Context, q db.Querier) error {
 
 // Head is the CatalogHead document.
 type Head struct {
-	Seq                    int64         `json:"seq"`
-	ServerTime             string        `json:"server_time"`
-	Snapshot               HeadSnapshot  `json:"snapshot"`
-	Batches                []HeadBatch   `json:"batches"`
-	EvaluatorMinVersionAny int           `json:"evaluator_min_version_any"`
+	Seq                    int64        `json:"seq"`
+	ServerTime             string       `json:"server_time"`
+	Snapshot               HeadSnapshot `json:"snapshot"`
+	Batches                []HeadBatch  `json:"batches"`
+	EvaluatorMinVersionAny int          `json:"evaluator_min_version_any"`
 }
 
 // HeadSnapshot is CatalogHead.snapshot.
