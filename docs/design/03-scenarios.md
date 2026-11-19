@@ -50,8 +50,8 @@ Rules: reminders fire only in `New/Reminding`. `Applied` and `NotInterested` are
 - **Daily cap = 3 pushes per user per IST day** (across all jobs). If more are due, the lowest-ranked are deferred: P0 → to the next day's first slot; P1 → folded into the **digest** (N-30, default 19:00, does not count toward the cap). Ranks 1–3 are never deferred (they can exceed the cap; observed max ≈ 5).
 - **Quiet hours** 22:00–07:00 (user-editable in S28): due pushes wait until quiet hours end, except ranks 1–3 whose deadline/slot is within the next 24 h.
 - **Snooze** (B04) suppresses Rp/R3 for that job until the chosen time; **R1 and R-last are never suppressed** (a snooze option can't go past them).
-- **Collapse**: one job never gets two pushes on the same day; if R3 and Rp coincide, send R3. Updates replace the previous notification for the same job (same `notificationId = jobId.hashCode()`).
-- **WhatsApp (Pro)**: sent for R0, R3, R1, R-last and lifecycle critical. Before sending W-02/W-03 the server checks the push delivery receipt: if the push was **opened** in the last 2 h, WhatsApp is skipped (saves cost; cap 30/season).
+- **Collapse**: one job never gets two pushes on the same day; if R3 and Rp coincide, send R3. Updates replace the previous notification for the same job (tag = `match_id`, the push `collapse` value).
+- **WhatsApp (Pro)**: sent for R0, R3, R1, R-last and lifecycle critical. Before sending, the server checks the push receipt: if the push was **opened** before the escalation check (R0/R3 60 min, R1 30 min, R-last 15 min; backend reminders-and-delivery §2), WhatsApp is skipped (saves cost; cap 30/season).
 - Each slot is cancelled server-side the moment the user-job leaves `New/Reminding/Snoozed`.
 
 ### 0.3 Match verdicts
@@ -80,7 +80,7 @@ flowchart LR
 | 1 | S01 | Splash ≤ 1 s; anonymous Firebase UID created silently (needed for FCM token + server match) | — |
 | 2 | S02 | Hindi pre-selected if device locale ≠ en-*; tap "आगे बढ़ें" | "अपनी भाषा चुनें / Choose your language" |
 | 3 | S03 | Value + disclaimer | "सिर्फ़ आपकी नौकरियाँ। कोई मौका न छूटे।" |
-| 4–9 | S04–S09 | One question per screen, progress "1/6"…; auto-advance on single-choice screens after 250 ms; back keeps answers; answers autosaved to DataStore after each step (`form-autosave`) | see 04 |
+| 4–9 | S04–S09 | One question per screen, progress "1/6"…; auto-advance on single-choice screens after 250 ms; back keeps answers; answers autosaved on device after each step (Room `profile_draft`, frontend state-management §5; `form-autosave`) | see 04 |
 | 10 | S10 | Profile POSTed; server returns verdict counts; skeleton ≤ 3 s; if > 8 s show "नतीजे थोड़ी देर में आएँगे — हम सूचना भेज देंगे" and continue | "आप अभी **7** नौकरियों के योग्य हैं" |
 | 11 | S13 | Pre-prompt → system prompt | "आखिरी तारीख से पहले याद दिलाने के लिए सूचना की इजाज़त दें" |
 | 12 | S15 | Only on aggressive OEMs or when battery optimised (see SC-08) | — |
@@ -239,8 +239,8 @@ Long windows (> 30 days): Rp frequency lowers to every 5 days after the 3rd peri
 ### SC-12 Snooze
 
 B04 options computed from `daysLeft`:
-- ≥ 4 days: "कल सुबह 9 बजे" · "आखिरी तारीख से 2 दिन पहले ({date})" · "इस हफ़्ते याद न दिलाएँ" (until +7 days but never past L−3).
-- 2–3 days: "कल सुबह 9 बजे" · "आज शाम 7 बजे".
+- ≥ 4 days: "कल सुबह 9 बजे" · "आखिरी तारीख से 2 दिन पहले ({date})" (the PRD's two snooze options; API `tomorrow`, `two_days_before_last_date`).
+- 2–3 days: "कल सुबह 9 बजे" · "आज शाम 7 बजे" (API `today_evening` = 19:00 IST).
 - 1 day / last day: snooze not offered; B04 shows "आज/कल आखिरी दिन है — याद दिलाना बंद नहीं होगा" + "ठीक है".
 Snackbar "{date} को फिर याद दिलाएँगे".
 
@@ -315,18 +315,18 @@ Nightly job recomputes verdicts for users whose age on any open post's cutoff ch
 flowchart TD
   AP[User confirms B01 'हाँ, भर दिया'] --> Q{Pro or trial active?}
   Q -->|yes| T[Snackbar 'एडमिट कार्ड, रिज़ल्ट की सूचना चालू ✓'; S22 row live]
-  Q -->|no, trial never used| B02a[B02: 'इस फ़ॉर्म को आखिर तक ट्रैक करें?' 14 दिन मुफ़्त] -->|मुफ़्त ट्रायल शुरू करें| TR[Trial starts server-side, no payment] --> B08 -->|WhatsApp भी चालू करें| S33
+  Q -->|no, trial never used| B02a[B02: 'इस फ़ॉर्म को आखिर तक ट्रैक करें?' 14 दिन मुफ़्त] -->|14 दिन मुफ़्त शुरू करें| TR[POST /v1/me/trial: trial starts now, no payment] --> B08 -->|WhatsApp भी चालू करें| S33
   B02a -->|अभी नहीं| N1[Snackbar 'मेरे फ़ॉर्म में जोड़ा'; S22 lock rows]
   Q -->|no, trial used| B02b[B02 variant: plans ₹199/साल · ₹49/सीज़न] -->|प्लान चुनें| S30
   B02b -->|अभी नहीं| N1
 ```
 
-Frequency: B02b at most once per 7 days; never on the same session as a failed purchase. Trial = 14 days from first Applied (PRD); trial gets all Pro P0 features incl. WhatsApp.
+Frequency: the first Applied always shows B02; after that B02 (either variant) at most once per 7 days; never in the same session as a failed purchase. Trial: **offered** at the first Applied (PRD), **starts** when the user taps the CTA, runs 14 days from that tap (the server never auto-starts it); trial gets all Pro P0 features incl. WhatsApp and no ads.
 ev: `paywall_view{surface=after_applied, variant}`, `trial_start`, `paywall_dismiss`.
 
 ### SC-23 Trial expiry
 
-Day 12: N-31 "Pro ट्रायल 2 दिन में ख़त्म — आपके 2 फ़ॉर्म की अगली सूचना: एडमिट कार्ड" + B09 on next open. Day 14 23:59: trial ends → lifecycle tracking pauses (data continues server-side so a later purchase backfills); S22 rows show lock "Pro ख़त्म — एडमिट कार्ड की सूचना नहीं मिलेगी"; WhatsApp stops (W-90 final message "आपका Pro ट्रायल ख़त्म हुआ… फिर से चालू करने के लिए: {link}" — 1 message only). Applied jobs remain listed.
+Day 12: N-31 "Pro ट्रायल 2 दिन में ख़त्म — आपके 2 फ़ॉर्म की अगली सूचना: एडमिट कार्ड" + B09 on next open. 14 days after the tap: trial ends → lifecycle tracking pauses (data continues server-side so a later purchase backfills); S22 rows show lock "Pro ख़त्म — एडमिट कार्ड की सूचना नहीं मिलेगी"; WhatsApp stops without a final WhatsApp message (W-90 is not sent: marketing category, and the app does not upsell over WhatsApp); the in-app lock rows and N-31 carry the news. Applied jobs remain listed.
 
 ### SC-24 Purchase via Play Billing (success / pending / fail / cancel)
 
@@ -416,13 +416,14 @@ flowchart TD
   L -->|yes| P[S33: preview bubble + number '98xxxxxx21' + checkbox consent]
   P -->|'WhatsApp अलर्ट चालू करें'| API[Server: store consent (time, text version), send W-00 welcome]
   API --> OK['WhatsApp पर एक टेस्ट मैसेज भेजा है — मिला?' हाँ / नहीं]
-  OK -->|नहीं| H['यह नंबर WhatsApp पर नहीं है? दूसरा नंबर डालें' → OTP on new number]
-  P -->|different number| OTP2[S11/S12 for WA number]
+  OK -->|नहीं| H['यह नंबर WhatsApp पर नहीं है? दूसरा नंबर इस्तेमाल करें']
+  H --> WAME
+  P -->|different number| WAME[Open WhatsApp with prefilled 'START code' (wa.me link from API); user sends it from that number → server binds it; S33 polls until active, max 2 min]
   ON[S33 active] -->|toggle off| D05[D05 'WhatsApp अलर्ट बंद करें? ज़रूरी तारीख़ें छूट सकती हैं'] -->|बंद करें| OFF[stop; W-91 confirmation]
   WA[User replies STOP on WhatsApp] --> OFF2[server opt-out; app S33 shows 'आपने WhatsApp पर STOP भेजा था']
 ```
 
-Pro lapses → WhatsApp stops automatically (W-90). Consent text logged (DPDP).
+Pro lapses → WhatsApp stops automatically (no W-90 message). Consent text logged (DPDP).
 
 ### SC-32 Family member invite / accept / remove (P1)
 
@@ -523,14 +524,14 @@ S10/S20 overflow → S46 renders card "मैं 7 सरकारी नौक�
 | SC-20 profile re-match | S26, S27, B10, D07 | — |
 | SC-21 age | B14, S43 | N-43 |
 | SC-22 paywall/trial | B01, B02, B08, S30, S33 | — |
-| SC-23 trial expiry | B09, S22 | N-31, W-90 |
+| SC-23 trial expiry | B09, S22 | N-31 |
 | SC-24/25 purchase | S30, S31, B11 | N-32 |
 | SC-26 restore | S32, D08, B15 | — |
 | SC-27 season expiry | S22, S32 | N-33 |
 | SC-28 lifecycle | S22, S23 | N-20–N-27, W-10–W-15 |
 | SC-29 clash | S37, S22 | N-28 |
 | SC-30 certificates | S36, S21 | N-29 |
-| SC-31 WhatsApp | S33, D05 | W-00, W-90, W-91 |
+| SC-31 WhatsApp | S33, D05 | W-00, W-91 |
 | SC-32 family | S34, B12, S35, D06 | W-20, F-01–F-09, N-44 |
 | SC-33 offline | O01 all | — |
 | SC-34 deep links | S21, S23, S30, S35, S44 | all |

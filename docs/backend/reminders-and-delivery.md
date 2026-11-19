@@ -15,7 +15,7 @@ stateDiagram-v2
   reminded --> reminded : next reminder (every 3 d, D-3, D-1, last day)
   new --> snoozed : snooze
   seen --> snoozed : snooze
-  reminded --> snoozed : snooze (tomorrow 09:00 / D-2 09:00 / today 18:00)
+  reminded --> snoozed : snooze (tomorrow 09:00 / D-2 09:00 / today 19:00)
   snoozed --> reminded : snooze due (never later than last-day 08:00)
   new --> applied : Applied
   seen --> applied : Applied
@@ -42,8 +42,9 @@ stateDiagram-v2
   expired --> [*]
 ```
 
-- **Applied** stops deadline reminders. It creates an `application` (lifecycle timeline), starts the 14-day trial on
-  the first Applied (if unused), and is never withdrawn by a later corrigendum (the user gets a corrigendum alert
+- **Applied** stops deadline reminders. It creates an `application` (lifecycle timeline), returns a `paywall` hint
+  (`trial_offer` while the trial is unused; the trial itself starts only on `POST /v1/me/trial`, see
+  [payments-and-entitlements.md §5](./payments-and-entitlements.md#5-14-day-trial)), and is never withdrawn by a later corrigendum (the user gets a corrigendum alert
   instead).
 - **Cancelled notice:** open and applied matches → `status_reason = notice_cancelled` (open ones become
   `withdrawn`, applied ones stay applied with a banner). One `cancelled` push goes out; slots are cleared.
@@ -71,7 +72,7 @@ Aligned with the design scenario catalogue (`docs/design/03-scenarios.md` §0.2:
 | `extension` / `corrigendum` / `cancelled` | on publish, once | push (date moved earlier, eligibility changed, or cancelled; otherwise a quiet update) | WhatsApp if it changes the user's deadline or verdict | 4 |
 | `d_minus_3` (R3) | D−3 at T | push | WhatsApp | 5 |
 | `periodic` (Rp) | every 3 days after R0 at T while ≥ 4 days are left; for windows > 30 days, every 5 days after the 3rd unopened periodic (`rp_backoff`) | push | — | 6 |
-| `snooze_due` | snooze target (tomorrow 09:00, D−2 09:00, or today 18:00) | push | — | 5 |
+| `snooze_due` | snooze target (tomorrow 09:00, D−2 09:00, or today 19:00) | push | — | 5 |
 
 **WhatsApp rule (Pro):** WhatsApp goes out for R0, R3, R1, R-last and lifecycle critical **unless the matching push
 was opened** before the escalation check (R0/R3: 60 min, R1: 30 min, R-last: 15 min, lifecycle critical: 30 min).
@@ -126,8 +127,9 @@ sequenceDiagram
 ### 3.1 Plan step (per user, in one transaction per batch)
 
 1. Load prefs, `user_entitlement`, today's `daily_counter`, the primary device, and the `whatsapp_link`.
-2. Sort the due items by priority: `last_day > d_minus_1 > new_match(high) > d_minus_3 > extension/corrigendum >
-   new_match(normal) > snooze_due > periodic`.
+2. Sort the due items by cap rank (table above; the same `rank` goes into the push payload): 1 `last_day` >
+   2 `d_minus_1` > 3 lifecycle critical > 4 `new_match` / `extension` / `corrigendum` / `cancelled` > 5 `d_minus_3` /
+   `snooze_due` > 6 `periodic`; ties by earlier `D`.
 3. **Bundle:** items due in the same tick become one notification ("2 jobs: last date tomorrow"), which counts as one
    push.
 4. **Cap:** at most **3 pushes per user per IST day**. Ranks 1–3 (R-last, R1, lifecycle critical) are never deferred
@@ -163,7 +165,10 @@ about 10 minutes.
   message (FCM has no multicast in v1; `sendEach` parallelizes).
 - Message: `data` only; `android.priority = HIGH` only for kinds that always show a notification; `android.ttl` =
   until the end of `D` for deadline kinds, 24 h for new matches, 4 weeks for lifecycle. No `notification` block.
-  Payload contract: [api/README.md §10](../api/README.md#10-push-fcm-payload-contract).
+  Payload contract: [api/README.md §10](../api/README.md#10-push-fcm-payload-contract) and `PushData` in the spec.
+  The planner fills `reminder_id` (= `alert.id`), `kind`, `rank`, `template`, `channel` (design channel IDs:
+  `critical`, `new_match`, `reminders`, `job_updates`, `digest`, `account`), `link`, and for match pushes
+  `post_id`, `apply_url` and `pdf_url` from the notice's current version.
 - Results: success → `sent`. `UNREGISTERED`/`INVALID_ARGUMENT` on the token → `device.token_invalid_at`, delivery
   `failed`, and immediate escalation eligibility for Pro. `QUOTA_EXCEEDED`/`UNAVAILABLE`/`INTERNAL` → retry with
   exponential backoff plus jitter, honouring `Retry-After`, up to 6 attempts over about 2 h, then `failed`.
@@ -214,7 +219,7 @@ the aspirant's chosen display name, the exam name, the date and a link. No profi
 ## 4. Delivery self-test (onboarding + weekly)
 
 `POST /v1/me/devices/{id}/self-tests` → `self_test(sent)` → FCM high-priority data message `type=self_test`
-(visible, low-importance notification) → app posts the `received`/`displayed` receipt with `message_id=test_id` →
+(visible N-41 on the `critical` channel) → app posts the `received`/`displayed` receipt with `message_id=test_id` →
 status `received`. With no receipt in 120 s → `timeout` with `advice[]` derived from device state (notifications off
 → `enable_notifications`; known aggressive OEM (xiaomi, redmi, poco, vivo, oppo, realme, oneplus) and battery
 optimisation not ignored → `enable_autostart` + `disable_battery_optimization`; Pro without WhatsApp →
@@ -234,18 +239,21 @@ R-last. The killed-app self-test step uses `POST …/self-tests {kind: killed_ap
 - **Messaging limits:** new numbers start with a low daily cap of unique business-initiated recipients (historically
   250 per 24 h, rising with volume and quality; *verify the current tiers*). The 14-day test (about 300 users) fits.
   Plan a warm-up before launch.
-- **Templates** (utility category, Hindi + English, each with a URL button to `https://sarkarimatch.in/m/{match_id}`
-  App Link plus the official link as a variable):
-  `match_new_v1`, `deadline_d3_v1`, `deadline_d1_v1`, `last_day_v1`, `lifecycle_update_v1` (admit card/exam/result with
-  `{event}` variable), `exam_rescheduled_v1`, `family_deadline_v1`, `family_lifecycle_v1`, `optin_confirm_v1`,
-  plus `otp_v1` (authentication category). Each type has **two approved variants**, plus a generic fallback
-  `alert_generic_v1` ("आपके लिए नई सूचना: {{1}}. देखें: {{2}}").
+- **Templates** (utility category, Hindi + English; names and copy are the design's, [05 §4](../design/05-notifications.md#4-whatsapp-business-templates-pro-via-bsp)):
+  `sm_welcome` (W-00, opt-in confirmation), `sm_new_match` (W-01), `sm_deadline_soon` (W-02, R3 and R1),
+  `sm_last_day` (W-03), `sm_notice_change` (W-04), `sm_stage_update` (W-10..W-15 lifecycle), `sm_dv_slot`,
+  `sm_family_invite` (W-20), `sm_family_alert` (F-01..F-03), `sm_family_removed` (F-09), plus `sm_otp`
+  (authentication category). App-opening URL buttons use `https://sarkarimatch.in/j/{match_id}?src=wa` (lifecycle:
+  `/a/{application_id}`); "फ़ॉर्म की साइट खोलें" uses the tracked redirect `https://sarkarimatch.in/go/{match_id}`
+  → 302 to the official apply URL (Meta URL buttons need a fixed base URL). Each type gets a second approved
+  variant (`_v2`) plus a generic fallback `sm_alert_generic` ("आपके लिए नई सूचना: {{1}}. देखें: {{2}}").
+  W-90 `sm_pro_ended` (marketing category) is **not sent**: Pro/trial end is told in-app and by push only.
 - **No promotional content** in any utility template (no upsell, no "buy Pro"). Otherwise Meta may recategorise it as
   marketing (₹~0.86/msg) or reject it.
 - **Opt-in:** (a) in-app consent with the verified phone, or (b) user-initiated `START <code>` message, which proves
   the number. Both write `consent_log(purpose=whatsapp_alerts)`. The first message is an `optin_confirm` with
   "Reply STOP to stop".
-- **Opt-out:** inbound `STOP`, `रोकें` or `बंद` (case- and space-insensitive), the app toggle, or `DELETE /v1/me/whatsapp`
+- **Opt-out:** inbound `STOP`, `रोकें` or `बंद` (case- and space-insensitive; same list in design 05 §4), the app toggle, or `DELETE /v1/me/whatsapp`
   → `opted_out` immediately plus a confirmation reply (a free service reply inside the 24 h window). Sustained
   failures that indicate the user blocked us → `blocked`; stop sending.
 - **Quality:** monitor the phone number quality rating and template status webhooks. On a "paused/flagged" template,
@@ -283,8 +291,9 @@ region and stage progress) and creates `lifecycle` alerts:
 The same day or within 3 days → a `clash` alert (Pro) and a row in `GET /v1/me/clashes`.
 
 **Certificate validity (P1):** at match time, if the notice requires an OBC-NCL/EWS certificate for a financial year
-(rule `other_conditions` with code `cert_fy`) and the profile's certificate FY differs → advisory line plus a Pro
-`certificate` alert once.
+(rule `other_conditions` with code `cert_fy`) and the profile's certificate FY differs → `why[]` line with
+`rule=certificate, result=info` (S36 `ValidityBadge`, S21 what-you-need warning) plus a Pro `certificate` alert once
+(N-29, `job_updates` channel).
 
 ## 8. Failure modes
 

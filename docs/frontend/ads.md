@@ -75,7 +75,7 @@ class DefaultAdsGate @Inject constructor(
 ```
 
 - **Entitlement is the server's `Entitlement.ads_enabled`** (Room-cached), never a local `isPro` guess. Buying Pro or starting the trial flips it through the verify / action result / sync, and the slot disappears immediately (state recomputes → `AdSlotState.Hidden`).
-- **DPDP:** ads are served non-personalised by default; the app does not send any profile data (DOB, category, state, qualification) to the ad SDK — no custom targeting keys. The privacy policy and Data Safety form list "Advertising (Google AdMob)" with device identifiers as *collected by the SDK*. A separate consent purpose `ads_personalisation` would be needed before ever turning on personalised ads (Contract gap G-15) — default stays off.
+- **DPDP:** ads are served non-personalised by default; the app does not send any profile data (DOB, category, state, qualification) to the ad SDK — no custom targeting keys. The privacy policy and Data Safety form list "Advertising (Google AdMob)" with device identifiers as *collected by the SDK*. The consent purpose `ads_personalisation` is reserved in the API (`Consent.purpose`) but never requested in v1 — default stays off.
 - **Kill switch:** `AppConfig.ads.enabled = false` (fetched ≤ 15 min) hides every slot and stops loads; `min_app_version` disables a bad SDK build.
 
 ## 4. The ad slot as a feed item

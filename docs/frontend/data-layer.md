@@ -163,11 +163,12 @@ data class ApplicationEntity(
 data class PendingActionEntity(
     @PrimaryKey @ColumnInfo(name = "action_id") val actionId: String,   // UUID, server dedup key
     @ColumnInfo(name = "match_id") val matchId: String,
-    val type: String,                                                    // seen|applied|not_interested|snooze|undo
+    val type: String,                                                    // seen|applied|not_interested|snooze|undo|confirm_eligible
     @ColumnInfo(name = "occurred_at") val occurredAt: Instant,
     val source: String,                                                  // notification_action|match_detail|feed|whatsapp
     @ColumnInfo(name = "snooze_option") val snoozeOption: String?,
-    @ColumnInfo(name = "reason") val notInterestedReason: String?,
+    @ColumnInfo(name = "reasons") val notInterestedReasons: List<String>, // B03 chips → not_interested_reasons[] (TypeConverter)
+    val rule: String?,                                                   // confirm_eligible only
     @ColumnInfo(name = "batch_key") val batchKey: String?,               // Idempotency-Key of the batch it was sent in
     val attempts: Int = 0,
 )
@@ -273,7 +274,8 @@ interface MatchActionRepository {
 sealed interface UserAction {
     data object Seen : UserAction
     data class Applied(val feePaid: Boolean? = null) : UserAction        // → MatchActionInput.fee_paid (B01 checkbox)
-    data class NotInterested(val reason: NotInterestedReason?) : UserAction
+    data class NotInterested(val reasons: Set<NotInterestedReason> = emptySet()) : UserAction  // NotInterestedInPost | Location | NotPrepared | AlreadyEmployed | NotEligible | Other
+    data class ConfirmEligible(val rule: String) : UserAction           // B06 "मैंने जाँच लिया — मैं योग्य हूँ"
     data class Snooze(val option: SnoozeOption) : UserAction             // Tomorrow | TwoDaysBeforeLastDate | TodayEvening
 }
 ```
@@ -432,10 +434,12 @@ Privacy at rest: the profile (DOB, category, state) lives in app-private Room st
 | `DeviceRepository` | `upsertIfChanged()` | `upsertDevice` | outbox(coalesced) | S01, S13, S15, token refresh |
 | `DeviceRepository` | `unregister()` | `deleteDevice` | direct | D02 |
 | `DeviceRepository` | `makePrimary()` | `makeDevicePrimary` | direct | B15 |
+| `DeviceRepository` | `list()` | `listDevices` | memory | S38 linked devices, B15 device name |
 | `DeviceRepository` | `startSelfTest()`, `observeSelfTest(id)` | `startSelfTest`, `getSelfTest` | Room `self_tests` | S16, S29 |
 | `EntitlementRepository` | `observe()`, `refresh()` | `getEntitlement` (+ `sync`, `startSession`, action results) | Room | everywhere (Pro gating) |
 | `EntitlementRepository` | `products()` | `listProducts` | memory 1 h | S30, B02 |
-| `EntitlementRepository` | `startTrial()` | `startTrial` | direct | B02 (only if auto-trial didn't happen) |
+| `EntitlementRepository` | `startTrial()` | `startTrial` | direct | B02 trial CTA, S30 |
+| `EntitlementRepository` | `purchases()` | `listPurchases` | memory | S32 receipt list |
 | `EntitlementRepository` | `verifyPlayPurchase()` | `verifyPlayPurchase` | outbox-like retry (`PurchaseVerifyWorker`) | S30 → S31, app start |
 | `EntitlementRepository` | `createUpiLink(productId)` | `createUpiPaymentLink` | direct | B11 |
 | `ReferralRepository` | `get()`, `redeem(code)` | `getReferral`, `redeemReferral` | memory | S45, onboarding (install referrer) |
@@ -447,6 +451,6 @@ Privacy at rest: the profile (DOB, category, state) lives in app-private Room st
 | `AccountRepository` | `requestExport()`, `pollExport(id)` | `requestExport`, `getExport` | direct | S38, D04 |
 | `ConsentRepository` | `list()`, `record()` | `listConsents`, `recordConsent` | outbox | S11 checkbox, S33, S38, analytics opt-in, `required_consents` after `startSession` |
 | `AdsGate` | `shouldShow(placement)` | `getAppConfig` (`ads`) + `getEntitlement`/`sync` (`ads_enabled`) | Room | S20, S44 (O10) |
-| — | — | `listNotices` | **not used in v1 app** (no browse screen in the inventory) | — |
+| `NoticeRepository` | `browse(filters)` | `listNotices` | memory | P1 only: B14 age-crossed "still open to you" list |
 
-Unused operation: `listNotices` (browse all notices). Every repository call above maps to an operation; remaining mismatches are listed in README *Contract gaps*.
+No P0 screen uses `listNotices`. Every repository call above maps to an operation; all earlier mismatches are resolved in [`../contract-alignment.md`](../contract-alignment.md).

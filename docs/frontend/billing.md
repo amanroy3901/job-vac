@@ -12,7 +12,7 @@ Library: **Google Play Billing Library 9.1.0** (`com.android.billingclient:billi
 
 Prices, currency formatting and offer eligibility come only from Play `ProductDetails` (`formattedPrice`), so Play price experiments, taxes and regional pricing are correct. If `ProductDetails` can't load (no Play/old Play Store), the paywall shows `billingAvailable = false` and, if the `upi_link_purchase` flag is on, the UPI option.
 
-**Trial** is *not* a Play free trial. It is a server-granted 14-day Pro that starts automatically on the first *भर दिया* (`MatchActionResult.entitlement`, `paywall.variant = trial_started`). So no card/UPI mandate is needed for the trial, matching the PRD ("Trial: 14 days of Pro from first Applied") and the B02 copy "मुफ़्त — कोई पेमेंट नहीं".
+**Trial** is *not* a Play free trial. It is a server-granted 14-day Pro, **offered** at the first *भर दिया* (`MatchActionResult.paywall.variant = trial_offer` → B02 "14 दिन मुफ़्त शुरू करें") and **started** only when the user taps it (`startTrial` → `Entitlement` with `source = trial`, 14 days from the tap). No card/UPI mandate is needed, matching the PRD ("Trial: 14 days of Pro from first Applied") and the B02 caption "कोई पैसा नहीं लगेगा, कार्ड नहीं चाहिए". While `trial_available`, S30 also shows a "14 दिन मुफ़्त आज़माएँ" text button that calls `startTrial`.
 
 ## 2. Components
 
@@ -118,7 +118,7 @@ Refresh points: app start (`startSession`), every `sync`, FCM `sync` push after 
 
 | Trigger | Surface | Rule |
 | --- | --- | --- |
-| Right after *भर दिया* (in-app B01 confirm or push action) | B02 | first time: trial started (informational) → B08; later (trial used, free): plans, max once / 7 days |
+| Right after *भर दिया* (in-app B01 confirm or push action) | B02 | `trial_offer`: "14 दिन मुफ़्त शुरू करें" → `startTrial` → B08; `plans` (trial used): plan cards → S30. First Applied always; afterwards max once / 7 days |
 | Trial day 12–14 on app open, or trial-ending push | B09 → S30 | once per day |
 | Locked lifecycle row on S22 / locked S23 | S30 (`source = LockedRow`) | always available |
 | S33/S34/S36/S37 opened by a free user | inline locked state → S30 | |

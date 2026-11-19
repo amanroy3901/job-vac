@@ -95,7 +95,7 @@ sealed interface HomeAction {
     data class TapApplied(val matchId: String) : HomeAction          // → B01
     data class ConfirmApplied(val matchId: String, val feePaid: Boolean) : HomeAction
     data class TapNotInterested(val matchId: String) : HomeAction    // → B03
-    data class ConfirmNotInterested(val matchId: String, val reason: NotInterestedReason?) : HomeAction
+    data class ConfirmNotInterested(val matchId: String, val reasons: Set<NotInterestedReason>) : HomeAction
     data class Snooze(val matchId: String, val option: SnoozeOption) : HomeAction
     data class Undo(val token: RecordedAction) : HomeAction
     data class BannerTapped(val banner: Banner) : HomeAction
@@ -156,7 +156,7 @@ class HomeViewModel @Inject constructor(
             }
             is HomeAction.ConfirmNotInterested -> viewModelScope.launch {
                 sheet.value = null
-                val rec = actions.record(a.matchId, UserAction.NotInterested(a.reason), ActionSource.Feed)
+                val rec = actions.record(a.matchId, UserAction.NotInterested(a.reasons), ActionSource.Feed)
                 send(HomeEffect.ShowUndo(UiText.Res(R.string.hidden_undo), rec))
             }
             is HomeAction.Undo -> viewModelScope.launch { actions.undo(a.token) }
@@ -270,7 +270,7 @@ sealed interface PaywallAction {
     data object Buy : PaywallAction
     data object PayWithUpi : PaywallAction            // B11
     data object Restore : PaywallAction               // → D08
-    data object StartTrial : PaywallAction            // only when trialAvailable and no auto-trial happened
+    data object StartTrial : PaywallAction            // B02 trial CTA or S30 "14 दिन मुफ़्त आज़माएँ"; only when trialAvailable
 }
 
 sealed interface PaywallEffect {
@@ -286,9 +286,8 @@ The VM combines `EntitlementRepository.observe()` (Room), `BillingRepository.pro
 
 | Situation | B02 variant |
 | --- | --- |
-| First *भर दिया* ever, server auto-started trial (`paywall.variant = trial_started`) | "14 दिन Pro चालू" informational → B08 → S33 WhatsApp CTA |
-| Trial available but not auto-started (should not happen; defensive) | "मुफ़्त ट्रायल शुरू करें" → `startTrial` |
-| Trial used, free user (`variant = trial_ended` / `free`), last shown > 7 days ago | plans summary → S30 |
+| *भर दिया*, trial unused (`paywall.variant = trial_offer`); first Applied, or last shown > 7 days ago | "14 दिन मुफ़्त शुरू करें" → `startTrial` → B08 → S33 WhatsApp CTA; "अभी नहीं" → snackbar, S22 lock rows |
+| Trial used, free user (`variant = plans`), last shown > 7 days ago | plans summary → S30 |
 | Pro active | nothing |
 
 ## 5. Onboarding (S04–S10): one VM across steps

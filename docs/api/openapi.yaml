@@ -21,6 +21,11 @@ info:
     - Lists use opaque cursors. Delta sync uses `sync_token` (see /v1/me/sync).
     - Additive changes only within v1: clients MUST ignore unknown fields and treat unknown enum
       values as the documented fallback (`other`/`unknown`).
+    - Canonical identifiers (docs/contract-alignment.md): `notice_id` (`n_…`, one advertisement, shared),
+      `post_id` (`p_…`, one post inside a notice = "the job", shared), `match_id` (`m_…`, this user × one post,
+      private), `application_id` (`a_…`, this user's tracked application, created by Applied). Per-user links use
+      `match_id`/`application_id`; anything shared between users uses `post_id`. The design's `jobId` route
+      argument is `match_id`.
   contact:
     name: Sarkari Match backend
 servers:
@@ -163,8 +168,11 @@ paths:
       summary: Verify the OTP. Returns a Firebase custom token; the app calls signInWithCustomToken(), then POST /v1/session.
       description: |
         purpose=sign_in: if the number already belongs to an account, the custom token signs into THAT account
-        (restore on a new phone; the anonymous account's data is merged only if it had no profile, else discarded
-        after confirmation `merge=discard_local`). Otherwise the number is attached to the caller's current UID.
+        (restore on a new phone). If both the current anonymous account and the existing account have a profile,
+        `merge=auto` returns 409 `profile_conflict` (the OTP session stays valid for 5 min) and the app asks
+        "इस नंबर पर पहले से प्रोफ़ाइल है। कौन-सी रखें?" (SC-03): `merge=discard_local` keeps the existing account's
+        profile, `merge=keep_local` overwrites it with this phone's profile (matches are recomputed). An anonymous
+        account without a profile is merged silently. Otherwise the number is attached to the caller's current UID.
         5 wrong attempts invalidate the session. Other purposes return `verified=true` and no token.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -178,7 +186,7 @@ paths:
               properties:
                 otp_session_id: { type: string }
                 code: { type: string, pattern: '^\d{6}$' }
-                merge: { type: string, enum: [auto, discard_local], default: auto }
+                merge: { type: string, enum: [auto, discard_local, keep_local], default: auto }
       responses:
         '200':
           description: Verified
@@ -569,8 +577,9 @@ paths:
       description: |
         Safe to replay (dedup on `action_id`). The server applies actions in `occurred_at` order;
         an action older than the match's last applied action is recorded but ignored (`applied=false`).
-        First `applied` on an account that never had a trial starts the 14-day Pro trial automatically
-        and returns the new entitlement plus a `paywall` hint. `applied` is also accepted on `expired` matches
+        `applied` never starts the trial by itself. When the user is not Pro, the result carries a `paywall`
+        hint: `trial_offer` while the 14-day trial is unused (B02 "14 दिन मुफ़्त शुरू करें" → `POST /v1/me/trial`
+        on tap), `plans` once it is used. `applied` is also accepted on `expired` matches
         up to 30 days after the last date ("हाँ, भरा था", SC-17); other actions on closed matches return
         409 `match_closed`.
       parameters:
@@ -900,6 +909,25 @@ paths:
           description: Accepted
         default: { $ref: '#/components/responses/Problem' }
 
+  /v1/me/devices:
+    get:
+      tags: [devices]
+      operationId: listDevices
+      summary: Devices signed in to this account (S38 "linked devices", B15 device name). Which one is primary.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Device' }
+        default: { $ref: '#/components/responses/Problem' }
+
   /v1/me/devices/{installation_id}:
     put:
       tags: [devices]
@@ -954,7 +982,7 @@ paths:
       summary: Ask the server to send a test push to this device now (onboarding step and weekly check).
       description: |
         Server sends a high-priority FCM data message `type=self_test` carrying `test_id`. The app shows a
-        visible notification and posts `received`/`displayed` receipts with `message_id = test_id`.
+        visible notification (template N-41 on the `critical` channel, so the test proves heads-up delivery) and posts `received`/`displayed` receipts with `message_id = test_id`.
         Poll GET .../self-tests/{test_id} (or wait for the receipt locally). Times out after 120 s.
         Max 5 per hour per device. `delay_seconds` (0–120) supports the "swipe the app away, then wait" killed-app
         step (SC-35).
@@ -1034,7 +1062,11 @@ paths:
     post:
       tags: [entitlements]
       operationId: startTrial
-      summary: Start the 14-day Pro trial explicitly (normally auto-started on first Applied). 409 `trial_already_used`.
+      summary: Start the 14-day Pro trial when the user taps the trial CTA (B02 after the first Applied, or S30). 409 `trial_already_used`.
+      description: |
+        The trial is offered at the first Applied (`MatchActionResult.paywall.variant = trial_offer`) and starts only
+        on this call; it runs 14 days from the tap. No payment method is needed (server-granted, not a Play offer).
+        Pending lifecycle alerts for applications made before the tap are backfilled.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -1326,6 +1358,7 @@ components:
       name: match_id
       in: path
       required: true
+      description: Per-user match id (`m_…`); the `{matchId}` in `https://sarkarimatch.in/j/{match_id}` and S21 `job/{matchId}`.
       schema: { type: string, examples: ['m_01JD3X7Q5M2V8K'] }
     NoticeId:
       name: notice_id
@@ -1553,7 +1586,8 @@ components:
       properties:
         purpose:
           type: string
-          enum: [terms_privacy, eligibility_processing, push_alerts, whatsapp_alerts, family_alerts, analytics]
+          enum: [terms_privacy, eligibility_processing, push_alerts, whatsapp_alerts, family_alerts, analytics, ads_personalisation]
+          description: '`ads_personalisation` is reserved: v1 never asks for it and requests non-personalised ads only (default off).'
         version: { type: string, examples: ['2026-11-01'] }
         granted: { type: boolean }
         recorded_at: { type: string, format: date-time }
@@ -1583,6 +1617,10 @@ components:
           type: array
           items: { $ref: '#/components/schemas/RefItem' }
           description: 'ISO 3166-2:IN suffix codes: UP, BR, RJ, MP, DL ...'
+        pinned_states:
+          type: array
+          description: 'Launch states shown first in S08 (working assumption ["UP", "BR"]); server-controlled so a launch-state change needs no app release.'
+          items: { type: string }
         exam_types:
           type: array
           items: { $ref: '#/components/schemas/RefItem' }
@@ -1629,7 +1667,7 @@ components:
         status:
           type: string
           enum: [completed, final_year, appearing]
-          description: '`final_year`/`appearing`: result not yet declared — some notices allow these (provisional eligibility).'
+          description: '`final_year`/`appearing`: result not yet declared — some notices allow these (provisional eligibility). S05 maps "पास हो गया" → completed and "आखिरी साल / रिज़ल्ट बाकी" → final_year; `appearing` is not offered in v1 UI.'
         result_date: { type: [string, 'null'], format: date, description: 'Optional; completed: date result declared; used when a notice requires qualification by a cutoff date.' }
         percentage_band:
           type: [string, 'null']
@@ -1641,8 +1679,15 @@ components:
       required: [dob, gender, category, domicile_state, qualifications, interests]
       properties:
         dob: { type: string, format: date }
-        gender: { type: string, enum: [male, female, transgender] }
+        gender:
+          type: [string, 'null']
+          enum: [male, female, transgender, null]
+          description: 'S09 chips पुरुष / महिला / ट्रांसजेंडर. null = skipped ("छोड़ें"): gender-restricted posts become check_yourself.'
         category: { type: string, enum: [gen, ews, obc, sc, st] }
+        category_unsure:
+          type: boolean
+          default: false
+          description: 'S07 "पता नहीं": send category=gen with category_unsure=true. Matching uses gen; posts a reserved category would unlock come back as check_yourself (design SC-02).'
         obc_non_creamy_layer: { type: [boolean, 'null'], description: 'Required when category=obc; false → treated as gen for relaxation.' }
         domicile_state: { type: string }
         pwd:
@@ -1774,8 +1819,8 @@ components:
       type: object
       required: [id, post_id, notice_id, verdict, status, title, org, last_date, updated_at]
       properties:
-        id: { type: string }
-        post_id: { type: string }
+        id: { type: string, description: 'match_id (`m_…`), per user' }
+        post_id: { type: string, description: 'Shared post id (`p_…`); use for share links `/p/{post_id}`' }
         notice_id: { type: string }
         notice_etag: { type: string, description: 'If different from the cached Notice ETag, refetch /v1/notices/{id}' }
         verdict: { $ref: '#/components/schemas/Verdict' }
@@ -1804,6 +1849,7 @@ components:
         matched_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
         application_id: { type: [string, 'null'] }
+        user_confirmed_eligible: { type: boolean, default: false, description: 'User tapped "मैंने जाँच लिया — मैं योग्य हूँ" in B06 (`confirm_eligible`). The verdict stays check_yourself; the app hides the "?" prompt.' }
 
     MatchDetail:
       allOf:
@@ -1836,6 +1882,7 @@ components:
     ReminderKind:
       type: string
       enum: [new_match, periodic, d_minus_3, d_minus_1, last_day, snooze_due, extension, corrigendum]
+      description: 'Wire names for the design scheduler slots (03 §0.2): new_match = R0, periodic = Rp, d_minus_3 = R3, d_minus_1 = R1, last_day = R-last. Cap rank: last_day 1, d_minus_1 2, lifecycle critical 3, new_match/extension/corrigendum 4, d_minus_3/snooze_due 5, periodic 6.'
 
     RuleExplanation:
       type: object
@@ -1843,8 +1890,13 @@ components:
       properties:
         rule:
           type: string
-          enum: [age, qualification, domicile, gender, category, pwd, ex_serviceman, marital_status, physical, experience, extra_attribute, nationality, other]
-        result: { type: string, enum: [pass, fail, check_yourself] }
+          enum: [age, qualification, domicile, gender, category, pwd, ex_serviceman, marital_status, physical, experience, extra_attribute, nationality, certificate, other]
+          description: '`certificate` (P1, S36 ValidityBadge): OBC-NCL/EWS financial year or domicile certificate date vs this notice; result `info` (advisory) or `check_yourself`.'
+        result:
+          type: string
+          enum: [pass, fail, check_yourself, info]
+          description: 'Design RuleLine icons: pass ✓, check_yourself ?, fail ✗, info i (advisory, never changes the verdict). Unknown → info.'
+        fix_field: { type: [string, 'null'], description: 'Profile field that would resolve a check_yourself line (e.g. `extra_attributes`, `gender`); drives the "जोड़ें" button → S27.' }
         code: { type: string, examples: ['age.within_limit_with_relaxation'] }
         params:
           type: object
@@ -1918,20 +1970,26 @@ components:
       required: [action_id, type, occurred_at]
       properties:
         action_id: { type: string, format: uuid, description: 'Client-generated, unique per action; dedup key.' }
-        type: { type: string, enum: [seen, applied, not_interested, snooze, undo] }
+        type:
+          type: string
+          enum: [seen, applied, not_interested, snooze, undo, confirm_eligible]
+          description: '`confirm_eligible` (B06 "मैंने जाँच लिया — मैं योग्य हूँ"): only on check_yourself matches; logs the `rule` for curation, sets `user_confirmed_eligible`, reminders continue unchanged.'
         occurred_at: { type: string, format: date-time, description: 'Device time of the tap (server clamps skew).' }
         snooze:
           type: object
-          description: 'tomorrow = 09:00 IST next day; today_evening = 18:00 IST (offered only when ≤2 days left). Never later than the last-day morning reminder.'
+          description: 'PRD options: tomorrow = 09:00 IST next day; two_days_before_last_date = 09:00 IST on L−2 (offered when ≥ 4 days left). today_evening = 19:00 IST today (offered instead of L−2 when 2–3 days left). No snooze with ≤ 1 day left. Never later than the last-day morning reminder.'
           properties:
             option: { type: string, enum: [tomorrow, two_days_before_last_date, today_evening] }
+        rule: { type: [string, 'null'], description: 'confirm_eligible only: the RuleExplanation.rule the user checked' }
         fee_paid: { type: [boolean, 'null'], description: 'Applied only: user ticked "fee also paid" (P2 payment-status watch)' }
         source:
           type: string
           enum: [notification_action, match_detail, feed, whatsapp, other]
-        not_interested_reason:
-          type: [string, 'null']
-          enum: [not_interested_in_post, location, salary, already_applied_elsewhere, other, null]
+        not_interested_reasons:
+          type: array
+          maxItems: 6
+          description: 'B03 chips (multi-select, optional): पोस्ट पसंद नहीं = not_interested_in_post · जगह दूर है = location · तैयारी नहीं है = not_prepared · पहले से नौकरी है = already_employed · मैं योग्य नहीं हूँ = not_eligible (the app also opens B05 → reportMatch). Unknown → other.'
+          items: { type: string, enum: [not_interested_in_post, location, not_prepared, already_employed, not_eligible, other] }
 
     MatchActionResult:
       type: object
@@ -1940,13 +1998,17 @@ components:
         applied: { type: boolean, description: 'false if the action was stale/ignored' }
         match: { $ref: '#/components/schemas/MatchSummary' }
         application: { oneOf: [ { $ref: '#/components/schemas/Application' }, { type: 'null' } ] }
-        entitlement: { oneOf: [ { $ref: '#/components/schemas/Entitlement' }, { type: 'null' } ], description: 'Present when it changed (trial started)' }
+        entitlement: { oneOf: [ { $ref: '#/components/schemas/Entitlement' }, { type: 'null' } ], description: 'Present when it changed' }
         paywall:
           type: [object, 'null']
-          description: 'Present after Applied when the client should show the "Track this application to the end?" sheet.'
+          description: 'Present after Applied for a non-Pro user: the client shows B02 "इस फ़ॉर्म को आखिर तक ट्रैक करें?". Null for Pro/trial users. The first Applied always shows B02; after that the client shows it at most once per 7 days (either variant). The trial stays available from S30 until taken.'
+          required: [variant]
           properties:
-            variant: { type: string, examples: ['trial_started', 'trial_ended', 'free'] }
-            trial_ends_at: { type: [string, 'null'], format: date-time }
+            variant:
+              type: string
+              enum: [trial_offer, plans]
+              description: 'trial_offer = trial unused → "14 दिन मुफ़्त शुरू करें" calls POST /v1/me/trial; plans = trial used → plan cards → S30. Unknown → plans.'
+            trial_days: { type: [integer, 'null'], examples: [14] }
 
     MatchReportInput:
       type: object
@@ -2173,11 +2235,23 @@ components:
       required: [id, kind, title, created_at]
       properties:
         id: { type: string }
-        kind: { type: string, enum: [match_new, reminder, deadline, extension, corrigendum, lifecycle, digest, clash, certificate, system] }
+        kind:
+          type: string
+          enum: [match_new, reminder, deadline, extension, corrigendum, cancelled, lifecycle, digest, clash, certificate, account]
+          description: 'Same values as PushData.type (minus self_test/ping/sync). Unknown → account.'
+        template: { type: [string, 'null'], description: 'Design template id, e.g. N-04, W-02' }
         title: { $ref: '#/components/schemas/LocalizedText' }
         body: { $ref: '#/components/schemas/LocalizedText' }
         match_id: { type: [string, 'null'] }
+        post_id: { type: [string, 'null'] }
         application_id: { type: [string, 'null'] }
+        digest:
+          type: [object, 'null']
+          description: '(P1) kind=digest only: what S44 `digest/{date}` lists. The app renders the rows from its Room cache (matches and inbox arrive via sync); no separate digest endpoint.'
+          properties:
+            date: { type: string, format: date }
+            match_ids: { type: array, items: { type: string } }
+            inbox_ids: { type: array, items: { type: string } }
         channels: { type: array, items: { type: string, enum: [push, whatsapp, sms, family] } }
         created_at: { type: string, format: date-time }
         opened_at: { type: [string, 'null'], format: date-time }
@@ -2344,6 +2418,7 @@ components:
         relation: { type: string, enum: [parent, sibling, spouse, other] }
         alert_kinds:
           type: array
+          description: 'v1 sends last_day, one_day_before, admit_card and dv_schedule (design S34, backend §3.4; also the default). exam_date and result are reserved.'
           items: { type: string, enum: [last_day, one_day_before, admit_card, exam_date, dv_schedule, result] }
 
     FamilyMember:
@@ -2368,6 +2443,50 @@ components:
         relation: { type: string }
         alert_kinds: { type: array, items: { type: string } }
         expires_at: { type: [string, 'null'], format: date-time }
+
+    PushData:
+      type: object
+      description: |
+        Documentation-only schema of the FCM **data** map (every value is a string on the wire; not an HTTP body).
+        Canonical channel IDs are the design's (05-notifications §1) and are immutable after release.
+        type → channel: match_new → new_match · reminder → reminders · deadline → critical ·
+        extension/corrigendum/cancelled/clash/certificate → job_updates (corrigendum that makes the user newly
+        eligible, N-11c → new_match) · lifecycle → critical when `critical=1`, else job_updates · digest → digest ·
+        account → account · self_test → critical · ping/sync → no notification.
+      required: [type, msg_id]
+      properties:
+        type:
+          type: string
+          enum: [match_new, reminder, deadline, extension, corrigendum, cancelled, lifecycle, digest, clash, certificate, account, self_test, ping, sync]
+          description: 'reminder = periodic / d_minus_3 / snooze_due; deadline = d_minus_1 / last_day. Unknown → sync.'
+        msg_id: { type: string, description: 'Receipt id. For scheduled reminders it equals `reminder_id`.' }
+        reminder_id: { type: string, examples: ['r:m_01JD3X7Q5M2V8K:d_minus_1:20260731'], description: 'Deterministic `r:{match_id}:{kind}:{YYYYMMDD IST}`; same value as MatchSummary.next_reminder_id and reminder_plan[].reminder_id, so the on-device mirror dedupes against FCM.' }
+        kind: { $ref: '#/components/schemas/ReminderKind' }
+        rank: { type: string, enum: ['1', '2', '3', '4', '5', '6'], description: 'Daily-cap rank (ReminderKind description). The device gate never defers ranks 1–3.' }
+        template: { type: string, examples: ['N-04'], description: 'Design template id; the app adds it as `nid` to the deep link for analytics' }
+        channel: { type: string, enum: [critical, new_match, reminders, job_updates, digest, account], description: 'Android notification channel id. Unknown → reminders.' }
+        priority: { type: string, enum: [high, normal] }
+        link: { type: string, examples: ['sarkarimatch://job/m_01JD3X7Q5M2V8K?src=push'], description: 'Content-intent deep link (docs/api/README.md §1a)' }
+        match_id: { type: string }
+        post_id: { type: string }
+        notice_id: { type: string }
+        application_id: { type: string }
+        event_id: { type: string, description: 'Lifecycle event id (lifecycle pushes)' }
+        stage: { type: string, examples: ['tier1', 'dv'] }
+        critical: { type: string, enum: ['0', '1'] }
+        title_hi: { type: string }
+        title_en: { type: string }
+        body_hi: { type: string }
+        body_en: { type: string }
+        actions: { type: string, examples: ['applied,snooze', 'applied,not_interested', 'open_site,applied', 'view'], description: 'Comma list of buttons: applied (भर दिया), snooze (बाद में), not_interested (रुचि नहीं), open_site (साइट खोलें), view (देखें)' }
+        last_date: { type: string, format: date }
+        last_date_time: { type: string, examples: ['23:00'] }
+        apply_url: { type: string, format: uri, description: 'Official apply URL for "साइट खोलें" (N-05) — opened directly, never through our redirect' }
+        pdf_url: { type: string, format: uri, description: 'Official notice PDF' }
+        collapse: { type: string, description: 'Notification tag (match_id, or application_id:stage) so a newer alert replaces the older one' }
+        digest_date: { type: string, format: date, description: 'type=digest: opens S44 `digest/{date}`' }
+        test_id: { type: string, description: 'type=self_test' }
+        sync: { type: string, enum: ['0', '1'], description: '1 = also run a delta sync' }
 
     SyncResponse:
       type: object

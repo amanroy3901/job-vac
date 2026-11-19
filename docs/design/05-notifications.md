@@ -4,6 +4,8 @@ Scheduling rules (slots, daily cap 3, quiet hours 22:00–07:00, snooze, collaps
 
 ## 1. Android channels (created at first launch; IDs are permanent)
 
+These six IDs are the **canonical set** for app, API (`PushData.channel`) and backend (agreed 2026-11-19, `../contract-alignment.md`). The server sends them as-is.
+
 | Channel ID | Name HI / EN | Importance | Sound / vibrate | Lock screen | Used by |
 | --- | --- | --- | --- | --- | --- |
 | `critical` | आखिरी तारीख और ज़रूरी सूचना / Last dates & critical | `IMPORTANCE_HIGH` (heads-up) | default sound + vibrate pattern `[0,250,150,250]` | `VISIBILITY_PUBLIC` | N-04, N-05, N-21, N-22, N-27, N-41 test |
@@ -16,8 +18,8 @@ Scheduling rules (slots, daily cap 3, quiet hours 22:00–07:00, snooze, collaps
 - Channel names follow the app language at creation; on language switch, update names via `createNotificationChannel` (same ID).
 - Small icon: monochrome `ic_stat_sm` (24 dp, white tick inside rounded square). Accent colour `primary` (`#1F4FB8`); `critical` uses `today` red as `setColor` only for R-last.
 - **Grouping:** job pushes share group key `jobs`; when ≥ 2 visible post a summary (`InboxStyle`, title "Sarkari Match", summary "{n} नौकरियाँ आपका जवाब माँग रही हैं"). Lifecycle pushes group `forms`.
-- **Notification ID** = stable hash of `jobId` (+ `stage` for lifecycle) so a newer reminder replaces the older one.
-- **Delivery:** FCM **data-only, priority `high`** for N-01/N-04/N-05/critical lifecycle; `normal` for the rest. App builds the notification in `FirebaseMessagingService.onMessageReceived` (localised strings, actions, grouping), records `delivered` receipt. TTL: reminders `lastDate − now`; test 10 min.
+- **Notification ID** = stable hash of `match_id` (+ `stage` for lifecycle, keyed by `application_id`) so a newer reminder replaces the older one; tag = push `collapse`.
+- **Delivery:** FCM **data-only, priority `high`** for N-01/N-04/N-05/critical lifecycle; `normal` for the rest. App builds the notification in `FirebaseMessagingService.onMessageReceived` (localised strings, actions, grouping) and posts `received` + `displayed` receipts (`POST /v1/me/delivery-receipts`). TTL: reminders `lastDate − now`; test 10 min.
 - **Actions** use `BroadcastReceiver` → WorkManager expedited job (API call), then replace the notification with a confirmation (no app open). Action labels ≤ 15 characters.
 - **Tap** → `PendingIntent` (FLAG_IMMUTABLE) to deep link (01 deep-link table) with `src=push&nid={template}`.
 - **No ads, sponsored lines or coaching promotions in any push, WhatsApp or SMS message** (free tier ads exist only in-app, 06 §J1).
@@ -117,7 +119,7 @@ Quick reply: `मिल गया` → server marks WA verified.
 आपकी फ़ीस: {{3}}
 पूरा ब्योरा, दस्तावेज़ और फ़ोटो का साइज़ ऐप में देखें।
 ```
-Button URL: `ब्योरा देखें` → `https://sarkarimatch.in/j/{{1}}?src=wa`
+Button URL: `ब्योरा देखें` → `https://sarkarimatch.in/j/{{match_id}}?src=wa` (URL-button variable, separate from body `{{1}}`)
 EN: "*New job — you're eligible* ✅ / {{1}} / Last date: *{{2}}* / Your fee: {{3}} / See documents and photo size in the app."
 
 **W-02 `sm_deadline_soon`** (R3, R1)
@@ -126,7 +128,7 @@ EN: "*New job — you're eligible* ✅ / {{1}} / Last date: *{{2}}* / Your fee: 
 {{2}} — आखिरी तारीख *{{3}}*
 अभी तक आपने ऐप में "फ़ॉर्म भर दिया" नहीं दबाया है।
 ```
-Buttons: URL `फ़ॉर्म की साइट खोलें` → official apply URL (tracked redirect `https://sarkarimatch.in/go/{{id}}`), quick reply `भर दिया`.
+Buttons: URL `फ़ॉर्म की साइट खोलें` → official apply URL via the tracked redirect `https://sarkarimatch.in/go/{{match_id}}`, quick reply `भर दिया`.
 
 **W-03 `sm_last_day`**
 ```
@@ -144,7 +146,7 @@ Buttons: URL `फ़ॉर्म की साइट खोलें`, quick rep
 {{3}}
 {{4}}
 ```
-`{{1}}` job · `{{2}}` stage headline ("एडमिट कार्ड आ गया") · `{{3}}` key date line ("परीक्षा: 12 फ़रवरी, सुबह 9 बजे") · `{{4}}` action line ("डाउनलोड करें और 2 प्रिंट रखें।"). Button URL `आधिकारिक लिंक`. DV variant `sm_dv_slot` adds "न जाने पर दोबारा मौका नहीं मिलेगा।".
+`{{1}}` job · `{{2}}` stage headline ("एडमिट कार्ड आ गया") · `{{3}}` key date line ("परीक्षा: 12 फ़रवरी, सुबह 9 बजे") · `{{4}}` action line ("डाउनलोड करें और 2 प्रिंट रखें।"). Button URL `आधिकारिक लिंक`; second button `ऐप में देखें` → `https://sarkarimatch.in/a/{{application_id}}?src=wa`. DV variant `sm_dv_slot` adds "न जाने पर दोबारा मौका नहीं मिलेगा।".
 
 **W-20 `sm_family_invite`**
 ```
@@ -155,11 +157,11 @@ Buttons: URL `स्वीकार करें` → `https://sarkarimatch.in/f
 
 **F-01..F-03 family alerts** (`sm_family_alert`): "*{{1}} के लिए ज़रूरी तारीख*\n{{2}} — {{3}}\n{{1}} को याद दिला दें।" (variables: first name, job, "कल आखिरी दिन" / "एडमिट कार्ड आ गया" / "DV 12 मार्च"). **F-09** `sm_family_removed` "अब आपको {{1}} के अलर्ट नहीं आएँगे।"
 
-**W-90 `sm_pro_ended`** (category **MARKETING**, sent once, only to users who opted into WhatsApp): "आपका Pro {{1}} को ख़त्म हुआ। WhatsApp अलर्ट रुक गए हैं। फिर से चालू करने के लिए: ऐप में ‘Pro’ देखें।" Button URL `Pro देखें`.
+**W-90 `sm_pro_ended`** — **not sent in v1** (decision 2026-11-19: no marketing-category WhatsApp; Pro/trial end is told in-app and by N-31/N-33). Kept for reference; founder may revisit. (Category **MARKETING**, would be sent once, only to users who opted into WhatsApp): "आपका Pro {{1}} को ख़त्म हुआ। WhatsApp अलर्ट रुक गए हैं। फिर से चालू करने के लिए: ऐप में ‘Pro’ देखें।" Button URL `Pro देखें`.
 
 **W-91** opt-out confirmation (free-form session reply within 24 h window, no template): "आपके WhatsApp अलर्ट बंद कर दिए गए। ऐप के अलर्ट चालू रहेंगे।"
 
-Inbound handling: `STOP`, `बंद`, `stop` → opt-out; `START` → re-opt-in (Pro only); anything else → auto-reply with help link (session message).
+Inbound handling: `STOP`, `बंद`, `रोकें` (case- and space-insensitive) → opt-out; `START` → re-opt-in (Pro only); anything else → auto-reply with help link (session message).
 
 ## 5. SMS fallback (P2)
 

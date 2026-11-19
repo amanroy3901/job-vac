@@ -97,8 +97,9 @@ PRD change of 2026-11-19: light native ads in the free tier only.
   impressions and sends no profile data to ad networks. **Profile attributes (category, PwD, DOB, domicile) are never
   passed as ad targeting keys.** Request **non-personalised ads** by default (`npa=1`). Personalised ads only with an
   explicit `ads_personalisation` consent purpose, if we ever want it. Default is off.
-- The advertising ID is collected by the SDK; declare it in the Play Data safety form and in the privacy notice under
-  processors (Google AdMob).
+- The app removes the `AD_ID` permission (frontend ads.md), so the advertising ID is not read. The SDK still
+  collects app-instance identifiers and diagnostics; declare those in the Play Data safety form and in the privacy
+  notice under processors (Google AdMob).
 - Content safety: block categories that mimic official notices or prey on aspirants (job-placement "guarantees",
   paid "sarkari form" agents, loans, gambling, dating) in the AdMob console. The server-side kill switch
   (`AppConfig.ads.enabled`) removes all ads within about 15 min if an abusive ad slips through.

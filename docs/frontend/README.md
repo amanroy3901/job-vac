@@ -113,38 +113,38 @@ flowchart TD
 
 Download ≤ 8 MB without ads / ≤ 10 MB with the ads SDK (PRD < 15 MB); cold start TTID ≤ 2.0 s on Galaxy A03-class 2 GB phones; feed jank < 5 %; notification action → Room < 100 ms. Details in performance-accessibility.md.
 
-## 5. Contract gaps (found while reconciling with docs/design/* and docs/api/* on 2026-11-19)
+## 5. Contract gaps
 
-Resolved during reconciliation (no action needed): phone OTP (backend added `sendOtp`/`verifyOtp`), family invitee S35 (`getFamilyInvite`/`accept`/`decline`), primary device B15 (`makeDevicePrimary` + `Device.primary`), outage S42 (`getHealth`), snooze "आज शाम" (`today_evening`), WhatsApp opt-in S33 (`use_verified_phone` + wa.me), ads gating (`AppConfig.ads`, `Entitlement.ads_enabled`), B01 "फ़ीस भी भर दी" (`MatchActionInput.fee_paid`).
+All gaps found while reconciling with `docs/design/*` and `docs/api/*` (G-02…G-18, plus the ones found in the
+cross-doc pass) are **resolved** as of 2026-11-19. The decision, and every file changed for it, is in
+[`../contract-alignment.md`](../contract-alignment.md). Summary for the app:
 
-Open:
+| ID | Resolution |
+| --- | --- |
+| G-02 trial | Opt-in. `applied` returns `paywall.variant=trial_offer`; B02 "14 दिन मुफ़्त शुरू करें" calls `startTrial`. No auto-start. |
+| G-03 ids | `/j/{match_id}` (per user), `/p/{post_id}` (shared), `/a/{application_id}`; S21 route arg is `matchId`. |
+| G-04 channels | Design IDs are canonical and sent as-is in `PushData.channel`: `critical, new_match, reminders, job_updates, digest, account`. |
+| G-05 apply URL | `apply_url`, `pdf_url` in the push payload. |
+| G-06 reasons | `not_interested_reasons[]`: `not_interested_in_post, location, not_prepared, already_employed, not_eligible, other`. |
+| G-08 rank/slot/id | Payload `reminder_id` (= `msg_id`), `kind`, `rank`; `NotificationPrefs.reminder_time` (default 19:00). |
+| G-09 B06 | Action `confirm_eligible {rule}`; `MatchSummary.user_confirmed_eligible`. |
+| G-10 digest (P1) | `InboxItem.digest {date, match_ids, inbox_ids}` + `PushData.digest_date`; render from Room. |
+| G-11 age (P1/P2) | Deferred: B14 via inbox `template=N-43` (P1); S43 + `GET /v1/me/age-chances` in P2. |
+| G-12 certificate (P1) | `RuleExplanation.rule=certificate`, `result=info`; `fix_field` for "जोड़ें". |
+| G-13 devices | `listDevices`. |
+| G-14 receipts | `listPurchases` (already in the spec). |
+| G-15 ads consent | `Consent.purpose=ads_personalisation` reserved, never requested in v1. |
+| G-16 mapping | Gender chip label "ट्रांसजेंडर" (`transgender`), skip → `null`; "पता नहीं" category → `category_unsure`; S05 "पास हो गया" → `completed`, "आखिरी साल / रिज़ल्ट बाकी" → `final_year`. |
+| G-17 listNotices | No P0 screen; used in P1 by B14. |
+| G-18 self-test | Client shows "अभी भी इंतज़ार…" after 60 s, final result at the server's 120 s timeout. |
 
-| ID | Between | Gap | Proposed resolution |
-| --- | --- | --- | --- |
-| G-02 | Design B02 ↔ API | Design B02 asks the user to **opt in** ("14 दिन मुफ़्त शुरू करें" / "अभी नहीं"); API **auto-starts** the trial on the first `applied` and returns `paywall.variant=trial_started`. | Pick one. Recommend: API returns `paywall.variant=trial_offer` without starting; client calls `startTrial` on the CTA (endpoint exists). Until decided, client shows B02 as "trial started" info when the API auto-starts. |
-| G-03 | Design routes ↔ API ids | Inventory uses `job/{jobId}`, `applied/{jobId}`, links `/j/{jobId}`, `/a/{jobId}`; API has user-specific `match_id`, `application_id` and shared `post_id`/`notice_id`. Share links (S46, referral) can't use a per-user `match_id`. | Define: `/j/{match_id}` for per-user WhatsApp/push links, `/a/{application_id}` for timelines, and a new `/p/{post_id}` for shared links (client falls back to `getMyEligibilityForPost`). Server WhatsApp templates must use these ids. |
-| G-04 | Design 05 ↔ API push contract | Channel IDs differ: design `critical, new_match, reminders, job_updates, digest, account`; API `deadline_critical, new_match, reminders, lifecycle, digest, system`. Channel IDs are permanent once shipped. | Adopt design IDs in the push `channel` field before release. Client maps both meanwhile (notifications.md §2). |
-| G-05 | Design 05 N-05 ↔ API push | "साइट खोलें" action needs the official apply URL; the payload has none. | Add `apply_url` (and `pdf_url`) to `match_new`/`deadline` payloads; client falls back to cached `match_detail.links`. |
-| G-06 | Design B03 ↔ API `not_interested_reason` | Design reasons: पोस्ट पसंद नहीं, जगह दूर है, तैयारी नहीं, पहले से नौकरी है, मैं योग्य नहीं हूँ (→ B05). API enum: `not_interested_in_post, location, salary, already_applied_elsewhere, other`. | Align enum to design: add `not_prepared`, `already_employed`; drop or hide `salary`/`already_applied_elsewhere`; "मैं योग्य नहीं" opens B05 (`reportMatch`). |
-| G-08 | Design 03 §0.2 ↔ API push/prefs | (a) No `rank` in push payload for the on-device cap/quiet-hours mirror; (b) no deterministic reminder id to dedupe FCM vs local-mirror reminders; (c) user "reminder time" (default 19:00, used by Rp/R3/R1 slots) is not in `NotificationPrefs`. | Add `rank` and `slot` (`R0, Rp, R3, R1, Rlast, …`) to the payload; make `msg_id` = `{match_id}:{slot}:{ist_date}` or add `reminder_key`; add `reminder_time` to `NotificationPrefs`. |
-| G-09 | Design B06 ↔ API actions | B06 "मैं योग्य हूँ — अलर्ट चालू रखें" (user confirms a check-yourself rule) has no action type. | Add action `confirm_eligible {rule}` (keeps reminders, logs for curation) or treat as `seen` and drop the button. |
-| G-10 | Design S44 / N-30 ↔ API | Digest screen `digest/{date}` has no content endpoint; inbox only has `kind=digest` items. | Either add `GET /v1/me/digests/{date}` or include `match_ids[]` in the digest inbox item; client renders from Room. |
-| G-11 | Design S43 + B14 ↔ API | Age-limit countdown ("2 मौके और") and age-crossed sheet have no data source (P2/P1). | Add `GET /v1/me/age-chances` or an `age_chances` block in sync. |
-| G-12 | Design S36 ↔ API | Per-job certificate validity verdict + renewal reminder (`ValidityBadge`) not in `MatchDetail`. | Add `certificate` rule results to `why[]` (rule enum has no `certificate`) or a `certificate_checks[]` field. |
-| G-13 | Design S38 ↔ API | "linked devices (count)" — no device list endpoint. | Add `GET /v1/me/devices` (also useful for B15 device name). |
-| G-14 | Design S32 ↔ API | "receipt list" — no purchases/orders list endpoint. | Add `GET /v1/me/purchases` or drop from S32 (Play shows receipts). |
-| G-15 | Ads ↔ API consents | No consent purpose for personalised ads; design says non-personalised by default. | Add `ads_personalisation` to `Consent.purpose` before ever enabling personalised ads. |
-| G-16 | Design S09 ↔ API | Gender option "अन्य" vs enum `transgender`; design S05 "passed / result awaited" vs `completed / final_year / appearing`. | Mapping only (client maps); confirm wording with design (legal term is "ट्रांसजेंडर"). |
-| G-17 | API ↔ inventory | `listNotices` (browse all notices) has no screen. | Fine to leave unused in v1; or add a P1 "सभी नौकरियाँ" screen. |
-| G-18 | Design S16 ↔ API | Design waits 60 s for the test push; API times out at 120 s. | Client shows "अभी भी इंतज़ार…" after 60 s and the final result at 120 s. |
-
-Every screen in `01-screen-inventory.md` (S01–S46, B01–B15, D01–D09, O01–O10) is mapped in navigation.md §3; every repository call maps to an operationId in data-layer.md §8, except the items above.
+Every screen in `01-screen-inventory.md` (S01–S46, B01–B15, D01–D09, O01–O10) is mapped in navigation.md §3; every repository call maps to an operationId in data-layer.md §8.
 
 ## 6. Open questions
 
-1. Launch state(s) — affects pinned states in S08, Hindi copy review and OEM mix for QA.
-2. Domain for App Links (`sarkarimatch.in` placeholder) and who hosts `assetlinks.json`.
-3. Trial semantics (G-02) and whether Play user-choice billing will be used (UPI in production).
+1. Launch state(s): working assumption UP + Bihar; S08 pins `ReferenceBundle.pinned_states`, so only QA scope and Hindi copy review depend on the answer.
+2. Domain for App Links (`sarkarimatch.in` placeholder, one build constant); `assetlinks.json` is served by Firebase Hosting (backend).
+3. Whether Play user-choice billing will be used (UPI in production). Trial semantics are settled (opt-in, G-02).
 4. Ads: final SDK version/size measurement; whether ads are on from day 1 or after the validation test (`config.ads.enabled`).
 5. Is a Wear/tablet layout ever needed? (Assumed no; content max width 600 dp only.)
 6. Minimum supported Play services version for App Check (Play Integrity) on very old devices — fallback behaviour if App Check fails.

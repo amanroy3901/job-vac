@@ -33,8 +33,8 @@ the schema, and their printed DOB windows reproduce from the formulas in §3.
 
 | Attribute | Derivation |
 |---|---|
-| `gender` | as entered |
-| `cat_eff` | `category`, except `obc` with `obc_non_creamy_layer=false` → `gen` for relaxations and fees. Unknown NCL → treated as OBC, with an NCL advisory line |
+| `gender` | as entered; `null` = skipped in S09 (design "छोड़ें") |
+| `cat_eff` | `category`, except `obc` with `obc_non_creamy_layer=false` → `gen` for relaxations and fees. Unknown NCL → treated as OBC, with an NCL advisory line. `category_unsure=true` (S07 "पता नहीं") → `gen`, and a post that fails only because of the general limit/category but would pass for OBC/SC/ST becomes `check_yourself` ("? वर्ग पता नहीं — OBC/SC/ST हैं तो उम्र में छूट मिल सकती है", design SC-02) |
 | `domicile` | state code |
 | `pwd`, `pwd_type` | as entered |
 | `esm`, `esm_service_months` | null service months while `esm=true` → ESM rows are `check_yourself` |
@@ -98,14 +98,15 @@ The best result across alternatives wins (pass > check_yourself > fail).
 |---|---|---|---|
 | `required_attributes` (stage `at_application`) | `extras_declared` and none of the codes held | not declared | held |
 | `domicile.required_states` | domicile not listed | — | listed / null |
-| `gender.allowed` | not listed | — | listed |
+| `gender.allowed` | not listed | gender `null` (skipped) | listed |
 | `category.allowed` | `cat_eff` not listed | — | listed |
 | `pwd.eligible=false` | user `pwd` | — | not PwD |
 | `pwd.suitable_types` | user type not listed | type unknown | listed |
 | `ex_serviceman.eligible=false` | user ESM | — | not ESM |
 | `marital_status.allowed` | known and not listed | unknown | listed |
 | `other_conditions` (`check_yourself` severity, `when` matches) | — | always | — |
-| `physical`, `other_conditions` (advisory), `required_attributes` (non-application stage) | — | advisory line only | — |
+| `physical`, `other_conditions` (advisory), `required_attributes` (non-application stage) | — | advisory line only (`result=info`) | — |
+| `other_conditions` code `cert_fy` (P1, certificate validity) | — | certificate FY unknown | advisory `rule=certificate, result=info` when the FY differs |
 
 **Verdict** = `not_eligible` if any hard rule fails; else `check_yourself` if any hard rule is `check_yourself`; else
 `eligible`. Only `eligible` and `check_yourself` are stored as matches.

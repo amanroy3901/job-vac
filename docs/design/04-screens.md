@@ -109,7 +109,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 ### S09 More (6/6)
 - Q: **"कुछ और जानकारी"** / *"A few more details"* · helper "इनसे कुछ नौकरियाँ खुलती या बंद होती हैं" / *"Some jobs depend on these"*.
 - Three grouped blocks (each `titleSmall` label + `ChipGroup` single-select, chips 40 dp tall with `minimumInteractiveComponentSize`), each with right-aligned `TextButton` "छोड़ें":
-  1. `wc` लिंग / Gender: पुरुष · महिला · अन्य
+  1. `wc` लिंग / Gender: पुरुष · महिला · ट्रांसजेंडर (Male · Female · Transgender — the legal term used in notices; API `transgender`; "छोड़ें" → `null`)
   2. `accessible` दिव्यांग (PwD)? नहीं · हाँ → reveals: type chips (चलने-फिरने में · देखने में · सुनने में · दूसरा) + "40% या ज़्यादा?" हाँ/नहीं
   3. `military_tech` पूर्व सैनिक (Ex-servicemen)? नहीं · हाँ → reveals "कितने साल सेवा?" numeric field
 - Primary button label here: "मेरी नौकरियाँ देखें" / *"Show my jobs"*.
@@ -225,7 +225,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 - Pull-to-refresh (`PullToRefreshBox`) → sync; snackbar "अपडेट हो गया" only if changes.
 
 **A11y:** each card: "SSC GD कांस्टेबल भर्ती 2027. आप योग्य हैं. आज आखिरी दिन, रात 11 बजे तक. फ़ीस 100 रुपये." + custom actions "फ़ॉर्म भर दिया", "बाद में याद दिलाएँ", "रुचि नहीं", "पूरा ब्योरा खोलें". Section headers `heading()`.
-**Analytics:** `home_view{n_today, n_soon, n_new, n_pending, n_check, ad_slot}`, `card_tap{job_id, section}`, `card_action{action, section}`, `home_refresh`.
+**Analytics:** `home_view{n_today, n_soon, n_new, n_pending, n_check, ad_slot}`, `card_tap{match_id, section}`, `card_action{action, section}`, `home_refresh`.
 
 ---
 
@@ -285,7 +285,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 
 **States:** *loading* = hero skeleton + 2 card skeletons; *not found* = EmptyState `search_off` "यह नौकरी अब उपलब्ध नहीं है" + "मेरी नौकरियाँ देखें"; *expired* = hero `deadline.closed` "आखिरी तारीख निकल गई (21 नवं)" + "क्या आपने यह फ़ॉर्म भरा था? [हाँ, भरा था]"; *cancelled* = error banner "यह भर्ती रद्द हो गई है" + notice link; *no longer eligible* = ✗ chip + B07 diff + "मुझे लगता है मैं अब भी योग्य हूँ" (→B05).
 **A11y:** hero merged: "SSC GD कांस्टेबल भर्ती 2027. आप योग्य हैं. 2 दिन बाकी, आखिरी तारीख 21 नवंबर रात 11 बजे." Rule lines each a node: "सही: उम्र, …". Sticky bar buttons labelled with job name for clarity: contentDescription "SSC GD का फ़ॉर्म भर दिया".
-**Analytics:** `job_view{job_id, verdict, days_left, src}`, `pdf_open`, `apply_site_open`, `apply_site_return{mins}`, `rule_add_info{field}`, `wyn_copy{field}`, `doc_checklist_tick`, `job_share`.
+**Analytics:** `job_view{match_id, verdict, days_left, src}`, `pdf_open`, `apply_site_open`, `apply_site_return{mins}`, `rule_add_info{field}`, `wyn_copy{field}`, `doc_checklist_tick`, `job_share`.
 
 ### B01 Confirm Applied
 - Sheet title `titleLarge`: **"क्या आपने फ़ॉर्म सबमिट कर दिया?"** / *"Did you submit the form?"* · body "SSC GD कांस्टेबल भर्ती 2027" (`titleSmall`).
@@ -300,19 +300,19 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
   - Title **"इस फ़ॉर्म को आखिर तक ट्रैक करें?"** / *"Track this application to the end?"*
   - Body "एडमिट कार्ड, परीक्षा की तारीख बदलने, आंसर की, रिज़ल्ट और DV की सूचना — सब समय पर।" 
   - Mini timeline (5 dots with labels: एडमिट कार्ड · परीक्षा · आंसर की · रिज़ल्ट · DV).
-  - Primary (filled `primary`): **"14 दिन मुफ़्त शुरू करें"** / *"Start 14 days free"* · caption "कोई पैसा नहीं लगेगा, कार्ड नहीं चाहिए" · text "अभी नहीं".
+  - Primary (filled `primary`): **"14 दिन मुफ़्त शुरू करें"** / *"Start 14 days free"* · caption "कोई पैसा नहीं लगेगा, कार्ड नहीं चाहिए" · text "अभी नहीं". The tap starts the trial (`POST /v1/me/trial`) → B08; "अभी नहीं" leaves the trial available (S30, next B02 after 7 days).
 - Variant **plans** (trial used): same header; two compact `PlanOptionCard`s (₹199/साल — "₹17/महीना · सबसे सस्ता" badge; ₹49/सीज़न — "4 महीने") + primary "₹199 में Pro लें" → S30 with plan preselected.
 - ev `paywall_view{variant}`, `paywall_cta{cta}`.
 
 ### B03 Not interested
 - Title **"इसमें रुचि नहीं?"** · body "हम इसकी याद नहीं दिलाएँगे। (वैकल्पिक) वजह बताएँ — इससे आगे बेहतर नौकरियाँ दिखाएँगे।"
-- `FilterChip`s (multi): पोस्ट पसंद नहीं · जगह दूर है · तैयारी नहीं है · पहले से नौकरी है · मैं योग्य नहीं हूँ (→ also opens B05 after).
+- `FilterChip`s (multi): पोस्ट पसंद नहीं · जगह दूर है · तैयारी नहीं है · पहले से नौकरी है · मैं योग्य नहीं हूँ (→ also opens B05 after). API values in the same order: `not_interested_in_post`, `location`, `not_prepared`, `already_employed`, `not_eligible`.
 - Primary "छुपाएँ" / *"Hide"* · text "रद्द करें".
 - After: card removed, snackbar "छुपा दिया · वापस लाएँ" (6 s).
 - ev `job_not_interested{reasons}`, `undo_hide`.
 
 ### B04 Snooze
-- Title **"कब याद दिलाएँ?"** · options as `RadioListItem` (see SC-12) with computed dates: "कल सुबह 9 बजे (20 नवं)" · "आखिरी तारीख से 2 दिन पहले (19 दिसं)" · "इस हफ़्ते याद न दिलाएँ (26 नवं तक)". Note `bodySmall`: "आखिरी दिन और उससे एक दिन पहले की याद हमेशा आएगी।"
+- Title **"कब याद दिलाएँ?"** · options as `RadioListItem` (see SC-12) with computed dates: ≥ 4 days left "कल सुबह 9 बजे (20 नवं)" · "आखिरी तारीख से 2 दिन पहले (19 दिसं)"; 2–3 days left "कल सुबह 9 बजे (20 नवं)" · "आज शाम 7 बजे" (prototype frame). Note `bodySmall`: "आखिरी दिन और उससे एक दिन पहले की याद हमेशा आएगी।"
 - Primary "ठीक है".  ≤ 1 day variant: info only.
 - ev `job_snoozed{option}`.
 
@@ -324,8 +324,8 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 
 ### B06 Check-yourself
 - Title **"यह बात ख़ुद जाँच लें"** · rule card (warning container): "? कंप्यूटर सर्टिफ़िकेट: नोटिस में ‘CCC या समकक्ष’ लिखा है। आपने यह जानकारी नहीं दी।"
-- Actions (vertical, full width): primary "मेरे पास है — प्रोफ़ाइल में जोड़ें" (→S27) · outlined "PDF खोलें (पेज 7)" · text "मैं योग्य नहीं — छुपाएँ".
-- For notice-ambiguity variant: primary "मैंने जाँच लिया — मैं योग्य हूँ".
+- Actions (vertical, full width): primary "मेरे पास है — प्रोफ़ाइल में जोड़ें" (→S27 for the rule's `fix_field`) · outlined "PDF खोलें (पेज 7)" · text "मैं योग्य नहीं — छुपाएँ" (`not_interested` with reason `not_eligible`).
+- For notice-ambiguity variant (no `fix_field`): primary "मैंने जाँच लिया — मैं योग्य हूँ" → action `confirm_eligible {rule}`; verdict stays "ख़ुद जाँचें", the "?" prompt is hidden, reminders continue.
 
 ### B07 Corrigendum details
 - Title **"नोटिस में बदलाव"** · date "18 नवंबर 2026 को" · diff rows: label + `old` (strikethrough, onSurfaceVariant) → `new` (SemiBold): "आखिरी तारीख: ~~14 नवं~~ → **21 नवं**". Effect row with icon: "आप पर असर: कोई नहीं — आप अब भी योग्य हैं ✓" / "आप पर असर: अब आप योग्य नहीं (उम्र सीमा 27 → 25)".
@@ -418,7 +418,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
   - **साल भर — ₹199** · sub "सिर्फ़ ₹17/महीना" · badge (tertiary filled) "सबसे सस्ता" · default selected.
   - **एक सीज़न — ₹49** · sub "4 महीने · एक भर्ती के मौसम के लिए".
   - Prices from `ProductDetails.formattedPrice`; per-month computed.
-- **Primary** (full-width filled `Button`, `primary` colour — the one CTA blue across the app; Pro saffron is used for badges/icons only) **"₹199 में Pro लें"** / *"Get Pro for ₹199"*; trial-eligible users: **"14 दिन मुफ़्त, फिर ₹199"** (only if store offer configured; else trial is server-side from B02).
+- **Primary** (full-width filled `Button`, `primary` colour — the one CTA blue across the app; Pro saffron is used for badges/icons only) **"₹199 में Pro लें"** / *"Get Pro for ₹199"*; trial-eligible users additionally see a `TextButton` **"14 दिन मुफ़्त आज़माएँ"** (calls `POST /v1/me/trial`; no Play free-trial offer exists, so the buy button never mentions a trial).
 - Secondary row: "UPI से भरें" (only `upi` flavour) · `TextButton` "पहले ख़रीदा था? वापस लाएँ".
 - Legal `bodySmall`: "Google Play से भुगतान। साल वाला प्लान अपने-आप रिन्यू होगा — Play Store में कभी भी बंद करें। मुफ़्त अलर्ट हमेशा मुफ़्त रहेंगे।" 
 - **States:** products loading → plan skeletons, button disabled; billing unavailable → error card "Google Play से भुगतान अभी नहीं हो पा रहा" + retry; offline → button disabled "भुगतान के लिए इंटरनेट चाहिए".
@@ -440,7 +440,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 - **Top bar:** back · "WhatsApp अलर्ट".
 - `WhatsAppPreviewBubble`: a static chat bubble showing W-03 sample text ("*आज आखिरी दिन* — SSC GD कांस्टेबल 2027…").
 - Explanation `bodyLarge`: "सिर्फ़ ज़रूरी सूचनाएँ: नई नौकरी, आखिरी 3 दिन, एडमिट कार्ड, DV। एक सीज़न में 30 से ज़्यादा नहीं।"
-- Number row: "इस नंबर पर: +91 98xxx xx210" + `TextButton` "दूसरा नंबर".
+- Number row: "इस नंबर पर: +91 98xxx xx210" + `TextButton` "दूसरा नंबर" (opens WhatsApp with a prefilled "START {code}" message to send from that number; S33 shows "WhatsApp में भेजें दबाएँ…" and polls until active, API §3).
 - Consent `Checkbox` (required, unchecked by default): "मैं Sarkari Match से WhatsApp पर अलर्ट पाने के लिए सहमत हूँ। ‘STOP’ भेजकर कभी भी बंद कर सकता/सकती हूँ।"
 - Primary "WhatsApp अलर्ट चालू करें". After: status card "चालू ✓ — एक टेस्ट मैसेज भेजा है, मिला?" [हाँ] [नहीं].
 - Active state: `Switch` row "WhatsApp अलर्ट" on; off → D05.

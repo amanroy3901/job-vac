@@ -190,8 +190,9 @@ exists) use whichever is live first; a BSP with a free or low tier is acceptable
 ### ADR-06: Payments: Play Billing as primary, server-side truth
 
 There is one subscription product `pro` with base plans `season-4m-prepaid` (₹49, non-renewing prepaid) and
-`yearly-autorenew` (₹199). The 14-day trial is **server-granted** at first Applied (no Play free-trial offer, because
-that needs a payment method). Entitlement is computed only on the server from `entitlement_grant` rows (trial, Play,
+`yearly-autorenew` (₹199). The 14-day trial is **server-granted and opt-in**: offered right after the first Applied
+(B02), started when the user taps "14 दिन मुफ़्त शुरू करें" (`POST /v1/me/trial`). There is no Play free-trial offer,
+because that needs a payment method. Entitlement is computed only on the server from `entitlement_grant` rows (trial, Play,
 UPI, referral, promo). See [payments-and-entitlements.md](./payments-and-entitlements.md).
 
 ### ADR-07: Extraction: LLM-assisted, human-verified, versioned
@@ -215,8 +216,8 @@ included) and `AppConfig.ads` (global kill switch, allowed placements, minimum a
 sessions). This costs nothing at any scale. The kill switch covers a bad SDK release, a policy incident, or an ad
 that looks like an official notice. Ad content policy: block the education/test-prep look-alike, gambling, loans and
 dating categories in the AdMob console, plus a manual blocklist of advertiser URLs that mimic govt portals. For
-privacy, the Google Mobile Ads SDK collects the advertising ID. That has to be disclosed in the Play Data safety form
-and in our DPDP notice; consent is covered in [security-privacy.md](./security-privacy.md#7-ads). An ads-free build
+privacy, the app removes the `AD_ID` permission and requests only non-personalised ads, so the advertising ID is not read; the SDK still collects app-instance identifiers and diagnostics, which have to be disclosed in the Play Data safety form
+and in our DPDP notice ([frontend ads.md](../frontend/ads.md)); consent is covered in [security-privacy.md](./security-privacy.md#7-ads). An ads-free build
 flavour stays possible.
 
 ### ADR-09: Single deployable, three roles
@@ -263,7 +264,9 @@ pages, not an SPA.
 
 ## 7. Open questions
 
-1. **Launch states.** UP is assumed in the examples. The state set determines the source watchers, the Hindi
+1. **Launch states.** Working assumption (shared with design): **UP + Bihar**, UP watchers in P0 week 5 and Bihar
+   (BPSC, BSSC, CSBC) before launch only if curation stays ≤ 30 min/notice, else in P1. S08 pins whatever
+   `ReferenceBundle.pinned_states` says. Founder to confirm; the set determines the source watchers, the Hindi
    legacy-font OCR share and the curation load.
 2. **Under-18 users** (10th-pass aspirants of 17). The DPDP Act requires verifiable parental consent. Proposal: the
    app is for 18+; a DOB under 18 shows a limited, no-account eligibility preview only. Needs a legal check.

@@ -108,14 +108,17 @@ WhatsApp test). Timeline *viewing* stays free (`alerts_locked`).
 
 ## 5. 14-day trial
 
-- **Server-granted** at the first `applied` action (PRD: "14 days of Pro from first Applied"), or explicitly via
-  `POST /v1/me/trial`. There is no Play free-trial offer, so no payment method is needed. This matters for Indian
+- **Offered at the first Applied, started by the user.** The first `applied` returns `paywall.variant=trial_offer`;
+  B02 "14 दिन मुफ़्त शुरू करें" calls `POST /v1/me/trial`, which grants 14 days from the tap (also available from S30
+  while unused). PRD "Trial: 14 days of Pro from first Applied" is read as: the offer appears at the first
+  Applied, the clock starts on the user's tap. Lifecycle alerts for applications made earlier are backfilled.
+  There is no Play free-trial offer, so no payment method is needed. This matters for Indian
   users without cards or UPI mandates.
 - One per account (unique index). Reinstall farming creates a new anonymous account; the exposure is small because
   the costly parts (WhatsApp) need a verified number, and the WhatsApp quota is keyed by `phone_hmac` per 120 days,
   not by account.
-- Trial-end: B09 sheet on days 12–14 plus one push on day 13 ("your 3 applications' next stages: …"). Never via
-  WhatsApp templates (that would be marketing).
+- Trial-end: B09 sheet on days 12–14 plus one push N-31 on day 12 ("Pro ट्रायल 2 दिन में ख़त्म — आपके 3 फ़ॉर्म की
+  अगली सूचना: …", `account` channel). Never via WhatsApp templates (that would be marketing; design W-90 is not sent).
 
 ## 6. UPI payment links (WhatsApp test and non-Play channels)
 

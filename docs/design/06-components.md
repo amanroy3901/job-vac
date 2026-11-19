@@ -11,7 +11,7 @@ enum class RuleStatus { Pass, Unknown, Fail, Info }
 enum class StageStatus { Done, Current, Upcoming, Changed, Missed }
 @Immutable data class RuleLineUi(val status: RuleStatus, val label: String, val text: String, val fixField: ProfileField? = null)
 @Immutable data class MatchCardUi(
-  val jobId: String, val title: String, val org: String, val posts: String?,
+  val matchId: String, val title: String, val org: String, val posts: String?,
   val verdict: Verdict, val deadline: DeadlineUi, val feeText: String, val qualificationText: String,
   val topRule: RuleLineUi, val isNew: Boolean, val snoozedUntil: String?, val isChanged: Boolean,
 )

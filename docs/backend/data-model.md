@@ -61,7 +61,7 @@ Infrastructure tables (not drawn): `otp_session`, `idempotency_key`, `job`, `ale
 | Only `eligible`/`check_yourself` stored in `match` | Not-eligible pairs would be about 80% of rows for no use; "why not" is computed on demand. |
 | `reminder_state` separate from `match` | Hot, frequently updated scheduler row with a partial index on `next_due_at`; keeps `match` rows stable. |
 | `alert` (logical message = inbox row) vs `delivery` (one per channel attempt) | One reminder can go to push, then WhatsApp, then family: one inbox row with per-channel status icons (S24). |
-| Deterministic `alert.id` (`r:{match}:{kind}:{YYYYMMDD}`, `n:{match}`, `l:{event}:{application}`) + `alert_dedupe` | Idempotent planning: re-running a tick or a corrigendum never double-sends. The app uses the same id to dedupe its local mirror alarm (frontend gap G-08). |
+| Deterministic `alert.id` (`r:{match}:{kind}:{YYYYMMDD}`, `n:{match}`, `l:{event}:{application}`) + `alert_dedupe` | Idempotent planning: re-running a tick or a corrigendum never double-sends. The app uses the same id (push `reminder_id`) to dedupe its local mirror alarm. |
 | `alert`/`delivery` partitioned monthly | Biggest tables (about 25 rows per active user per month); retention = drop partition. |
 | `entitlement_grant` rows → `user_entitlement` materialized | Several overlapping sources (trial, Play, UPI, referral, promo); features read one row. |
 | Global `sync_seq` → `change_seq` on syncable rows + `sync_tombstone` | Cheap delta sync: `WHERE user_id=$1 AND change_seq > $since` per table, using `(user_id, change_seq)` indexes. The token encodes the max seq. |
@@ -106,7 +106,7 @@ Infrastructure tables (not drawn): `otp_session`, `idempotency_key`, `job`, `ale
 SMS inbox (OTP autofill uses the SMS Retriever/User Consent API, not READ_SMS).
 
 **Ads (free tier, PRD change 2026-11-19):** the server stores no advertising ID or ad events. The Google Mobile Ads
-SDK on the device processes the advertising ID; that is disclosed in the privacy notice and the Play Data safety form
+SDK runs on the device; the app removes the `AD_ID` permission and requests only non-personalised ads, so the advertising ID is not read; the SDK still collects app-instance identifiers and diagnostics, which are disclosed in the privacy notice and the Play Data safety form
 (see [security-privacy.md](./security-privacy.md#7-ads)).
 
 ## 5. Deletion and export flows

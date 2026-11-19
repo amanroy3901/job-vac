@@ -13,20 +13,30 @@ Module: `:core:notifications` (channels, builder, receiver, FCM service, local s
 
 Contract owner: backend, `docs/api/README.md` §10. **All pushes are data-only** (no `notification` block). With a `notification` payload Android would render it itself while the app is in background, and we would lose action buttons, the in-app language choice, quiet hours, local dedupe and receipts. Data messages reach `onMessageReceived` in every app state as long as the process can be started. The server uses `priority=high` only for messages that always produce a visible notification (FCM deprioritises apps whose high-priority messages show nothing).
 
+Full schema: `PushData` in `openapi.yaml` (all values are strings).
+
 | key | example | device use |
 | --- | --- | --- |
-| `type` | `match_new` · `reminder` · `deadline` · `extension` · `corrigendum` · `lifecycle` · `digest` · `clash` · `certificate` · `self_test` · `sync` | template, actions, target screen. **Unknown → treat as `sync`** |
-| `msg_id` | `d_01JD…` | dedupe key (also vs local mirror) and `message_id` in receipts |
-| `match_id` / `application_id` / `notice_id` | | deep-link target + action target |
+| `type` | `match_new` · `reminder` · `deadline` · `extension` · `corrigendum` · `cancelled` · `lifecycle` · `digest` · `clash` · `certificate` · `account` · `self_test` · `ping` · `sync` | template, actions, target screen. **Unknown → treat as `sync`** |
+| `msg_id` | `d_01JD…` | dedupe key and `message_id` in receipts |
+| `reminder_id` | `r:m_01JD…:d_minus_1:20260731` | deterministic for scheduled reminders (= `msg_id`); same id as `next_reminder_id` / `reminder_plan[].reminder_id`, so the local mirror dedupes exactly |
+| `kind`, `rank` | `d_minus_1`, `2` | design slot (R1) and cap rank for `DeliveryGate` (§6) |
+| `template` | `N-04` | analytics `nid` |
+| `match_id` / `post_id` / `application_id` / `notice_id` / `event_id` / `stage` | | deep-link target + action target |
+| `link` | `sarkarimatch://job/m_01JD…?src=push` | content intent |
 | `title_hi`, `title_en`, `body_hi`, `body_en` | | pick by in-app locale; fall back to `hi` |
 | `priority` | `high` / `normal` | |
-| `channel` | `deadline_critical` · `new_match` · `reminders` · `lifecycle` · `digest` · `system` | mapped to a device channel (table §2); unknown → `reminders` |
-| `actions` | `applied,not_interested,snooze` | which buttons to add |
-| `last_date` | `2026-08-01` | "2 दिन बाकी" chip; also `setTimeoutAfter` |
+| `channel` | `critical` · `new_match` · `reminders` · `job_updates` · `digest` · `account` | device channel ID (§2); unknown → `reminders` |
+| `critical` | `1` | lifecycle on `critical` |
+| `actions` | `applied,snooze` | which buttons to add (`applied`, `snooze`, `not_interested`, `open_site`, `view`) |
+| `last_date`, `last_date_time` | `2026-08-01`, `23:00` | "2 दिन बाकी" chip; also `setTimeoutAfter` |
+| `apply_url`, `pdf_url` | official URLs | "साइट खोलें" (N-05) |
 | `collapse` | `m_01JD…` | **notification tag**, so a newer reminder replaces the older one for the same match |
+| `digest_date` | `2026-11-19` | digest (P1) → S44 |
+| `test_id` | | self-test |
 | `sync` | `1` | enqueue a delta sync after showing |
 
-`type=sync` is silent. `type=self_test` carries `test_id` and shows a low-importance "अलर्ट काम कर रहे हैं ✓" notification on `critical` (design N-41).
+`type=sync` and `type=ping` are silent (`ping` only posts a `received` receipt). `type=self_test` carries `test_id` and shows N-41 "टेस्ट सूचना ✓" on `critical`, so the test proves heads-up delivery.
 
 ```kotlin
 @AndroidEntryPoint
@@ -70,16 +80,16 @@ class PushHandler @Inject constructor(
 
 ## 2. Channels
 
-Channel IDs are permanent once shipped, so they must be agreed **before the first release**. Design (`05-notifications.md §1`) and backend (`channel` field, API README §10) currently use **different IDs** (Contract gap G-04). The client creates the **design's** channel set (it defines importance, sound and lock-screen behaviour) and maps the payload's `channel` value through a table, so either backend naming works:
+Channel IDs are permanent once shipped. **Canonical set (agreed 2026-11-19, design `05-notifications.md §1`, API `PushData.channel`):** `critical`, `new_match`, `reminders`, `job_updates`, `digest`, `account`. The server sends the device channel ID directly in `channel`; no mapping table.
 
-| Device channel ID (design) | Name (hi / en) | Importance | Lock screen | Payload `channel` values mapped here | Used for |
+| Channel ID | Name (hi / en) | Importance | Lock screen | Push `type`s | Used for |
 | --- | --- | --- | --- | --- | --- |
-| `critical` | आखिरी तारीख और ज़रूरी सूचना / Last dates & critical | HIGH (heads-up), vibrate `[0,250,150,250]` | PUBLIC | `critical`, `deadline_critical`, critical `lifecycle` (`LifecycleEvent.critical=true`) | N-04 (1 day before), N-05 (last day), critical lifecycle (admit card, DV slot), self-test |
-| `new_match` | नई नौकरी / New job matches | HIGH | PUBLIC | `new_match` | N-01, N-01b |
-| `reminders` | याद दिलाना / Reminders | DEFAULT | PUBLIC | `reminders` | N-02 every-3-days, N-03 (3 days before), action confirmations |
-| `job_updates` | नोटिस में बदलाव / Notice changes | DEFAULT | PUBLIC | `job_updates`, non-critical `lifecycle` | extension, corrigendum, answer key, result, clash, certificate |
+| `critical` | आखिरी तारीख और ज़रूरी सूचना / Last dates & critical | HIGH (heads-up), vibrate `[0,250,150,250]` | PUBLIC | `deadline`, `lifecycle` with `critical=1`, `self_test` | N-04 (1 day before), N-05 (last day), critical lifecycle (admit card, reschedule, DV slot), N-41 self-test |
+| `new_match` | नई नौकरी / New job matches | HIGH | PUBLIC | `match_new`, newly-eligible `corrigendum` | N-01, N-01b, N-11c |
+| `reminders` | याद दिलाना / Reminders | DEFAULT | PUBLIC | `reminder` | N-02 every-3-days, N-03 (3 days before), snooze due, action confirmations |
+| `job_updates` | नोटिस में बदलाव / Notice changes | DEFAULT | PUBLIC | `extension`, `corrigendum`, `cancelled`, non-critical `lifecycle`, `clash`, `certificate` | N-10–N-13, N-20, N-23–N-26, N-28, N-29 |
 | `digest` | रोज़ का सारांश / Daily digest | LOW, silent | PUBLIC | `digest` | N-30 |
-| `account` | अकाउंट और Pro / Account & Pro | LOW | PRIVATE | `account`, `system` | trial, payment, primary device (B15), WhatsApp status, expedited-work FGS on API < 31 |
+| `account` | अकाउंट और Pro / Account & Pro | LOW | PRIVATE | `account` | N-31–N-33, N-40, N-42–N-46, primary device (B15), expedited-work FGS on API < 31 |
 
 Unknown `channel` → `reminders`. Channels are created on every app start (idempotent, cheap); names follow the app language and are re-created with the same IDs on language switch.
 
@@ -99,11 +109,11 @@ SSC CGL 2026 — आप योग्य हैं ✓
 - `setStyle(BigTextStyle)` with the "why you match" first line and the fee for *their* category.
 - Small icon monochrome vector; no large icon bitmap (saves memory and APK).
 - `setOnlyAlertOnce(true)` when updating an existing match notification.
-- Tag = `match_id`, id = constant per type. A reminder for the same match **replaces** the previous one instead of stacking.
-- `setGroup("matches")` + a summary notification when ≥ 2 match notifications are visible (Android 7+ bundles automatically, but OEM skins need the explicit summary).
+- Tag = payload `collapse` (`match_id`), id = constant per type. A reminder for the same match **replaces** the previous one instead of stacking.
+- `setGroup("jobs")` + a summary notification when ≥ 2 match notifications are visible (Android 7+ bundles automatically, but OEM skins need the explicit summary).
 - `setCategory(CATEGORY_REMINDER)`; `setTimeoutAfter` = end of last date (IST) so stale reminders disappear.
 - Footer text: "आधिकारिक सरकारी ऐप नहीं" is shown on the detail screen, not in the notification (length). The source link is in the detail.
-- Content intent: `sarkarimatch://job/{jobId}?src=push&push_id=…` (route S21 `job/{jobId}`; `sarkarimatch://match/{id}` kept as an alias) via `PendingIntent.getActivity` with `TaskStackBuilder` so Back goes to the Matches feed (see navigation.md).
+- Content intent: payload `link`, e.g. `sarkarimatch://job/{match_id}?src=push&msg=…&nid=N-04` (route S21 `job/{matchId}`; `sarkarimatch://match/{id}` kept as an alias) via `PendingIntent.getActivity` with `TaskStackBuilder` so Back goes to the Matches feed (see navigation.md).
 
 ### Actions (per design templates N-01…N-05)
 
@@ -120,9 +130,9 @@ The payload's `actions` list decides which buttons appear; labels ≤ 15 charact
 | Action | Behaviour |
 | --- | --- |
 | भर दिया / Applied | broadcast `ACTION_APPLIED` → marks directly (no B01 confirm); notification replaced (same ID, `reminders`, `setTimeoutAfter(10 s)`) by "✓ दर्ज हो गया: {job}" + free/Pro line; B02 paywall moment is queued for the next app open. |
-| बाद में / Later | broadcast `ACTION_SNOOZE` with default `tomorrow` (09:00 IST) or `today_evening` when ≤ 2 days are left; replaced by "ठीक है — कल सुबह 9 बजे फिर याद दिलाएँगे". "2 days before last date" is chosen in-app (B04). |
+| बाद में / Later | broadcast `ACTION_SNOOZE` with `tomorrow` (09:00 IST); replaced by "ठीक है — कल सुबह 9 बजे फिर याद दिलाएँगे". The other options ("2 days before last date" when ≥ 4 days are left, `today_evening` 19:00 when 2–3 days are left) are chosen in-app (B04). N-04/N-05 have no snooze button. |
 | रुचि नहीं / Not interested | broadcast `ACTION_NOT_INTERESTED`; replaced by "छुपा दिया: {job}" with a **वापस लाएँ** action (`ACTION_UNDO`) for 10 s → deletes the pending action or enqueues `undo`. |
-| साइट खोलें / Open apply site | `PendingIntent.getActivity` (no trampoline) to a tiny transparent `ApplySiteActivity` that reads the apply URL from the cached `match_detail.links` (prefetched by sync) and fires `ACTION_VIEW`; if not cached, opens S21. Logs `apply_site_open{src=push}`. (The payload has no apply URL — gap G-05.) |
+| साइट खोलें / Open apply site | `PendingIntent.getActivity` (no trampoline) to a tiny transparent `ApplySiteActivity` that fires `ACTION_VIEW` on the payload's `apply_url` (fallback: cached `match_detail.links` kind `apply`; else opens S21). Logs `apply_site_open{src=push}`. |
 | देखें / PDF देखें | content-style `getActivity` deep link (S21 / S23). |
 
 Android 12+ forbids starting an activity from a BroadcastReceiver launched by a notification, so actions that need UI use `getActivity` directly; the three state-change actions do not need UI and use `getBroadcast`.
@@ -169,7 +179,7 @@ Key points:
 - `action_id` (UUID) is generated **once**, at tap time, and stored with the action; it is the server's dedup key, so double-taps and retries are safe. The batch's `Idempotency-Key` is generated when the batch is formed and persisted with it, so a retried batch reuses it (README §5 of the API).
 - Undo: inside the app (Snackbar "वापस लाएँ", 6 s per B03) we delete the `pending_action` if it is not flushed yet, else enqueue `type=undo`. The notification does not offer undo.
 - Conflict rule (server-defined): actions are applied in `occurred_at` order; a stale action returns `applied=false` with the authoritative `match`, which overwrites the local row (data-layer.md §5).
-- If `result.paywall != null` (first *भर दिया* → trial started), it is stored in DataStore and B02/B08 is shown on the next app open, as the inventory specifies for push-action Applied.
+- If `result.paywall != null` (`trial_offer` after the first *भर दिया*, or `plans`), it is stored in DataStore and B02 is shown on the next app open, as the inventory specifies for push-action Applied. The trial starts only if the user taps the B02 CTA (`startTrial`).
 
 ```kotlin
 @AndroidEntryPoint
@@ -196,14 +206,14 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
 Why: Chinese-brand phones (Xiaomi, Vivo, Oppo, Realme) often block FCM for apps that are not "autostart"-enabled. PRD calls this out as a top risk. A local mirror means that whenever our process gets a chance to run (user opens app, any sync, boot), the next reminders are already scheduled on the device.
 
-- Table `local_reminders(reminder_id, match_id, fire_at_utc, kind, state)` is filled from the server's plan: `MatchSummary.next_reminder_at` (in every sync) and `MatchDetail.reminder_plan[]` (when the detail is cached). Where neither exists it is computed on device from the PRD table: every 3 days, D-3, D-1, last-day 08:00 IST, shifted out of quiet hours. Local reminder ids are `local:{match_id}:{fire_at}`; because the server `msg_id` is not known in advance, dedupe against FCM uses `(match_id, IST date, kind)` (Contract gap G-08 asks for a deterministic reminder id).
+- Table `local_reminders(reminder_id, match_id, fire_at_utc, kind, state)` is filled from the server's plan: `MatchSummary.next_reminder_at` (in every sync) and `MatchDetail.reminder_plan[]` (when the detail is cached). Where neither exists it is computed on device from the PRD table: every 3 days, D-3, D-1, last-day 08:00 IST, shifted out of quiet hours. Local reminders reuse the server's deterministic id `r:{match_id}:{kind}:{YYYYMMDD IST}` (`next_reminder_id`, `reminder_plan[].reminder_id`); reminders computed on device (no server plan cached) use the same formula, so dedupe against FCM `reminder_id` is exact.
 - Only the next **3** reminders across all matches are actually registered with the OS at any time (re-armed after each fires). This keeps us well below alarm limits and wake-ups.
 - Mechanism:
   - **Default: WorkManager `OneTimeWorkRequest` with `setInitialDelay`** (inexact, survives reboot, no permission). Good enough for "every 3 days" and D-3.
   - **Last-day and D-1 morning: `AlarmManager.setAndAllowWhileIdle`** (inexact but fires in Doze within a ~15 min window). This is the default and needs no permission.
   - **Exact-alarm upgrade (P1, opt-in, screen S14):** only if the user turns on "बिना इंटरनेट भी आखिरी दिन का रिमाइंडर" in S28 do we use `setExactAndAllowWhileIdle`, after checking `alarmManager.canScheduleExactAlarms()` and, if false, sending them to `ACTION_REQUEST_SCHEDULE_EXACT_ALARM` via S14. We declare `SCHEDULE_EXACT_ALARM` (user-grantable, denied by default for new installs on Android 14+), **never** `USE_EXACT_ALARM` (Play restricts it to alarm/calendar apps). We listen for `ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED` and fall back to inexact if revoked. A ±15 min window is fine for most users, so this stays optional.
   - `BOOT_COMPLETED` + `MY_PACKAGE_REPLACED` + `TIMEZONE_CHANGED` receivers re-arm the 3 registered reminders (alarms are cleared on reboot; WorkManager re-schedules itself).
-- When a local reminder fires, it goes through the same `PushHandler` with `Source.LOCAL`; dedupe by `reminder_id` == server `push_id`. If FCM already showed it, local does nothing; if local fires first, the later FCM is dropped.
+- When a local reminder fires, it goes through the same `PushHandler` with `Source.LOCAL`; dedupe by `reminder_id` (== the FCM `msg_id` of that reminder). If FCM already showed it, local does nothing; if local fires first, the later FCM is dropped.
 - A daily `PeriodicWorkRequest` (24 h, flex 4 h, `requiresBatteryNotLow=false`, network not required) re-computes the mirror and runs the delta sync when network exists. This is the "heartbeat".
 
 ## 6. Quiet hours, daily cap, snooze (device-side mirror of design 03 §0.2)
@@ -219,7 +229,7 @@ The **server** schedules (slots R0, Rp, R3, R1, R-last, lifecycle, corrigendum; 
 | 5 | Daily cap: 3 pushes per IST day | Ranks 1–3 always shown (may exceed cap); others deferred to digest (`digest` channel) |
 | 6 | Snoozed until T | Defer Rp/R3 to T; **R1 and R-last are never suppressed** |
 
-Rank comes from the payload: `type` + `channel` (`deadline`/`critical` → 1–2, critical `lifecycle` → 3, `corrigendum`/`extension`/`match_new` → 4, R3 → 5, Rp → 6). An explicit `rank` field in the payload would remove the guesswork (gap G-08). Times use `Asia/Kolkata` regardless of device zone; `java.time` is native from API 26.
+Rank comes from the payload's `rank` (1 R-last, 2 R1, 3 critical lifecycle, 4 new match / extension / corrigendum, 5 R3 / snooze due, 6 Rp); local-mirror reminders derive it from `kind` with the same table. The user's `reminder_time` (default 19:00, `NotificationPrefs.reminder_time`, edited in S28) sets the Rp/R3/R1 slot times. Times use `Asia/Kolkata` regardless of device zone; `java.time` is native from API 26.
 
 ## 7. Permissions and OEM reliability
 

@@ -31,7 +31,7 @@ flowchart LR
 | IBPS | ibps.in "CRP" notifications | html_list | |
 | UPSC | upsc.gov.in examinations (active) + recruitment (advertisements) | html_list | |
 | UP: UPSSSC, UPPRPB/UPPBPB, UPPSC | Notice boards | html_list | Hindi PDFs, often legacy fonts or scans |
-| Bihar (if chosen): BPSC, BSSC, CSBC | Notice boards | html_list | |
+| Bihar (working assumption, founder to confirm): BPSC, BSSC, CSBC | Notice boards | html_list | Built before launch if curation time allows, else P1 |
 | Employment News | weekly e-paper index | pdf_index | Cross-check for coverage |
 
 Each source is a row in `source` with a declarative extractor (`{selector: "table#notices a[href$='.pdf']", date_regex: …}`).

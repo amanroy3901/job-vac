@@ -86,7 +86,7 @@ flowchart TB
 | S15 | `Setup.OemGuide(mode, brand: String? = null)` | — | alerts | `OemGuideViewModel` | `OemGuideUiState(brand, brandConfident, steps: List<OemStep>, batteryOk, doneChecks)` | P0 |
 | S16 | `Setup.SelfTest(mode)` | `sarkarimatch://test` | alerts | `SelfTestViewModel` | `Idle / Running(step, elapsedSec) / Passed(latency) / Failed(advice: List<Advice>) / RateLimited` | P0 |
 | S20 | `Home` | `sarkarimatch://home` | :feature:jobs | `HomeViewModel` | `HomeUiState(feed: List<FeedItem> incl. O10 ad slot for free tier, banners, refreshing, syncedAt, sheet)` · Empty variants: `NoMatchesYet`, `AllCaughtUp`, `ProfileIncomplete` | P0 |
-| S21 | `JobDetail(matchId: String, src: String? = null)` | `https://sarkarimatch.in/j/{matchId}`, `sarkarimatch://job/{matchId}`, alias `sarkarimatch://match/{matchId}` | jobs | `JobDetailViewModel` | `Loading / Content(JobDetailUi, sheet) / NotFound / Offline(cached?)` | P0 |
+| S21 | `JobDetail(matchId: String, src: String? = null)` · `SharedPost(postId: String)` | `https://sarkarimatch.in/j/{matchId}`, `sarkarimatch://job/{matchId}`, alias `sarkarimatch://match/{matchId}` · `https://sarkarimatch.in/p/{postId}` | jobs | `JobDetailViewModel` | `Loading / Content(JobDetailUi, sheet) / ReadOnlyVerdict(Evaluation) / NotFound / Offline(cached?)` | P0 |
 | S22 | `Applied` | `sarkarimatch://forms` | :feature:applications | `AppliedViewModel` | `AppliedUiState(filter: Active/Done, rows, isPro, clashBanner?)` | P0 |
 | S23 | `Timeline(applicationId: String)` | `https://sarkarimatch.in/a/{applicationId}` | applications | `TimelineViewModel` | `Content(steps, locked: Boolean, nextAction) / NotFound` | P0 |
 | S24 | `Inbox` | `sarkarimatch://inbox` | jobs | `InboxViewModel` | `Content(groups by date) / Empty` | P1 |
@@ -108,7 +108,7 @@ flowchart TB
 | S40 | `LanguageSettings` | — | profile | `LanguageViewModel` (same class as S02) | `LanguageUiState` | P0 |
 | S41 | `ForceUpdate` | — | :app | `ForceUpdateViewModel` | `Immediate(inAppUpdateAvailable) / StoreOnly` | P0 |
 | S42 | `Outage` | — | :app | `OutageViewModel` | `Outage(message, until, hasCache, alertsDelayed)` from `getHealth` | P0 |
-| S43 | `AgeCountdown` | — | profile | `AgeCountdownViewModel` | **blocked by Contract gap G-11** | P2 |
+| S43 | `AgeCountdown` | — | profile | `AgeCountdownViewModel` | deferred to P2 with `GET /v1/me/age-chances` (API README §15); not built in v1 | P2 |
 | S44 | `Digest(date: String)` | `sarkarimatch://digest/{date}` | jobs | `DigestViewModel` | `Content(items: List<FeedItem> incl. O10 ad slot) / Empty` | P1 |
 | S45 | `Refer` | — | profile | `ReferViewModel` | `Content(code, shareUrl, earned) / RedeemError` | P1 |
 | S46 | `ShareCard` | — | profile | `ShareCardViewModel` | `Rendering / Ready(bitmapUri)` | P1 |
@@ -119,10 +119,10 @@ flowchart TB
 | --- | --- | --- | --- |
 | B01 Confirm Applied | S20 `HomeViewModel`, S21 `JobDetailViewModel` | `sheet = Sheet.ConfirmApplied(matchId, feePaid)` | `MatchActionRepository.record(applied)` |
 | B02 Paywall moment | S20/S21 (and on app open after push-action Applied) via `PaywallMomentController` in `:feature:pro` | `sheet = Sheet.PaywallMoment(variant)` | from `MatchActionResult.paywall` |
-| B03 Not interested | S20, S21 | `Sheet.NotInterested(matchId, reason?)` | `record(not_interested, reason)` + snackbar undo |
+| B03 Not interested | S20, S21 | `Sheet.NotInterested(matchId, reasons: Set)` | `record(not_interested, reasons)` + snackbar undo; `not_eligible` also opens B05 |
 | B04 Snooze | S20, S21 | `Sheet.Snooze(options)` | `record(snooze, option)` |
 | B05 Report wrong match | S21 | `Sheet.Report(reason, note)` | `reportMatch` |
-| B06 Check yourself | S20, S21 | `Sheet.CheckYourself(rule)` | open PDF / `record(not_interested)` |
+| B06 Check yourself | S20, S21 | `Sheet.CheckYourself(rule)` | open PDF / `record(confirm_eligible, rule)` / `record(not_interested, [not_eligible])` / S27 via `fix_field` |
 | B07 Corrigendum | S20, S21 | `Sheet.Corrigendum(id)` | local (notice cache) |
 | B08 Trial started | after B02 | `Sheet.TrialStarted(endsAt)` | → S33 |
 | B09 Trial ending | S20 (app open day 12–14) | `Sheet.TrialEnding(daysLeft, nextStage)` | → S30 |
@@ -130,7 +130,7 @@ flowchart TB
 | B11 UPI | S30 | `sheet = UpiChooser(apps)` | `createUpiPaymentLink` |
 | B12 Add family | S34 | `sheet = AddFamily(form)` | `inviteFamily` |
 | B13 Digest time | S28 | `sheet = DigestTime` | `putNotificationPrefs` |
-| B14 Age crossed | S20 | `Sheet.AgeCrossed` | **gap G-11** |
+| B14 Age crossed | S20 | `Sheet.AgeCrossed` | P1: opened from inbox item `kind=account, template=N-43`; open exams via `listNotices` |
 | B15 New device | app-level `MainViewModel` | `notPrimary: Boolean` | `makeDevicePrimary` |
 | D01–D09 | host VM sets `dialog: DialogState?` | | D03 → `deleteAccount`; D04 → `requestExport`/`getExport`; D08 → restore result |
 
@@ -214,7 +214,7 @@ Intent filters in `:app` `AndroidManifest.xml`:
     <category android:name="android.intent.category.DEFAULT"/>
     <category android:name="android.intent.category.BROWSABLE"/>
     <data android:scheme="https" android:host="sarkarimatch.in"
-          android:pathPrefix="/j/"/>  <!-- also /a/ /pro /f/ as separate <data> path entries -->
+          android:pathPrefix="/j/"/>  <!-- also /p/ /a/ /pro /f/ as separate <data> path entries; /go/ is web-only -->
   </intent-filter>
   <intent-filter>
     <action android:name="android.intent.action.VIEW"/>
@@ -228,7 +228,8 @@ Intent filters in `:app` `AndroidManifest.xml`:
 | Link | Route | Synthesised back stack | Source |
 | --- | --- | --- | --- |
 | `https://sarkarimatch.in/j/{matchId}?src=wa\|push\|share` | `JobDetail` | Home → JobDetail | WhatsApp, share |
-| `sarkarimatch://job/{matchId}?src=push&msg=` | `JobDetail` | Home → JobDetail | push content intent |
+| `sarkarimatch://job/{matchId}?src=push&msg=&nid=` | `JobDetail` | Home → JobDetail | push content intent (`PushData.link`) |
+| `https://sarkarimatch.in/p/{postId}?src=share` | `SharedPost` → `getMyEligibilityForPost`; if `Evaluation.match_id` is set, replace with `JobDetail(matchId)` | Home → JobDetail | job share (S21 share), anything sent to another person |
 | `https://sarkarimatch.in/a/{applicationId}` | `Timeline` | Applied → Timeline | lifecycle WhatsApp |
 | `https://sarkarimatch.in/pro?plan=&src=` | `Paywall` | Home → Paywall | trial-ending WA/push |
 | `https://sarkarimatch.in/f/{token}` | `FamilyAccept` | root (works before onboarding; invitees skip it) | family invite |
@@ -242,7 +243,7 @@ Rules:
 
 - **Push notifications build their `PendingIntent` with `NavDeepLinkBuilder`-equivalent `TaskStackBuilder`** on the deep-link URI with `FLAG_IMMUTABLE` and a unique request code per `collapse` tag; `MainActivity` is `singleTop`, so `onNewIntent` → `navController.handleDeepLink(intent)`.
 - Before onboarding is complete, `StartViewModel` stores the URI (`SavedStateHandle` + DataStore `pending_deep_link`, TTL 24 h), runs onboarding, then replays it after `onFinished`.
-- `JobDetail` with an unknown/expired id → `NotFound` state with "नौकरियाँ देखें" (→ Home). If the id looks like a **post id** (WhatsApp/share links for a job the user has no match for), the VM falls back to `getMyEligibilityForPost` to render a read-only verdict (see gap G-03 on what `{jobId}` means).
+- `JobDetail` with an unknown/expired id → `NotFound` state with "नौकरियाँ देखें" (→ Home). Ids are canonical (`../contract-alignment.md`): `/j/` always carries a per-user `match_id`, shared links always use `/p/{post_id}`, so the VM never has to guess the id type.
 - Every deep link carries `src` → analytics `deeplink_open{src, route}`; push opens also post an `opened` receipt with `msg`.
 - `https://sarkarimatch.in/.well-known/assetlinks.json` must list the release + Play App Signing SHA-256 (backend/web task).
 

@@ -46,8 +46,9 @@ CREATE TABLE profile (
   user_id              text PRIMARY KEY REFERENCES app_user(id) ON DELETE CASCADE,
   version              int  NOT NULL DEFAULT 1,
   dob                  date NOT NULL,
-  gender               gender_t NOT NULL,
+  gender               gender_t,                            -- NULL = skipped in S09 → gender rules check_yourself
   category             category_t NOT NULL,
+  category_unsure      boolean NOT NULL DEFAULT false,      -- S07 "पता नहीं": matched as gen, reserved-category posts check_yourself
   obc_non_creamy_layer boolean,
   domicile_state       text NOT NULL,                       -- 'UP'
   pwd                  boolean NOT NULL DEFAULT false,
@@ -324,7 +325,8 @@ CREATE TABLE match (
   reason_codes   smallint[] NOT NULL DEFAULT '{}',          -- compact codes for analytics; text is rendered on read
   priority       text NOT NULL DEFAULT 'normal',
   silent         boolean NOT NULL DEFAULT false,            -- created by profile edit: no "new match" push
-  not_interested_reason text,
+  not_interested_reasons text[] NOT NULL DEFAULT '{}',      -- B03 chips: not_interested_in_post|location|not_prepared|already_employed|not_eligible|other
+  user_confirmed_at timestamptz,                            -- B06 confirm_eligible (verdict stays check_yourself)
   matched_at     timestamptz NOT NULL DEFAULT now(),
   seen_at        timestamptz,
   acted_at       timestamptz,
@@ -384,7 +386,12 @@ CREATE TABLE alert (
   created_at     timestamptz NOT NULL DEFAULT now(),
   user_id        text NOT NULL,
   recipient      text NOT NULL DEFAULT 'self',              -- self | family:<family_member.id>
-  kind           text NOT NULL,                             -- match_new|reminder|deadline|extension|corrigendum|lifecycle|digest|clash|certificate|system|self_test
+  kind           text NOT NULL,                             -- PushData.type: match_new|reminder|deadline|extension|corrigendum|cancelled|lifecycle|digest|clash|certificate|account|self_test|ping
+  reminder_kind  text,                                      -- ReminderKind (design slot) for match reminders
+  template       text,                                      -- design template id, e.g. N-04 / W-02
+  channel_id     text,                                      -- Android channel: critical|new_match|reminders|job_updates|digest|account
+  rank           smallint,                                  -- daily-cap rank 1..6
+  data           jsonb,                                     -- kind-specific: digest {date, match_ids, inbox_ids}
   match_id       text,
   application_id text,
   lifecycle_event_id text,
