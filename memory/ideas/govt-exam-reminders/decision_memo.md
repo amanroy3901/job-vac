@@ -55,3 +55,7 @@ Archive this idea as stated. Do not write production code for an alerts-and-remi
 ## If That Doesn't Work
 
 Run the `pivot-optimization` workflow on one thesis: an app that makes applications ready (alert → eligibility → documents → submitted form) for a single Hindi-belt state's police, teacher and patwari recruitments. The RAT's ₹39 offer doubles as that pivot's first test.
+
+---
+
+_v2 note (2026-11-19): pivot-optimization run. Gap analysis in gap_analysis.md. Recommended pivot-1 ("Form Pakka": rejection-proofing + application ledger for one Hindi-belt state, ₹49 Form Check) projects to ~29/100 (26–33; ~41 undiscounted). No pivot clears 50. A 2-week ≤₹10K concierge test with pass/kill criteria is in pivot_memo.md. See also weaknesses.json, pivot_options.json, pivot_report.md, pivot_scores.json._

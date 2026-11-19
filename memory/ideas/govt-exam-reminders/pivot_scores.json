@@ -1,0 +1,55 @@
+{
+  "pivot_id": "pivot-1",
+  "pivot_name": "Application-ready / rejection-proofing assistant for one Hindi-belt state (Form Check paid unit)",
+  "scored_at": "2026-11-19",
+  "is_projection": true,
+  "note": "Re-score of a pivot that has NOT been built or tested. The dimension inputs are adjusted estimates from pivot_options.json and gap_analysis.md, not new skill runs (no new pricing.json/cac.json was produced for the pivot). Treat as directional.",
+  "dimension_scores": {
+    "demand": 54,
+    "competition": 33,
+    "monetization": 32,
+    "distribution": 34,
+    "retention": 43,
+    "founder_market_fit": 48
+  },
+  "dimension_score_rationale": {
+    "demand": "Band 40-59: desire moves toward survival (a rejection costs a year). Lakh-scale rejection evidence (RRB 2018 1.27 lakh; Gangman 2021 4.86 lakh) gives +signal, offset by narrowing to one state.",
+    "competition": "Band 25-49: saturation is still high in the category, but differentiation is real (per-notification checks against the user's own documents, Hindi, mobile, personal ledger). Capped by TrueJobs tools, SarkariFilled and free resizers. +10 complaint-gap bonus NOT applied (no direct review mining).",
+    "monetization": "Band 10-34 (top): WTP is proven for the service step (INR 100-150 at cafés), but the B2C app version is unvalidated. Est. LTV INR 10-25 vs organic CAC INR 4-10, so LTV:CAC ~1.5-3 (unproven).",
+    "distribution": "Band 15-39: still 'weak' (no founder audience), but a higher LTV makes Telegram paid posts (INR 500-2,000) and small Meta tests viable, and state and Hindi targeting is sharper. Share-card loop unvalidated.",
+    "retention": "Band 40-59: the ledger and vault add lock-in and more milestone triggers per application. Still event-driven.",
+    "founder_market_fit": "user_profile.md missing, so neutral 50 minus 2 for required Hindi and rule-curation skill with no evidence the founder has it."
+  },
+  "weights_applied": { "demand": 0.20, "competition": 0.10, "monetization": 0.20, "distribution": 0.20, "retention": 0.15, "founder_market_fit": 0.15 },
+  "floor_penalty": 1.0,
+  "floor_penalty_calc": "No dimension < 25",
+  "base_score": 41.0,
+  "base_score_calc": "54x.20 + 33x.10 + 32x.20 + 34x.20 + 43x.15 + 48x.15 = 10.8 + 3.3 + 6.4 + 6.8 + 6.45 + 7.2 = 40.95",
+  "missing_discount": 0.714,
+  "missing_discount_calc": "Same 5/7 as scores.json (user_profile.md, market_size.json still missing)",
+  "final_score": 29,
+  "final_score_range": { "low": 26, "high": 33 },
+  "undiscounted_score": 41,
+  "undiscounted_range": { "low": 36, "high": 46 },
+  "original_score": 13,
+  "delta_vs_original": "+16 (discounted, like for like); +22 vs the original's undiscounted 18.7",
+  "crosses_50": false,
+  "verdict": "drop (as scored); 'pivot' band (35-54) once the missing inputs are completed at neutral values",
+  "score_confidence": "low",
+  "secondary_projection": {
+    "pivot_id": "pivot-2",
+    "dimension_scores": { "demand": 44, "competition": 42, "monetization": 40, "distribution": 32, "retention": 54, "founder_market_fit": 45 },
+    "base_score": 42.3,
+    "final_score": 30,
+    "undiscounted_score": 42,
+    "confidence": "very low (no primary evidence of operator demand)"
+  },
+  "what_would_move_it_to_test_band": "Monetization to 55+ AND distribution to 45+, i.e. a real test showing >= 8% of engaged users paying INR 49 and one repeatable channel at <= INR 10 per engaged user, plus a completed founder profile showing Hindi and domain ability (FMF 60+). Example: D58 C38 M55 Dist45 R48 FMF60, no discount = 51.7.",
+  "missing_inputs": [
+    "memory/user_profile.md",
+    "memory/ideas/govt-exam-reminders/market_size.json",
+    "Pivot-specific pricing.json / cac.json (not re-run)",
+    "Direct Play review mining (blocked)",
+    "Primary evidence of B2C willingness to pay for a check (vs the service) and of operator willingness to pay"
+  ]
+}
