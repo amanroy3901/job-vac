@@ -39,11 +39,11 @@ fun SmButton(
         SmButtonStyle.Primary -> scheme.primary to scheme.onPrimary
         SmButtonStyle.Tonal -> ext.sunken to scheme.onSurface
         SmButtonStyle.Outline -> ext.card to scheme.onSurface
-        SmButtonStyle.Marigold -> ext.marigold.container to ext.marigold.content
+        SmButtonStyle.Marigold -> ext.marigold to ext.onMarigold
     }
     val shadow = when (style) {
         SmButtonStyle.Primary -> Modifier.shadow(6.dp, CircleShape, spotColor = scheme.primary.copy(alpha = 0.5f))
-        SmButtonStyle.Marigold -> Modifier.shadow(6.dp, CircleShape, spotColor = ext.marigold.container)
+        SmButtonStyle.Marigold -> Modifier.shadow(6.dp, CircleShape, spotColor = ext.marigold)
         else -> Modifier
     }
     Button(

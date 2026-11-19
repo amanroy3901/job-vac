@@ -98,7 +98,9 @@ class EligibilityEvaluator(
         val latestDob = cutoff.minusYears(limit.minYears.toLong())
         if (p.dob.isAfter(latestDob)) {
             return RuleLine(
-                RuleKind.AGE, LineResult.FAIL, ReasonCode.AGE_TOO_YOUNG,
+                RuleKind.AGE,
+                LineResult.FAIL,
+                ReasonCode.AGE_TOO_YOUNG,
                 baseParams + mapOf("min" to limit.minYears.toString(), "bornOnOrBefore" to latestDob.toString()),
             )
         }
@@ -131,13 +133,16 @@ class EligibilityEvaluator(
 
         return when {
             !p.dob.isBefore(best.earliestDob) -> RuleLine(
-                RuleKind.AGE, LineResult.PASS,
+                RuleKind.AGE,
+                LineResult.PASS,
                 if (best.relaxation != null) ReasonCode.AGE_OK_WITH_RELAXATION else ReasonCode.AGE_OK,
                 params,
                 best.relaxation?.label,
             )
             pendingServiceCheck != null -> RuleLine(
-                RuleKind.AGE, LineResult.CHECK, ReasonCode.AGE_DEPENDS_ON_SERVICE,
+                RuleKind.AGE,
+                LineResult.CHECK,
+                ReasonCode.AGE_DEPENDS_ON_SERVICE,
                 params + ("relaxation" to pendingServiceCheck.id),
                 pendingServiceCheck.label,
             )

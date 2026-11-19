@@ -5,6 +5,7 @@
 - **AGP 9.5.1** (built-in Kotlin support: no `org.jetbrains.kotlin.android` plugin needed), **Gradle 9.9.1** wrapper (AGP 9.5 needs ≥ 9.6), JDK 17 toolchain, Kotlin **2.4.21**, KSP **2.3.14** (KSP2, own version line).
 - `compileSdk = 36`, `targetSdk = 36`, `minSdk = 26`. (Raise target to 37 when Play requires it; AGP 9.5 supports API 37.)
 - `build-logic/` included build with convention plugins: `sm.android.application`, `sm.android.library`, `sm.android.compose`, `sm.android.feature` (library + compose + hilt + common feature deps), `sm.android.room`, `sm.hilt`, `sm.jvm.library`. Configuration cache + build cache on.
+- As built (2026-11-19, `android/`): `build-logic` has two projects, `:jvm` (`sm.jvm.library` + detekt, no Android deps) and `:convention` (Android plugins). Third-party Gradle plugins sit on the root buildscript classpath (one shared copy of KGP/AGP); AGP/KSP/Hilt/Room are added there only when the Android modules are included. `:core:model` and `:core:eligibility` (on-device rule evaluator) are plain Kotlin/JVM modules, so `./gradlew -Psm.jvmOnly=true :core:eligibility:test` works without the Android SDK or Google Maven (settings.gradle.kts also switches to JVM-only automatically when no SDK is found). Code packages are `com.sarkarimatch.*` (`in` is a Kotlin keyword and would need back-ticks in every file); only the applicationId uses the `in.` domain. `:baselineprofile` and the `prod`/`staging` Firebase wiring are not created yet.
 - Product flavours: `env` = `prod` / `staging` (base URL, Firebase project). No payment flavours: Play Billing is the only payment path; the validation test is the Play closed-testing track of the `prod` build. Build types: `debug` (fake backend switch, StrictMode, LeakCanary), `release` (R8 full, shrink resources), `benchmark` (release-like, debug-signed).
 
 ### Versions verified 2026-11-19
@@ -152,9 +153,9 @@ plugins {
     alias(libs.plugins.firebase.crashlytics); alias(libs.plugins.baselineprofile)
 }
 android {
-    namespace = "in.sarkarimatch.app"
+    namespace = "com.sarkarimatch.app"
     compileSdk = 36
-    defaultConfig { applicationId = "in.sarkarimatch"; minSdk = 26; targetSdk = 36; versionCode = 1; versionName = "0.1.0" }
+    defaultConfig { applicationId = "in.sarkarimatch.app" /* placeholder */; minSdk = 26; targetSdk = 36; versionCode = 1; versionName = "0.1.0" }
     androidResources { localeFilters += enabledLocales /* gradle.properties: en,hi at launch */; generateLocaleConfig = false } // locales_config.xml lists the same enabled locales
     buildTypes {
         release { isMinifyEnabled = true; isShrinkResources = true
@@ -180,10 +181,10 @@ dependencies {
 
 ```
 android/
-├─ app/                         in.sarkarimatch.app        MainActivity, SmApplication, SmNavHost, StartViewModel, DI wiring, deep links, S41/S42
-├─ build-logic/convention/      convention plugins
+├─ app/                         com.sarkarimatch.app       MainActivity, SmApplication, SmNavHost, StartViewModel, DI wiring, deep links, S41/S42
+├─ build-logic/{jvm,convention}  convention plugins
 ├─ core/
-│  ├─ model/        (JVM)       in.sarkarimatch.core.model  domain models, LocalizedText (13 languages), UiText, LanguageCode, enums, IST formatters
+│  ├─ model/        (JVM)       com.sarkarimatch.core.model domain models, LocalizedText (13 languages), UiText, LanguageCode, enums, IST formatters
 │  ├─ designsystem/             …core.designsystem           theme/, component/, domain/ (MatchCard, VerdictChip…), icons (vector xml)
 │  ├─ network/                  …core.network                SmApi, dto/, interceptors/, ApiResult, ProblemJson
 │  ├─ database/                 …core.database               SmDatabase, entity/, dao/, converters/, schemas/ (exported)
@@ -191,6 +192,7 @@ android/
 │  ├─ notifications/            …core.notifications          SmMessagingService, PushHandler, DeliveryGate, NotificationComposer, channels (7), receivers, BackupAlarmScheduler, OemAutostart
 │  ├─ billing/                  …core.billing                PlayBillingRepository
 │  ├─ ads/                      …core.ads                    GmaNativeAdLoader, AdConsentManager, NativeAdSlot
+│  ├─ eligibility/  (JVM)       …core.eligibility            on-device rule evaluator (rule.schema.json v1), until merged into :matching-core
 │  └─ testing/                  …core.testing                fakes, rules, fixtures (catalog snapshots, golden rules)
 ├─ shared/ (KMP, from the backend repo) :matching-core, :reminder-core
 ├─ feature/
@@ -214,7 +216,7 @@ Roadmap after the founder decisions (backend operations.md §9): **weeks 1–5**
 | ID | Ticket | Screens | Est |
 | --- | --- | --- | --- |
 | FE-01 V | Repo, `build-logic`, version catalog, modules, CI workflow (lint/detekt/unit/Roborazzi incl. pseudo-locales/size gate) | — | 1.5 |
-| FE-02 V | `:core:designsystem` theme from tokens (+ `TokensParityTest`), per-script font chain (Mukta now), 10 base components | — | 2 |
+| FE-02 V | `:core:designsystem` theme from tokens (+ `TokensParityTest`), per-script font chain (Baloo 2 + Hind now), 10 base components | — | 2 |
 | FE-03 V | `:core:network` DTOs from openapi.yaml, interceptors (public vs account vs unlinkable calls), ProblemJson; `FakeSmApi` | — | 2 |
 | FE-04 V | Firebase wiring (FCM topics, App Check, Crashlytics opt-in; Auth Google + anonymous), staging/prod | — | 0.5 |
 | FE-10 V | Room DB v1 + DAOs + migration harness; DataStore prefs | — | 2 |

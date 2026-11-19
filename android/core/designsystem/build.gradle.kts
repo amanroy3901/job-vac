@@ -13,3 +13,12 @@ dependencies {
     implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.kotlinx.collections.immutable)
 }
+
+dependencies {
+    testImplementation(libs.kotlinx.serialization.json)
+}
+
+// TokensParityTest reads the design tokens straight from the docs.
+tasks.withType<Test>().configureEach {
+    systemProperty("sm.tokensJson", rootProject.file("../docs/design/tokens.json").absolutePath)
+}

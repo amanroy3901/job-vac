@@ -9,6 +9,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
@@ -83,6 +84,8 @@ fun smTypography(script: Script): Typography {
             letterSpacing = 0.sp,
             platformStyle = PlatformTextStyle(includeFontPadding = false),
             lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+            // Balanced heading lines (no one-word orphans such as "हैं"); paragraphs for body/labels.
+            lineBreak = if (r.display) LineBreak.Heading else LineBreak.Paragraph,
         )
     }
     val base = Typography()

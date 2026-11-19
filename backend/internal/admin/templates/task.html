@@ -1,0 +1,20 @@
+{{template "head" .}}
+<p><a href="/admin/">&larr; queue</a></p>
+{{if .Flash}}<p class="flash">{{.Flash}}</p>{{end}}
+<header><h1>{{index (index .T.Draft.Content "title") "en"}}</h1><span>{{.T.ID}} · {{.T.State}}</span></header>
+<p>Notice <code>{{.T.RecruitmentID}}</code> · kind {{.T.Draft.Kind}} · status {{.T.Draft.Status}} · risk flags: {{range .T.RiskFlags}}<b>{{.}}</b> {{else}}none{{end}}
+{{if .T.NeedsSecondReview}} · <b>needs a second reviewer</b>{{end}} · approvals: {{range .T.Draft.Approvals}}{{.}} {{end}}</p>
+{{range .T.Draft.Posts}}
+<section><h2>Post {{.Code}}: {{index .Name "en"}}</h2>
+{{with .Report}}<h3>Validator findings</h3><ul>{{range .Findings}}<li class="{{.Severity}}">[{{.Severity}}] {{.Code}} {{.Path}}: {{.Message}}</li>{{else}}<li>none</li>{{end}}</ul>
+<p>evaluator_min_version {{.EvaluatorMinVersion}} · flags {{range .RiskFlags}}{{.}} {{end}}</p>{{end}}
+<form method="post" action="/admin/tasks/{{pathEscape $.T.ID}}/posts/{{pathEscape .Code}}/rule">
+<textarea name="rule" rows="18" placeholder="rule.schema.json document">{{if .Rule}}{{json .Rule}}{{end}}</textarea>
+<p><button>Validate &amp; attach rule</button></p></form></section>
+{{end}}
+<h2>Review</h2>
+<form method="post" action="/admin/tasks/{{pathEscape .T.ID}}/approve"><label><input type="checkbox" required> I checked every rule against the PDF</label> <button>Approve</button></form>
+<form method="post" action="/admin/tasks/{{pathEscape .T.ID}}/publish"><p>Type PUBLISH to confirm: <input name="confirm" autocomplete="off"> <button>Publish</button></p></form>
+<form method="post" action="/admin/tasks/{{pathEscape .T.ID}}/reject"><p><input name="reason" placeholder="reason"> <button>Reject</button></p></form>
+<h2>Draft JSON</h2><pre>{{json .T.Draft}}</pre>
+{{template "foot" .}}

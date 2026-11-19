@@ -21,4 +21,7 @@
     <string name="ds_fee_free">Free</string>
     <string name="ds_hour_am">%1$d am</string>
     <string name="ds_hour_pm">%1$d pm</string>
+    <string name="ds_continue">Continue</string>
+    <string name="ds_back">Back</string>
+    <string name="ds_placeholder_body">Screen %1$s is a placeholder in this skeleton. See docs/frontend/navigation.md for its route, ViewModel and states.</string>
 </resources>

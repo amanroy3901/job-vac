@@ -53,18 +53,18 @@ fun LanguageOptionCard(
         Box(
             Modifier
                 .size(48.dp)
-                .background(if (selected) scheme.primary else SmTheme.colors.marigoldContainer.container, RoundedCornerShape(SmRadius.lg)),
+                .background(if (selected) scheme.primary else SmTheme.colors.marigoldContainer, RoundedCornerShape(SmRadius.lg)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 badge,
                 style = MaterialTheme.typography.titleLarge,
-                color = if (selected) scheme.onPrimary else SmTheme.colors.marigoldContainer.content,
+                color = if (selected) scheme.onPrimary else SmTheme.colors.marigoldIcon,
             )
         }
         Column(Modifier.weight(1f)) {
             Text(endonym, style = MaterialTheme.typography.titleLarge, color = scheme.onSurface)
-            Text(helper, style = MaterialTheme.typography.bodySmall, color = SmTheme.colors.muted)
+            Text(helper, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box(
             Modifier

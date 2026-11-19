@@ -20,4 +20,7 @@
     <string name="ds_fee_free">मुफ़्त</string>
     <string name="ds_hour_am">सुबह %1$d बजे</string>
     <string name="ds_hour_pm">रात %1$d बजे</string>
+    <string name="ds_continue">आगे बढ़ें</string>
+    <string name="ds_back">पीछे</string>
+    <string name="ds_placeholder_body">स्क्रीन %1$s अभी खाली है (स्केलेटन)। रूट, ViewModel और स्टेट: docs/frontend/navigation.md</string>
 </resources>

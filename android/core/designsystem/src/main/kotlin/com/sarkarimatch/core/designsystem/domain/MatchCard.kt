@@ -67,8 +67,14 @@ fun MatchCard(
             .clickable(onClick = onOpen)
             .semantics {
                 customActions = listOf(
-                    CustomAccessibilityAction(appliedLabel) { onApplied(); true },
-                    CustomAccessibilityAction(laterLabel) { onLater(); true },
+                    CustomAccessibilityAction(appliedLabel) {
+                        onApplied()
+                        true
+                    },
+                    CustomAccessibilityAction(laterLabel) {
+                        onLater()
+                        true
+                    },
                 )
             },
     ) {
@@ -82,7 +88,7 @@ fun MatchCard(
                     Text(
                         text = card.vacancies?.let { stringResource(R.string.ds_vacancies, org, SmFormat.count(it)) } ?: org,
                         style = MaterialTheme.typography.bodySmall,
-                        color = SmTheme.colors.muted,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -108,7 +114,7 @@ fun MatchCard(
                     val ok = card.verdict == Verdict.ELIGIBLE
                     SmIcon(
                         if (ok) SmIcons.CheckCircle else SmIcons.Help,
-                        tint = if (ok) MaterialTheme.colorScheme.primary else SmTheme.colors.warning.content,
+                        tint = if (ok) MaterialTheme.colorScheme.primary else SmTheme.colors.onWarningContainer,
                         size = 20.dp,
                         modifier = Modifier.padding(top = 2.dp),
                     )
@@ -130,7 +136,7 @@ private fun Ribbon(card: MatchCardUi, tone: DeadlineTone, daysLeft: Long, langua
         DeadlineTone.Today -> {
             val text = card.lastTime?.let { stringResource(R.string.ds_ribbon_today_until, hourLabel(LocalTime.parse(it))) }
                 ?: stringResource(R.string.ds_ribbon_today)
-            DeadlineRibbon(text, SmIcons.Alarm, colors.today)
+            DeadlineRibbon(text, SmIcons.Alarm, TonePair(colors.today, colors.onToday))
         }
         DeadlineTone.Urgent -> DeadlineRibbon(
             text = pluralStringResource(
@@ -140,7 +146,7 @@ private fun Ribbon(card: MatchCardUi, tone: DeadlineTone, daysLeft: Long, langua
                 SmFormat.shortDate(card.lastDate, language),
             ),
             icon = SmIcons.Timer,
-            colors = colors.urgent,
+            colors = TonePair(colors.urgentContainer, colors.onUrgentContainer),
         )
         else -> Unit
     }

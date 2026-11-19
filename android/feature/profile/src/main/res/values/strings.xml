@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_title">Profile</string>
+    <string name="profile_account">Account &amp; privacy</string>
+    <string name="profile_help">Help</string>
+    <string name="profile_certificates">Certificates</string>
+    <string name="profile_family">Family</string>
+    <string name="profile_family_accept">Family invite</string>
+    <string name="profile_family_invite">Invite family</string>
+    <string name="profile_family_following">Following</string>
+    <string name="profile_refer">Refer a friend</string>
+    <string name="profile_share_card">Share card</string>
+    <string name="profile_age_countdown">Age countdown</string>
+    <string name="profile_open_language">App language</string>
+    <string name="profile_open_alerts">Alert settings</string>
+</resources>

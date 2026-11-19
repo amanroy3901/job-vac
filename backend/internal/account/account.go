@@ -636,17 +636,17 @@ func (s *Service) HardDeleteDue(ctx context.Context) (int, error) {
 
 // Summary is the GET /v1/me body (DPDP access summary).
 type Summary struct {
-	ID                string          `json:"id"`
-	CreatedAt         time.Time       `json:"created_at"`
-	Locale            string          `json:"locale"`
-	AuthProvider      string          `json:"auth_provider"`
-	GoogleEmail       *string         `json:"google_email"`
-	BillingAccountRef string          `json:"billing_account_ref"`
-	DevicesCount      int             `json:"devices_count"`
-	Backup            *BackupSummary  `json:"backup"`
-	FamilyLinksCount  int             `json:"family_links_count"`
-	Consents          []Consent       `json:"consents"`
-	Deletion          DeletionStatus  `json:"deletion"`
+	ID                string         `json:"id"`
+	CreatedAt         time.Time      `json:"created_at"`
+	Locale            string         `json:"locale"`
+	AuthProvider      string         `json:"auth_provider"`
+	GoogleEmail       *string        `json:"google_email"`
+	BillingAccountRef string         `json:"billing_account_ref"`
+	DevicesCount      int            `json:"devices_count"`
+	Backup            *BackupSummary `json:"backup"`
+	FamilyLinksCount  int            `json:"family_links_count"`
+	Consents          []Consent      `json:"consents"`
+	Deletion          DeletionStatus `json:"deletion"`
 }
 
 // BackupSummary is User.backup.

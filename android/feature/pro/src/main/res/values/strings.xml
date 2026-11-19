@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pro_paywall">Sarkari Match Pro</string>
+    <string name="pro_payment_status">Payment status</string>
+    <string name="pro_manage_plan">Your plan</string>
+</resources>

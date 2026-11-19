@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onb_language_title">Choose your language</string>
+    <string name="onb_language_subtitle">You can change it any time in Profile.</string>
+    <string name="onb_language_helper_hi">Hindi · हिंदी में सब कुछ</string>
+    <string name="onb_language_helper_en">English · everything in English</string>
+    <string name="onb_language_coming_soon">Coming soon</string>
+    <string name="onb_language_continue">Continue</string>
+    <string name="onb_welcome">Welcome</string>
+    <string name="onb_privacy">Your privacy</string>
+    <string name="onb_exams">Which exams?</string>
+    <string name="onb_qualification">Your qualification</string>
+    <string name="onb_dob">Date of birth</string>
+    <string name="onb_category">Category</string>
+    <string name="onb_state">Your state</string>
+    <string name="onb_more">A few more details</string>
+    <string name="onb_result">Your matches</string>
+    <string name="onb_edit_profile">Edit profile</string>
+    <string name="onb_language_settings">App language</string>
+</resources>

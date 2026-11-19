@@ -74,6 +74,9 @@ type Querier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
+// Tx is a pgx transaction.
+type Tx = pgx.Tx
+
 // InTx runs fn in a transaction, committing on nil error.
 func InTx(ctx context.Context, pool *pgxpool.Pool, fn func(tx pgx.Tx) error) (err error) {
 	tx, err := pool.Begin(ctx)

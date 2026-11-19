@@ -42,7 +42,7 @@ fun RowScope.SmNavigationItem(
         icon = {
             BadgedBox(badge = {
                 if (badge != null && badge > 0) {
-                    Badge(containerColor = SmTheme.colors.today.container, contentColor = SmTheme.colors.today.content) {
+                    Badge(containerColor = SmTheme.colors.today, contentColor = SmTheme.colors.onToday) {
                         Text(if (badge > 9) "9+" else "$badge", style = MaterialTheme.typography.labelSmall.tabular())
                     }
                 }
@@ -59,11 +59,11 @@ fun RowScope.SmNavigationItem(
             )
         },
         colors = NavigationBarItemDefaults.colors(
-            selectedIconColor = SmTheme.colors.marigold.content,
+            selectedIconColor = SmTheme.colors.onMarigold,
             selectedTextColor = MaterialTheme.colorScheme.onSurface,
-            indicatorColor = SmTheme.colors.marigold.container,
-            unselectedIconColor = SmTheme.colors.muted,
-            unselectedTextColor = SmTheme.colors.muted,
+            indicatorColor = SmTheme.colors.marigold,
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
     )
 }

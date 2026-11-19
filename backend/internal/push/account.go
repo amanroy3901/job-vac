@@ -3,6 +3,7 @@ package push
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -107,4 +108,24 @@ func (a *AccountSender) text(ctx context.Context, template, locale string) (stri
 		SELECT t.title, t.body FROM chain c JOIN notification_text t ON t.locale = c.code AND t.template = $1
 		ORDER BY c.ord LIMIT 1`, template, locale).Scan(&title, &body)
 	return title, body, err == nil
+}
+
+// SendSelfTest sends the type=self_test message and records an FCM error on the row.
+func SendSelfTest(ctx context.Context, pool db.Querier, sender Sender, token, testID string, ttl time.Duration) error {
+	_, err := sender.Send(ctx, Message{Token: token, High: true, TTL: ttl,
+		Data: map[string]string{"type": "self_test", "msg_id": "t:" + testID, "test_id": testID, "channel": "critical", "priority": "high"}})
+	if err == nil {
+		return nil
+	}
+	code := "UNKNOWN"
+	switch {
+	case errors.Is(err, ErrUnregistered):
+		code = "UNREGISTERED"
+	case errors.Is(err, ErrRetryable):
+		code = "UNAVAILABLE"
+	case errors.Is(err, ErrInvalid):
+		code = "INVALID_ARGUMENT"
+	}
+	_, _ = pool.Exec(ctx, `UPDATE push_test SET status = 'fcm_error', fcm_error = $2, fcm_token_enc = NULL WHERE id = $1`, testID, code)
+	return fmt.Errorf("%s", code)
 }

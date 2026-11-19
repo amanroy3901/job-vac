@@ -1,0 +1,63 @@
+name: android
+
+on:
+  pull_request:
+    paths: ['android/**', 'docs/backend/examples/**', 'docs/design/tokens.json', '.github/workflows/android.yml']
+  push:
+    branches: [main]
+    paths: ['android/**', 'docs/backend/examples/**', 'docs/design/tokens.json', '.github/workflows/android.yml']
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: android
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: gradle/actions/wrapper-validation@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ubuntu-latest ships the Android SDK (ANDROID_HOME); this accepts licences and adds missing platforms.
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: JVM modules (on-device eligibility evaluator, models)
+        run: ./gradlew :core:model:test :core:eligibility:test
+
+      - name: Static analysis
+        run: ./gradlew detekt
+
+      - name: Build debug APK
+        run: ./gradlew assembleProdDebug
+
+      - name: Unit tests (Android modules)
+        run: ./gradlew testProdDebugUnitTest testDebugUnitTest
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: reports
+          path: android/**/build/reports/**
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: app-prod-debug
+          path: android/app/build/outputs/apk/prod/debug/*.apk
+          retention-days: 7

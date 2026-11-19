@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onb_language_title">अपनी भाषा चुनें</string>
+    <string name="onb_language_subtitle">बाद में प्रोफ़ाइल में कभी भी बदल सकते हैं।</string>
+    <string name="onb_language_helper_hi">हिंदी · सब कुछ हिंदी में</string>
+    <string name="onb_language_helper_en">English · सब कुछ अंग्रेज़ी में</string>
+    <string name="onb_language_coming_soon">जल्द आ रही हैं</string>
+    <string name="onb_language_continue">आगे बढ़ें</string>
+    <string name="onb_welcome">स्वागत है</string>
+    <string name="onb_privacy">आपकी निजता</string>
+    <string name="onb_exams">कौन-सी परीक्षाएँ?</string>
+    <string name="onb_qualification">आपकी पढ़ाई</string>
+    <string name="onb_dob">जन्म तिथि</string>
+    <string name="onb_category">वर्ग (कैटेगरी)</string>
+    <string name="onb_state">आपका राज्य</string>
+    <string name="onb_more">कुछ और जानकारी</string>
+    <string name="onb_result">आपकी नौकरियाँ</string>
+    <string name="onb_edit_profile">प्रोफ़ाइल बदलें</string>
+    <string name="onb_language_settings">ऐप की भाषा</string>
+</resources>

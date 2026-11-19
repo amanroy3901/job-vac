@@ -5,7 +5,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
 /*
- * Direction C "Marigold Home" (docs/design/directions/README.md §C, docs/design/tokens.json color.light/dark).
+ * Direction C "Marigold Home": docs/design/tokens.json v2.0 color.light/dark, docs/design/02-design-system.md §2.7.
  * 60 cream · 30 cocoa text + white cards · 10 forest green + marigold. Dynamic colour is off.
  * Hex values are only allowed in this package (feature modules read MaterialTheme / SmTheme.colors).
  */
@@ -38,6 +38,7 @@ internal val LightColors = lightColorScheme(
     surfaceContainer = Color(0xFFF8F0E5),
     surfaceContainerHigh = Color(0xFFF5ECDF),
     surfaceContainerHighest = Color(0xFFEFE4D4),
+    surfaceTint = Color.Transparent, // no tonal tint: cream must stay cream
     outline = Color(0xFF8C7A68),
     outlineVariant = Color(0xFFEFE4D4),
     inverseSurface = Color(0xFF3A2F24),
@@ -74,6 +75,7 @@ internal val DarkColors = darkColorScheme(
     surfaceContainer = Color(0xFF282018),
     surfaceContainerHigh = Color(0xFF2D241B),
     surfaceContainerHighest = Color(0xFF3A2F24),
+    surfaceTint = Color.Transparent,
     outline = Color(0xFF9A8875),
     outlineVariant = Color(0xFF3A2F24),
     inverseSurface = Color(0xFFF6EDE1),

@@ -79,7 +79,7 @@ fun RowScope.FactChip(text: String, @DrawableRes icon: Int, weight: Float = 1f) 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        SmIcon(icon, tint = SmTheme.colors.muted, size = SmSize.iconSm)
+        SmIcon(icon, tint = MaterialTheme.colorScheme.onSurfaceVariant, size = SmSize.iconSm)
         Text(text, style = MaterialTheme.typography.labelMedium.tabular(), color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
     }
 }
@@ -87,7 +87,7 @@ fun RowScope.FactChip(text: String, @DrawableRes icon: Int, weight: Float = 1f) 
 /** 48 dp category icon tile (police, SSC, railway, bank, state): recognisable without reading. */
 @Composable
 fun CategoryTile(tile: ExamCategoryTile, modifier: Modifier = Modifier) {
-    val colors = SmTheme.colors.tile(tile)
+    val colors = SmTheme.colors.category(tile)
     val icon = when (tile) {
         ExamCategoryTile.Police -> SmIcons.Police
         ExamCategoryTile.Ssc -> SmIcons.Ssc
@@ -101,7 +101,7 @@ fun CategoryTile(tile: ExamCategoryTile, modifier: Modifier = Modifier) {
             .background(colors.container, RoundedCornerShape(SmRadius.lg)),
         contentAlignment = Alignment.Center,
     ) {
-        SmIcon(icon, tint = colors.content)
+        SmIcon(icon, tint = colors.icon)
     }
 }
 

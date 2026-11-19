@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="jobs_app_name">Sarkari Match</string>
+    <string name="jobs_notifications">अलर्ट</string>
+    <string name="jobs_greeting">नमस्ते</string>
+    <string name="jobs_greeting_subtitle">आज %1$s · %2$s</string>
+    <plurals name="jobs_waiting_for_you">
+        <item quantity="one">%1$d नौकरी आपका जवाब माँग रही है</item>
+        <item quantity="other">%1$d नौकरियाँ आपका जवाब माँग रही हैं</item>
+    </plurals>
+    <string name="jobs_pill_today">%1$d आज</string>
+    <string name="jobs_pill_three_days">%1$d 3 दिन में</string>
+    <string name="jobs_pill_later">%1$d बाद में</string>
+    <string name="jobs_section_today">आज आखिरी दिन</string>
+    <string name="jobs_section_three_days">3 दिन में</string>
+    <string name="jobs_section_later">बाद में</string>
+    <string name="jobs_disclaimer">हम सरकारी नोटिस से मिलान करते हैं। फ़ॉर्म भरने से पहले हमेशा आधिकारिक नोटिस देखें।</string>
+    <string name="jobs_job_detail">नौकरी की जानकारी</string>
+    <string name="jobs_inbox">अलर्ट इतिहास</string>
+    <string name="jobs_archive">संग्रह</string>
+    <string name="jobs_digest">रोज़ का सारांश</string>
+</resources>

@@ -103,7 +103,7 @@ func compiled() (*jsonschema.Schema, error) {
 
 // Validate runs every validator on a raw rule document.
 func Validate(raw []byte, opt Options) (Report, *Rule) {
-	rep := Report{EvaluatorMinVersion: 1}
+	rep := Report{EvaluatorMinVersion: 1, Findings: []Finding{}, RiskFlags: []string{}}
 	sch, err := compiled()
 	if err != nil {
 		rep.add("", "schema_unavailable", Blocking, err.Error())

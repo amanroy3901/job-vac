@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="jobs_app_name">Sarkari Match</string>
+    <string name="jobs_notifications">Alerts</string>
+    <string name="jobs_greeting">Namaste</string>
+    <string name="jobs_greeting_subtitle">Today %1$s · %2$s</string>
+    <plurals name="jobs_waiting_for_you">
+        <item quantity="one">%1$d job is waiting for your reply</item>
+        <item quantity="other">%1$d jobs are waiting for your reply</item>
+    </plurals>
+    <string name="jobs_pill_today">%1$d today</string>
+    <string name="jobs_pill_three_days">%1$d in 3 days</string>
+    <string name="jobs_pill_later">%1$d later</string>
+    <string name="jobs_section_today">Last day today</string>
+    <string name="jobs_section_three_days">In 3 days</string>
+    <string name="jobs_section_later">Later</string>
+    <string name="jobs_disclaimer">We match from official notices. Always check the official notice before you apply.</string>
+    <string name="jobs_job_detail">Job details</string>
+    <string name="jobs_inbox">Alert history</string>
+    <string name="jobs_archive">Archive</string>
+    <string name="jobs_digest">Daily digest</string>
+</resources>
