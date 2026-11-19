@@ -96,7 +96,9 @@ Profile set up → new notice reviewed → eligible? (no: nothing sent) → matc
 | Yearly | ₹199 (shown as ₹17/month) | ~₹169 |
 | Monthly | ₹20 via UPI AutoPay (only if tests show demand) | ~₹17 |
 
-Paywall moment: right after the user taps Applied ("Track this application to the end?"). Trial: 14 days of Pro from first Applied. WhatsApp ~₹0.12–0.15/msg, SMS ~₹0.10–0.25; cap ~30 WhatsApp msgs/user/season. Free tier ad-free in first release.
+Paywall moment: right after the user taps Applied ("Track this application to the end?"). Trial: 14 days of Pro from first Applied. WhatsApp ~₹0.12–0.15/msg, SMS ~₹0.10–0.25; cap ~30 WhatsApp msgs/user/season.
+
+Light ads (free tier only, decided 2026-11-19): one small native ad at the bottom of the matches feed and in the daily digest. Never inside a reminder, push/WhatsApp message, the "what you need" card or the "why you match" lines. No pop-ups, video or full-screen ads; no coaching/test-prep ads that look like official notices. Pro removes ads.
 
 ## Data and matching engine
 
