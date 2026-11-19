@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- English (also the system fallback). Hindi lives in values-hi/. -->
+<resources>
+    <string name="ds_verdict_eligible">Eligible</string>
+    <string name="ds_verdict_check">Check yourself</string>
+    <string name="ds_verdict_not_eligible">Not eligible</string>
+    <string name="ds_ribbon_today">Last day today</string>
+    <string name="ds_ribbon_today_until">Last day today · until %1$s</string>
+    <plurals name="ds_ribbon_days_left">
+        <item quantity="one">Only %1$d day left · until %2$s</item>
+        <item quantity="other">Only %1$d days left · until %2$s</item>
+    </plurals>
+    <plurals name="ds_days_left">
+        <item quantity="one">%1$d day left</item>
+        <item quantity="other">%1$d days left</item>
+    </plurals>
+    <string name="ds_closed">Closed</string>
+    <string name="ds_action_applied">I applied</string>
+    <string name="ds_action_later">Later</string>
+    <string name="ds_vacancies">%1$s · %2$s posts</string>
+    <string name="ds_fee_free">Free</string>
+    <string name="ds_hour_am">%1$d am</string>
+    <string name="ds_hour_pm">%1$d pm</string>
+    <string name="ds_continue">Continue</string>
+    <string name="ds_back">Back</string>
+    <string name="ds_placeholder_body">Screen %1$s is a placeholder in this skeleton. See docs/frontend/navigation.md for its route, ViewModel and states.</string>
+</resources>

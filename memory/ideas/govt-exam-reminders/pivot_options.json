@@ -1,0 +1,192 @@
+{
+  "_meta": {
+    "skill": "pivot-engine v0.3.0",
+    "created_at": "2026-11-19",
+    "scoring_method": "idea-scoring weights (D .20, C .10, M .20, Dist .20, R .15, FMF .15) and floor penalty (x d/25 per dimension < 25). projected_score_range applies the SAME 5/7 missing-input discount as scores.json (user_profile.md and market_size.json still missing) so it is comparable to 13. 'undiscounted' shows what the score would be once both inputs exist and come in neutral. All dimension projections are estimates.",
+    "criteria_exception": "Minimum-viable-pivot criterion #2 ('preserves a dimension >= 60') cannot be met by ANY option: the original's best dimension is demand at 52. Every option preserves demand (52) and the Android/push foundation instead. Flagged, not hidden."
+  },
+  "original_score": 13,
+  "original_verdict": "drop",
+  "triggered_by_weaknesses": [
+    { "dimension": "monetization", "score": 15, "root_cause_type": "addressable", "root_cause_description": "The free information step is monetized. People pay for applications (INR 25-150/form) and corrections (INR 200/500), not alerts." },
+    { "dimension": "competition", "score": 22, "root_cause_type": "addressable", "root_cause_description": "Alerts and eligibility are a free commodity. Post-alert application work is less crowded but contested by TrueJobs tools, SarkariFilled and free resizers." },
+    { "dimension": "distribution", "score": 30, "root_cause_type": "situational", "root_cause_description": "No founder channel, and an LTV of ~INR 5 rules out paid seeding." }
+  ],
+  "structural_weaknesses_unpivotable": [
+    "Alerts-only monetization (any variant that keeps alerts as the paid product)",
+    "Liability for rejections when the product touches the application"
+  ],
+  "pivot_options": [
+    {
+      "pivot_id": "pivot-1",
+      "pivot_type": "feature pivot + monetization pivot (compound, 2 variables)",
+      "description": "'Form Pakka' (working name): a Hindi-first app that makes applications rejection-proof for ONE Hindi-belt state's big recruitments (UP: UPSSSC PET/OTR, UP Police; or Rajasthan: RSSB Patwari/VDO). It covers a document vault, photo and signature auto-formatting to each notification's spec, a pre-submit audit (DOB as on cutoff, category certificate FY and format, domicile, qualification), and an application ledger with reminders for fee, last date, correction window, admit card, exam city, answer key, result and DV. Paid: a INR 49 human 'Form Check' of the preview PDF before final submit or during the correction window (INR 99 for a 3-pack).",
+      "specific_change": "Feature: from 'notify me' to 'my applications, made rejection-proof'. Monetization: from ads/Pro alerts to a per-application paid check. Audience narrowed to one state (scope choice, not a new audience).",
+      "evidence": "Lakh-scale rejections (RRB 2018: 1.27 lakh for photos; Gangman 2021: 4.86 lakh for photo/signature). SSC correction fees of INR 200/500 show errors already cost money. Courts put liability on the candidate even for café errors (Delhi HC 2025 Nisha Khan). Certificate-FY and format rejections. Cafés charge INR 100-150/form, so there is willingness to pay. UPSSSC PET 2026 OTR and OTP glitches. RSSB Patwari ~6.5 lakh applicants for 3,705 posts. No personal application tracker exists (guides recommend a spreadsheet).",
+      "evidence_source": "gap_analysis.md sections 3-5; competitors.json positioning_gaps 'experience'; market_insights web-search Financial Opportunities #1",
+      "meets_minimum_viable_pivot": true,
+      "mvp_criteria_note": "Changes 2 variables (compound pivot, higher risk). Criterion #2 is not satisfiable (see _meta).",
+      "scoring_simulation": {
+        "dimensions_improved": [
+          { "dimension": "competition", "current": 22, "projected_low": 28, "projected_high": 38 },
+          { "dimension": "monetization", "current": 15, "projected_low": 25, "projected_high": 40 },
+          { "dimension": "retention", "current": 42, "projected_low": 38, "projected_high": 48 },
+          { "dimension": "distribution", "current": 30, "projected_low": 30, "projected_high": 38 }
+        ],
+        "dimensions_worsened": [
+          { "dimension": "founder_market_fit", "current": 50, "projected_low": 45, "projected_high": 50 },
+          { "dimension": "demand", "current": 52, "projected_low": 50, "projected_high": 58 }
+        ],
+        "dimensions_unchanged": [],
+        "rationale": "Monetization: the paid unit maps onto existing willingness to pay (cafés INR 100-150; the CSC INR 25-33 sets the floor). INR 49 per check x ~1.5 checks/yr x 5-10% paying (est.) gives LTV ~INR 10-25 per install vs organic CAC ~INR 4-10, so LTV:CAC ~1.5-3 (rubric band 35-59 only at the top end). Competition: free resizers and TrueJobs checklists cap the gain, while per-notification checks against the user's own documents plus Hindi mobile delivery is a real gap. Demand: sharper pain (rejection = a lost year) but one state shrinks volume. Distribution: Telegram paid posts become affordable, and a 'form checked' share card is a plausible loop (unvalidated). FMF: needs Hindi and rule-curation ability.",
+        "projected_score_range": { "low": 26, "high": 33 },
+        "undiscounted_range": { "low": 36, "high": 46 },
+        "projected_verdict_range": "drop (as scored now, with the missing-input discount); pivot band once user_profile.md and market_size.json exist"
+      },
+      "effort": {
+        "level": "medium",
+        "tier_adjusted_level": "medium",
+        "timeline": "Concierge test: 3-4 days (WhatsApp + landing page). Android MVP: 4-6 weeks for a solo Kotlin dev (vault, image formatting, rules JSON per notification, ledger, reminders). Ongoing: ~4-8 hrs per new notification for rule curation.",
+        "what_changes": "Core feature, paid unit, scope narrowed to one state",
+        "what_stays": "Audience (govt-job aspirants), Android-first, push/reminder engine, eligibility logic"
+      },
+      "indie_buildability": {
+        "passes": true,
+        "constraints_checked": ["solo_buildable", "budget_feasible", "time_feasible", "skill_feasible", "no_enterprise_creep"],
+        "failed_constraints": [],
+        "flags": ["The human 'Form Check' does not scale past ~30-50 checks/day for one person (est. 10-20 min each); productize the checks into the app's audit before scaling.", "DPDP Act 2023: keep documents on-device in v1; server storage of certificates and Aadhaar-linked data adds compliance burden."]
+      },
+      "trade_offs": ["Gives up national reach and SEO head terms", "Takes on liability: a missed error damages trust quickly; needs clear disclaimers and a refund policy", "Event- and season-driven revenue (lumpy around big notifications)"],
+      "variables_changed": 2
+    },
+    {
+      "pivot_id": "pivot-2",
+      "pivot_type": "monetization pivot + audience change (B2B2C, 2 variables)",
+      "description": "'Operator kit' for cyber cafés and CSC operators who fill forms for aspirants. It covers a customer document vault (per-customer folder), batch photo and signature formatting per notification, a pre-submit rule checker, a printable or WhatsApp 'application receipt' with the next dates (admit card, correction window), and automatic WhatsApp reminders to the operator's customers. Pricing INR 199-499/month per operator in season, or INR 5-10 per form processed.",
+      "specific_change": "Customer: aspirant becomes the operator who already earns INR 25-150/form. Paid unit: SaaS or per-form fee.",
+      "evidence": "Operators charge per form (NIOS CSC INR 33; CSC INR 25+GST; private INR 100-150). Courts show operator errors and the candidate's liability, so operators carry reputational risk. No operator-facing tool was found. Each operator serves hundreds of aspirants per season, which turns them into distribution nodes. CAUTION: no primary evidence that operators would pay or that they feel this pain (research gap).",
+      "evidence_source": "gap_analysis.md sections 1, 3, 5 (gap 3)",
+      "meets_minimum_viable_pivot": true,
+      "mvp_criteria_note": "2 variables (customer + revenue model). Risks a hidden 3rd variable: operators work on desktop PCs, so a web or desktop companion is probably required (platform change). Evidence is inference only, so this is borderline on criterion #3.",
+      "scoring_simulation": {
+        "dimensions_improved": [
+          { "dimension": "monetization", "current": 15, "projected_low": 30, "projected_high": 52 },
+          { "dimension": "competition", "current": 22, "projected_low": 35, "projected_high": 50 },
+          { "dimension": "retention", "current": 42, "projected_low": 48, "projected_high": 60 }
+        ],
+        "dimensions_worsened": [
+          { "dimension": "demand", "current": 52, "projected_low": 38, "projected_high": 50 },
+          { "dimension": "distribution", "current": 30, "projected_low": 25, "projected_high": 40 },
+          { "dimension": "founder_market_fit", "current": 50, "projected_low": 40, "projected_high": 50 }
+        ],
+        "dimensions_unchanged": [],
+        "rationale": "WTP of INR 199-499/mo (~$2.3-5.7) is 10-30x the B2C WTP, and a work tool used daily in season retains better. Demand is unproven because operators may find free resizers plus their own experience good enough. Distribution means field or WhatsApp sales to operators, which is slow for a solo dev; there may be operator Telegram and YouTube communities (unverified).",
+        "projected_score_range": { "low": 25, "high": 36 },
+        "undiscounted_range": { "low": 35, "high": 50 },
+        "projected_verdict_range": "drop to pivot (discounted); widest uncertainty of all options"
+      },
+      "effort": {
+        "level": "high",
+        "tier_adjusted_level": "high",
+        "timeline": "Discovery: 1-2 weeks of operator calls and visits. MVP: 6-10 weeks (web/desktop + Android intake app, multi-customer data model, WhatsApp Business API for reminders).",
+        "what_changes": "Customer, revenue model, likely platform (desktop web)",
+        "what_stays": "Domain, rules engine, reminder engine"
+      },
+      "indie_buildability": {
+        "passes": true,
+        "constraints_checked": ["solo_buildable", "budget_feasible", "time_feasible", "skill_feasible", "no_enterprise_creep"],
+        "failed_constraints": [],
+        "flags": ["Borderline 'no enterprise creep': small-ticket SMB sales, which can be self-serve over WhatsApp but likely needs hand-holding", "Holding many customers' identity documents adds DPDP Act compliance weight", "Face-auth flows (mySSC) need the candidate present, which limits operator use for SSC"]
+      },
+      "trade_offs": ["Far fewer customers, with a slower and more manual sales motion", "Platform mismatch with an Android-first founder", "Unvalidated pain on the operator side"],
+      "variables_changed": 2
+    },
+    {
+      "pivot_id": "pivot-3",
+      "pivot_type": "distribution pivot",
+      "description": "Own a Hindi Telegram and WhatsApp alert channel for one state, plus a light companion app, monetized by test-series affiliate links (Testbook up to INR 105/transaction or 5-10%; Adda247 ~6%) and paid channel posts.",
+      "specific_change": "Primary surface and acquisition move from the app to the channel. Revenue from affiliate commissions and ads.",
+      "evidence": "Aspirants live in Telegram and WhatsApp (competitors.json). Channel posts sell for INR 500-2,000 per 24h on a 10-20K channel (blog estimate). Affiliate programs exist. BUT the channel space is the most saturated part of the market (sarkarijobs.com runs many channels; every edtech and creator has one), and affiliate yield at ~1% conversion is under INR 1 per subscriber per cycle (est.).",
+      "evidence_source": "gap_analysis.md section 3; competitors.json",
+      "meets_minimum_viable_pivot": true,
+      "scoring_simulation": {
+        "dimensions_improved": [
+          { "dimension": "distribution", "current": 30, "projected_low": 35, "projected_high": 45 }
+        ],
+        "dimensions_worsened": [
+          { "dimension": "competition", "current": 22, "projected_low": 15, "projected_high": 22 },
+          { "dimension": "founder_market_fit", "current": 50, "projected_low": 45, "projected_high": 50 }
+        ],
+        "dimensions_unchanged": ["demand", "monetization (stays 15-25)", "retention (40-45)"],
+        "projected_score_range": { "low": 9, "high": 26 },
+        "undiscounted_range": { "low": 12, "high": 36 },
+        "projected_verdict_range": "drop"
+      },
+      "effort": { "level": "low", "tier_adjusted_level": "low", "timeline": "Days to start; 6-12 months of daily posting to reach 10K+ subscribers", "what_changes": "Channel and revenue", "what_stays": "Alert content" },
+      "indie_buildability": { "passes": true, "constraints_checked": ["solo_buildable", "budget_feasible", "time_feasible", "skill_feasible", "no_enterprise_creep"], "failed_constraints": [], "flags": ["Content-ops job, not an Android build; doesn't use the founder's skill"] },
+      "trade_offs": ["Keeps both floor penalties (commodity info, near-zero yield)", "Daily content grind"],
+      "variables_changed": 1
+    },
+    {
+      "pivot_id": "pivot-4",
+      "pivot_type": "niche pivot (problem phase)",
+      "description": "Post-exam tracker covering DV and medical slots, 'no further opportunity' warnings, DV document checklist, waiting-list movement, joining and appointment delays, and court-case status, for shortlisted and selected candidates.",
+      "specific_change": "Moves from the pre-application phase to the post-result phase",
+      "evidence": "SSC DV notices say a missed slot means no further opportunity. Repeated appointment-delay protests (Palghar PESA 2026, JKSSB, Odisha doctors). No dedicated tool found. BUT the audience is about 1-3x vacancies (e.g. RRB Group D 22K posts vs 53 lakh applicants), with no natural acquisition channel and little to upsell.",
+      "evidence_source": "gap_analysis.md section 2 and gap 6",
+      "meets_minimum_viable_pivot": true,
+      "scoring_simulation": {
+        "dimensions_improved": [ { "dimension": "competition", "current": 22, "projected_low": 35, "projected_high": 45 } ],
+        "dimensions_worsened": [
+          { "dimension": "demand", "current": 52, "projected_low": 40, "projected_high": 50 },
+          { "dimension": "distribution", "current": 30, "projected_low": 22, "projected_high": 32 }
+        ],
+        "dimensions_unchanged": ["monetization (15-25)", "retention (40-50)", "founder_market_fit"],
+        "projected_score_range": { "low": 12, "high": 29 },
+        "undiscounted_range": { "low": 17, "high": 41 },
+        "projected_verdict_range": "drop"
+      },
+      "effort": { "level": "medium", "tier_adjusted_level": "medium", "timeline": "3-5 weeks", "what_changes": "Lifecycle phase", "what_stays": "Reminder engine" },
+      "indie_buildability": { "passes": true, "constraints_checked": ["solo_buildable", "budget_feasible", "time_feasible", "skill_feasible", "no_enterprise_creep"], "failed_constraints": [], "flags": [] },
+      "trade_offs": ["Audience too small to stand alone; better as the retention tail of pivot-1's ledger"],
+      "variables_changed": 1
+    },
+    {
+      "pivot_id": "pivot-5",
+      "pivot_type": "problem pivot",
+      "description": "Study-accountability app for self-studying aspirants: small peer pods (5-8), daily target check-ins, a virtual 'library' timer, and streaks, with an optional INR 99-299/mo mentor-led pod.",
+      "specific_change": "Problem moves from 'missing deadlines' to 'staying consistent alone'",
+      "evidence": "Loneliness is common (survey: 60% of 203 UPSC aspirants, secondary citation). Reddit study-partner requests. Paid physical libraries at INR 1,600-4,000/mo and mentorship groups at INR 299/mo. BUT it's served free by Telegram study groups, study-timer apps and incumbent streaks, and the willingness to pay is for a physical seat, not an app.",
+      "evidence_source": "gap_analysis.md sections 2-3, gap 8",
+      "meets_minimum_viable_pivot": true,
+      "scoring_simulation": {
+        "dimensions_improved": [ { "dimension": "retention", "current": 42, "projected_low": 45, "projected_high": 58 } ],
+        "dimensions_worsened": [ { "dimension": "competition", "current": 22, "projected_low": 18, "projected_high": 28 } ],
+        "dimensions_unchanged": ["demand (45-52)", "monetization (15-28)", "distribution (30-40)", "founder_market_fit"],
+        "projected_score_range": { "low": 10, "high": 31 },
+        "undiscounted_range": { "low": 15, "high": 43 },
+        "projected_verdict_range": "drop"
+      },
+      "effort": { "level": "medium", "tier_adjusted_level": "medium", "timeline": "4-6 weeks; cold-start problem for pods", "what_changes": "Problem", "what_stays": "Audience, reminder engine" },
+      "indie_buildability": { "passes": true, "constraints_checked": ["solo_buildable", "budget_feasible", "time_feasible", "skill_feasible", "no_enterprise_creep"], "failed_constraints": [], "flags": ["Social cold start: pods need a density of users"] },
+      "trade_offs": ["Leaves the only proven willingness to pay in this market (applications) untouched"],
+      "variables_changed": 1
+    }
+  ],
+  "ranking_by_impact_per_effort": [
+    { "pivot_id": "pivot-1", "mid_projection": 29.5, "gain_vs_13": 16.5, "effort": "medium" },
+    { "pivot_id": "pivot-2", "mid_projection": 30.5, "gain_vs_13": 17.5, "effort": "high" },
+    { "pivot_id": "pivot-5", "mid_projection": 20.5, "gain_vs_13": 7.5, "effort": "medium" },
+    { "pivot_id": "pivot-4", "mid_projection": 20.5, "gain_vs_13": 7.5, "effort": "medium" },
+    { "pivot_id": "pivot-3", "mid_projection": 17.5, "gain_vs_13": 4.5, "effort": "low" }
+  ],
+  "recommended_pivot": "pivot-1",
+  "recommended_pivot_rationale": "Highest gain per unit of effort. It sits on the strongest evidence found (lakh-scale rejections, correction fees, existing per-form spending), keeps the audience and Android foundation, and can be tested as a concierge in days. pivot-2 has a slightly higher ceiling but needs a platform change and has no primary evidence of operator demand, so run it as a zero-cost discovery probe alongside pivot-1 rather than build it.",
+  "drop_recommendation": false,
+  "drop_rationale": "Not a drop of the domain, but honestly: NO option clears 50, and with the current missing-input discount none even clears 35 (the 'pivot' band). Pivot-1 is worth one paid 2-week test because it's cheap and attacks the riskiest assumption directly. If it fails the kill criteria, drop the domain.",
+  "market_insights_sources_used": [
+    "memory/market_insights/govt-exam-alerts-india-apps-2026-11.md",
+    "memory/market_insights/govt-exam-alerts-india-web-search-2026-11.md",
+    "memory/ideas/govt-exam-reminders/gap_analysis.md (new web research 2026-11-19)"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "_meta": {
+    "currency": "INR (USD at ~INR 88/USD, estimate)",
+    "calibration_note": "The skill's channel CAC benchmarks are USD/Western-calibrated. India-specific CPI anchors used instead where found: Linkrunner 'State of Mobile App Growth India 2026' (vendor sample of 58 paid apps): median India CPI ~INR 20.19, EdTech ~INR 67.79, 87.5% of installs Android. Organic 'effective CAC' = founder time valued at an assumed INR 500/hour (estimate) divided by estimated installs. All install-yield figures are ESTIMATES."
+  },
+  "ltv": {
+    "estimated_ltv": 4.5,
+    "estimated_ltv_usd": 0.05,
+    "arpu_monthly": 1.13,
+    "average_lifespan_months": 4,
+    "ltv_confidence": "medium",
+    "ltv_assumptions": [
+      "Subscription ARPU = INR 199/yr Pro (INR 16.6/mo) x 0.8% freemium conversion = INR 0.13 per user per month (pricing.json)",
+      "Ad ARPU ~INR 1.0 per active user per month (ESTIMATE: ~25 ad impressions/month at ~INR 40 eCPM; India eCPMs are low and the head keyword CPC is ~$0.01). Ads conflict with the trust/quiet positioning — any reduction lowers LTV further",
+      "Lifespan 4 months: retention.json D30 = 8% -> framework band 3-6 months; midpoint-low chosen because churn_risk = high",
+      "Sanity check: RevenueCat-cited median revenue per install at 60 days for India/SEA subscription apps ~$0.11 (~INR 10); our ~$0.05 per user is plausible for a free-core utility",
+      "Confidence medium (not high): pricing.json + retention.json exist, but both conversion and retention are estimates, and user_profile.md is missing"
+    ]
+  },
+  "founder_budget_tier": "bootstrap",
+  "founder_budget_tier_rationale": "No memory/user_profile.md. Solo indie Android developer, builder tier, no audience, budget unknown -> assumed Bootstrap ($0-100/mo, ~INR 0-8,800). Paid channels excluded from the recommendation per skill rules.",
+  "cac_by_channel": {
+    "aso_organic": { "cac": 10, "ltv_cac_ratio": 0.45, "classification": "cash burn", "payback_months": 8.8, "assumption": "20 founder-hrs/mo (INR 10,000) on Hindi/state long-tail listing experiments -> ~1,000 installs/mo after ramp (estimate); saturated category adjusts upward" },
+    "content_seo": { "cac": 15, "ltv_cac_ratio": 0.3, "classification": "cash burn", "payback_months": 13.3, "assumption": "Long-tail eligibility pages; head terms KD 100; 3-6 month lag" },
+    "tiktok_organic": { "cac": 12, "ltv_cac_ratio": 0.38, "classification": "cash burn", "payback_months": 10.6, "assumption": "TikTok is banned in India; modelled as YouTube Shorts / Instagram Reels made by the founder. No visual hook; incumbents' creators dominate" },
+    "reddit_community": { "cac": 4, "ltv_cac_ratio": 1.13, "classification": "unprofitable", "payback_months": 3.5, "assumption": "Reddit is irrelevant for this audience; modelled as Telegram/WhatsApp aspirant-group seeding with share cards: 15 hrs/mo (INR 7,500) -> ~1,900 installs/mo (estimate); admins may ban promotion" },
+    "paid_social_meta": { "cac": 40, "ltv_cac_ratio": 0.11, "classification": "cash burn", "payback_months": 35.4, "assumption": "Between India median CPI INR 20 and EdTech INR 68 (Linkrunner); skipped for recommendation (Bootstrap)" },
+    "paid_social_tiktok": { "cac": 0, "ltv_cac_ratio": 0, "classification": "not applicable", "payback_months": 0, "assumption": "TikTok banned in India. Closest analogue, Google App Campaigns, estimated INR 30/install -> LTV:CAC 0.15 (cash burn)" },
+    "influencer": { "cac": 25, "ltv_cac_ratio": 0.18, "classification": "cash burn", "payback_months": 22.1, "assumption": "Micro govt-exam YouTubers/coaching channels; creators are competitors with their own apps; creator fit low" },
+    "word_of_mouth": { "cac": 2, "ltv_cac_ratio": 2.25, "classification": "marginal", "payback_months": 1.8, "assumption": "Share-card build cost amortized; k ~0.12 means volume is only ~12% on top of other channels — not a standalone channel. Effective-CAC viral multiplier 1/(1-k) = 1.14 already reflected" },
+    "press_product_hunt": { "cac": 0, "ltv_cac_ratio": 0, "classification": "not applicable", "payback_months": 0, "one_time_cohort_estimate": 200, "assumption": "Product Hunt audience is not Indian sarkari aspirants; Indian vernacular press possible but one-off" }
+  },
+  "skipped_channels": [
+    "paid_social_tiktok (TikTok banned in India)",
+    "press_product_hunt (utility app, wrong audience; one-time cohort ~200 at most)",
+    "paid_social_meta and influencer excluded from recommendation (Bootstrap tier) but still modelled for completeness"
+  ],
+  "viable_channels": [],
+  "marginal_channels": ["word_of_mouth (2.25:1, volume-capped by k~0.12)"],
+  "non_viable_channels": ["reddit_community -> Telegram/WhatsApp seeding (1.13:1)", "aso_organic (0.45:1)", "tiktok_organic -> Shorts/Reels (0.38:1)", "content_seo (0.3:1)", "influencer (0.18:1)", "paid_social_meta (0.11:1)", "Google App Campaigns (0.15:1)"],
+  "recommended_first_channel": "Telegram/WhatsApp aspirant-group seeding with shareable eligibility cards (best ratio at 1.13:1 among executable channels), paired with Hindi long-tail ASO",
+  "recommended_first_channel_rationale": "Highest LTV:CAC among channels a Bootstrap-tier solo builder can execute without cash. Even so it is below 2:1 — it is recommended only as the vehicle for the RAT experiment, not as a growth plan.",
+  "payback_period_months": 3.5,
+  "market_insights_adjustments": [
+    "trend_velocity = stable: no organic tailwind adjustment",
+    "monetization_evidence shows incumbents (Testbook, Adda247) heavily funded and running YouTube/Telegram/SEO funnels -> organic channel CACs adjusted upward",
+    "web-search: head keyword CPC ~$0.01 -> ad-yield assumption kept very low",
+    "apps: India revenue per download ~$0.03 (TechCrunch/Sensor Tower) and India/SEA download-to-paid 0.7-1.4% (RevenueCat-cited) -> conversion kept at 0.8%"
+  ],
+  "viability_verdict": "not-viable",
+  "viability_verdict_rationale": "No channel reaches 2:1 except volume-capped word of mouth. Root cause is LTV, not CAC: ~INR 4.5 (~$0.05) lifetime revenue per user because the core value (alerts) must be free and ad yields on this intent are near zero. Break-even math: to hit 3:1 on ASO (INR 10 CAC) LTV must reach ~INR 30, i.e., ~6.7x today — achievable only by monetizing a different job (e.g., INR 29-49 per assisted application at even 5-10% of users per exam cycle) or by B2B licensing. user_profile.md missing — budget tier assumed."
+}

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app -->
+    <string name="tab_jobs">नौकरियाँ</string>
+    <string name="tab_forms">मेरे फ़ॉर्म</string>
+    <string name="tab_profile">प्रोफ़ाइल</string>
+    <string name="force_update">ऐप अपडेट करें</string>
+    <string name="outage">सेवा थोड़ी देर के लिए बंद है</string>
+    <!-- onboarding -->
+    <string name="onb_language_title">अपनी भाषा चुनें</string>
+    <string name="onb_language_subtitle">बाद में प्रोफ़ाइल में कभी भी बदल सकते हैं।</string>
+    <string name="onb_language_helper_hi">हिंदी · सब कुछ हिंदी में</string>
+    <string name="onb_language_helper_en">English · सब कुछ अंग्रेज़ी में</string>
+    <string name="onb_language_coming_soon">जल्द आ रही हैं</string>
+    <string name="onb_language_continue">आगे बढ़ें</string>
+    <string name="onb_welcome">स्वागत है</string>
+    <string name="onb_privacy">आपकी निजता</string>
+    <string name="onb_exams">कौन-सी परीक्षाएँ?</string>
+    <string name="onb_qualification">आपकी पढ़ाई</string>
+    <string name="onb_dob">जन्म तिथि</string>
+    <string name="onb_category">वर्ग (कैटेगरी)</string>
+    <string name="onb_state">आपका राज्य</string>
+    <string name="onb_more">कुछ और जानकारी</string>
+    <string name="onb_result">आपकी नौकरियाँ</string>
+    <string name="onb_edit_profile">प्रोफ़ाइल बदलें</string>
+    <string name="onb_language_settings">ऐप की भाषा</string>
+    <!-- jobs -->
+    <string name="jobs_app_name">Sarkari Match</string>
+    <string name="jobs_notifications">अलर्ट</string>
+    <string name="jobs_greeting">नमस्ते</string>
+    <string name="jobs_greeting_subtitle">आज %1$s · %2$s</string>
+    <plurals name="jobs_waiting_for_you">
+        <item quantity="one">%1$d नौकरी आपका जवाब माँग रही है</item>
+        <item quantity="other">%1$d नौकरियाँ आपका जवाब माँग रही हैं</item>
+    </plurals>
+    <string name="jobs_pill_today">%1$d आज</string>
+    <string name="jobs_pill_three_days">%1$d 3 दिन में</string>
+    <string name="jobs_pill_later">%1$d बाद में</string>
+    <string name="jobs_section_today">आज आखिरी दिन</string>
+    <string name="jobs_section_three_days">3 दिन में</string>
+    <string name="jobs_section_later">बाद में</string>
+    <string name="jobs_disclaimer">हम सरकारी नोटिस से मिलान करते हैं। फ़ॉर्म भरने से पहले हमेशा आधिकारिक नोटिस देखें।</string>
+    <string name="jobs_job_detail">नौकरी की जानकारी</string>
+    <string name="jobs_inbox">अलर्ट इतिहास</string>
+    <string name="jobs_archive">संग्रह</string>
+    <string name="jobs_digest">रोज़ का सारांश</string>
+    <!-- alerts -->
+    <string name="alerts_notif_primer">अलर्ट चालू करें</string>
+    <string name="alerts_exact_alarm">बिना इंटरनेट भी याद</string>
+    <string name="alerts_oem_guide">फ़ोन पर अलर्ट चालू रखें</string>
+    <string name="alerts_self_test">एक अलर्ट जाँचें</string>
+    <string name="alerts_settings">अलर्ट सेटिंग</string>
+    <string name="alerts_delivery_health">क्या अलर्ट पहुँच रहे हैं?</string>
+    <string name="alerts_done">हो गया</string>
+    <!-- applications -->
+    <string name="apps_applied">मेरे फ़ॉर्म</string>
+    <string name="apps_timeline">फ़ॉर्म की यात्रा</string>
+    <string name="apps_clash">परीक्षा की तारीख टकरा रही है</string>
+    <!-- pro -->
+    <string name="pro_paywall">Sarkari Match Pro</string>
+    <string name="pro_payment_status">पेमेंट की स्थिति</string>
+    <string name="pro_manage_plan">आपका प्लान</string>
+    <!-- profile -->
+    <string name="profile_title">प्रोफ़ाइल</string>
+    <string name="profile_account">अकाउंट और निजता</string>
+    <string name="profile_help">मदद</string>
+    <string name="profile_certificates">प्रमाणपत्र</string>
+    <string name="profile_family">परिवार</string>
+    <string name="profile_family_accept">परिवार का न्योता</string>
+    <string name="profile_family_invite">परिवार को जोड़ें</string>
+    <string name="profile_family_following">जिन्हें आप देख रहे हैं</string>
+    <string name="profile_refer">दोस्त को बताएँ</string>
+    <string name="profile_share_card">शेयर कार्ड</string>
+    <string name="profile_age_countdown">उम्र की गिनती</string>
+    <string name="profile_open_language">ऐप की भाषा</string>
+    <string name="profile_open_alerts">अलर्ट सेटिंग</string>
+    <!-- ads -->
+    <string name="ad_label">विज्ञापन</string>
+</resources>

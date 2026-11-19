@@ -1,0 +1,57 @@
+{
+  "_meta": {
+    "currency": "INR (~INR 88/USD, estimate)",
+    "calibration_note": "Framework channel CACs are USD/Western-calibrated; India anchors reused from v1 cac.json (Linkrunner 2026: median India CPI ~INR 20, EdTech ~INR 68). Organic effective CAC = founder time at an assumed INR 500/hr / estimated installs. All yields are ESTIMATES. Free tier assumed ad-free (per idea: no upsell, quiet)."
+  },
+  "ltv": {
+    "estimated_ltv": 1.6,
+    "estimated_ltv_usd": 0.02,
+    "estimated_ltv_optimistic": 5.1,
+    "arpu_monthly": 0.32,
+    "average_lifespan_months": 5,
+    "ltv_confidence": "medium",
+    "ltv_assumptions": [
+      "Conversion 1.2% of installs (pricing.json); optimistic 3%",
+      "Payer mix 50/50: annual INR 199 (net ~INR 169 after Play 15%) with 30% renewal -> ~INR 220 lifetime; season pass INR 49 (net ~INR 42) bought ~1.7x -> ~INR 71. Average ~INR 145 per payer",
+      "Pro messaging cost (WhatsApp utility ~INR 0.12-0.15, SMS ~INR 0.10-0.25) ~INR 13 per payer lifetime -> net ~INR 132 per payer",
+      "LTV per install = 1.2% x INR 132 = ~INR 1.6. Optimistic (3% conversion + Form Check bundled raising payer value to ~INR 170) = ~INR 5.1",
+      "Lifespan 5 months: D30 10% -> framework band 3-6 months; ARPU = 1.6 / 5 = INR 0.32/mo",
+      "v1 LTV was INR 4.5 but ~90% of it came from ads (INR ~1/active month). Removing ads to honour the 'quiet' promise means v2's BASE LTV is LOWER than v1's, despite a better paid tier. Sensitivity: adding light ads back (~INR 1/active month) -> ~INR 6.6, but breaks positioning",
+      "Data-ops cost not in LTV: est. 15-50 founder hours/month to curate central + one state's notifications (see market_insights pro-tier-economics §5)"
+    ]
+  },
+  "founder_budget_tier": "bootstrap",
+  "founder_budget_tier_rationale": "No user_profile.md; solo indie, no audience -> Bootstrap assumed ($0-100/mo). Paid channels modelled but excluded from recommendation.",
+  "cac_by_channel": {
+    "aso_organic": {"cac": 10, "ltv_cac_ratio": 0.16, "classification": "cash burn", "payback_months": 31, "optimistic_ratio": 0.51, "assumption": "Same as v1: 20 hrs/mo -> ~1,000 installs/mo after ramp (estimate)"},
+    "content_seo": {"cac": 15, "ltv_cac_ratio": 0.11, "classification": "cash burn", "payback_months": 47, "optimistic_ratio": 0.34, "assumption": "Per-notification eligibility pages; 3-6 month lag; SERPs owned by aggregators/edtechs"},
+    "tiktok_organic": {"cac": 12, "ltv_cac_ratio": 0.13, "classification": "cash burn", "payback_months": 38, "optimistic_ratio": 0.43, "assumption": "TikTok banned in India -> modelled as founder-made Shorts/Reels"},
+    "reddit_community": {"cac": 4, "ltv_cac_ratio": 0.4, "classification": "cash burn", "payback_months": 12.5, "optimistic_ratio": 1.28, "assumption": "Reddit irrelevant; modelled as Telegram/WhatsApp aspirant-group seeding, 15 hrs/mo -> ~1,900 installs/mo (estimate)"},
+    "paid_social_meta": {"cac": 40, "ltv_cac_ratio": 0.04, "classification": "cash burn", "payback_months": 125, "optimistic_ratio": 0.13, "assumption": "Between India median CPI INR 20 and EdTech INR 68"},
+    "paid_social_tiktok": {"cac": 0, "ltv_cac_ratio": 0, "classification": "not applicable", "payback_months": 0, "assumption": "TikTok banned; Google App Campaigns ~INR 30/install -> 0.05:1"},
+    "influencer": {"cac": 25, "ltv_cac_ratio": 0.06, "classification": "cash burn", "payback_months": 78, "optimistic_ratio": 0.2, "assumption": "Micro govt-exam creators; low fit"},
+    "word_of_mouth": {"cac": 2, "ltv_cac_ratio": 0.8, "classification": "cash burn", "payback_months": 6.3, "optimistic_ratio": 2.55, "assumption": "Share card + family mode; k ~0.14 caps volume at ~14% on top of other channels"},
+    "press_product_hunt": {"cac": 0, "ltv_cac_ratio": 0, "classification": "not applicable", "payback_months": 0, "one_time_cohort_estimate": 200, "assumption": "Wrong audience; vernacular press one-off"}
+  },
+  "skipped_channels": [
+    "paid_social_tiktok (banned in India)",
+    "press_product_hunt (wrong audience; one-time ~200 installs)",
+    "paid_social_meta, influencer excluded from recommendation (Bootstrap) but modelled"
+  ],
+  "viable_channels": [],
+  "marginal_channels": [],
+  "non_viable_channels": ["word_of_mouth (0.8:1; 2.55:1 optimistic, volume-capped)", "Telegram/WhatsApp seeding (0.4:1; 1.28:1 optimistic)", "aso_organic (0.16:1)", "Shorts/Reels (0.13:1)", "content_seo (0.11:1)", "influencer (0.06:1)", "paid_social_meta (0.04:1)"],
+  "recommended_first_channel": "Telegram/WhatsApp aspirant-group seeding with a free eligibility checker + share cards (RAT vehicle only)",
+  "recommended_first_channel_rationale": "Best ratio among channels a Bootstrap solo dev can run; still far below 2:1. Recommended only to run the WTP test, not as a growth plan.",
+  "payback_period_months": 12.5,
+  "break_even_math": "To reach 3:1 on Telegram seeding (CAC INR 4) LTV must be ~INR 12 = 7.5x the base case: e.g. ~6% of installs paying ~INR 200 lifetime, or ~10-15% of 'applied' users buying a INR 49 season pass with a bundled Form Check. On ASO (INR 10) LTV must be ~INR 30 (19x).",
+  "market_insights_adjustments": [
+    "trend_velocity stable: no organic tailwind",
+    "Incumbents fund SEO/YouTube/Telegram funnels -> organic CAC kept at v1 levels",
+    "pro-tier-economics: Truecaller India sub-1% paid share, RevenueCat India ~0.7% -> conversion capped at 1.2% base",
+    "pro-tier-economics: WhatsApp utility ~INR 0.12-0.15/msg -> Pro margin ~88-95% after messaging",
+    "pro-tier-economics: UPI AutoPay low-balance revocations -> renewal kept at 30%"
+  ],
+  "viability_verdict": "not-viable",
+  "viability_verdict_rationale": "No channel reaches 1:1 in the base case; only volume-capped word-of-mouth exceeds 2:1 even in the optimistic case. Root cause unchanged from v1: LTV, not CAC. The refinement makes the paid tier more coherent but, by removing ads, lowers base LTV from ~INR 4.5 to ~INR 1.6 per install. Viability requires a measured paid conversion several times above Indian norms."
+}

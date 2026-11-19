@@ -1,0 +1,10 @@
+{{template "head" .}}
+<header><h1>Review queue</h1><span>{{.Me.Email}} ({{.Me.Role}})</span></header>
+<table><tr><th>Task</th><th>Notice</th><th>State</th><th>Risk flags</th><th>Opened</th></tr>
+{{range .Tasks}}<tr><td><a href="/admin/tasks/{{pathEscape .ID}}">{{.ID}}</a></td><td>{{.RecruitmentID}}<br>{{index (index .Draft.Content "title") "en"}}</td>
+<td>{{.State}}{{if .NeedsSecondReview}} (2nd review){{end}}</td><td>{{range .RiskFlags}}{{.}} {{end}}</td><td>{{.OpenedAt.Format "2006-01-02 15:04"}}</td></tr>
+{{else}}<tr><td colspan="5">Queue is empty.</td></tr>{{end}}</table>
+<h2>New notice (manual entry)</h2>
+<p>Paste the notice draft (notice-level fields + posts without rules). Rules are attached per post on the next page.</p>
+<form method="post" action="/admin/notices"><textarea name="draft" rows="22">{{.Example}}</textarea><p><button>Create draft</button></p></form>
+{{template "foot" .}}

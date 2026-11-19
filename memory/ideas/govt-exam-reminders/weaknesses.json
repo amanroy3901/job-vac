@@ -1,0 +1,57 @@
+{
+  "_meta": {
+    "skill": "weakness-detection v0.1.0",
+    "created_at": "2026-11-19",
+    "threshold_for_weak": "dimension score < 40 (skill TODO; chosen here)",
+    "inputs": ["scores.json", "competitors.json", "pricing.json", "cac.json", "distribution.json", "retention.json", "desire_scores.json", "gap_analysis.md", "market_insights/govt-exam-alerts-india-apps-2026-11.md", "market_insights/govt-exam-alerts-india-web-search-2026-11.md"]
+  },
+  "weak_dimensions": [
+    {
+      "dimension": "monetization",
+      "score": 15,
+      "root_cause_type": "addressable",
+      "root_cause_description": "The product monetizes the wrong step. Alerts are informational: 'sarkari result' CPC is ~$0.01 and every competitor gives alerts free, so LTV is ~INR 4.5. People already pay at a different step: getting the application done (cyber café INR 100-150/form, CSC INR 25-33) and fixing it (SSC correction fee INR 200/500). Moving the paid unit from 'notification' to 'application done right' changes the revenue model without changing the audience. It remains structural for any alerts-only variant.",
+      "failure_mode": "Free alerts reach 20K installs, under 1% pay for Pro, ads earn under INR 15K/mo, every growth rupee is lost, and the founder quits within 6-9 months."
+    },
+    {
+      "dimension": "competition",
+      "score": 22,
+      "root_cause_type": "addressable",
+      "root_cause_description": "The headline feature (personalized alerts, eligibility filter) is already free from Testbook, Adda247, FreeJobAlert, Telegram, TrueJobs and Sarkari Scan, and mySSC handles SSC end to end. Incumbents leave the post-alert application work alone (gap_analysis.md gaps 1-4) because it doesn't sell prep and carries liability. That area is not empty: TrueJobs web tools, SarkariFilled auto-fill and dozens of free photo resizers sit in it. The remaining gap is depth (per-notification rule checks against the user's own documents), mobile and Hindi delivery, and serving operators.",
+      "failure_mode": "Any alert or eligibility feature is copied in a sprint by an incumbent with 10-50M installs that already knows the user's target exam. ASO rank collapses."
+    },
+    {
+      "dimension": "distribution",
+      "score": 30,
+      "root_cause_type": "situational",
+      "root_cause_description": "No founder audience, k ~0.12, creators are competitors, paid installs are not viable at an LTV of ~INR 5. This is partly situational (founder has no channel) and partly tied to the low LTV: if a paid per-form unit lifts LTV to ~INR 15-30 (est.), cheap Telegram paid posts (INR 500-2,000) and Meta tests become affordable. A narrower state and Hindi audience makes channel seeding more targeted. Serving operators (B2B2C) would turn each operator into a distribution node for hundreds of aspirants.",
+      "failure_mode": "Installs stall at a few thousand from long-tail ASO. Telegram admins ban promotion. Paid tests burn the budget."
+    },
+    {
+      "dimension": "retention",
+      "score": 42,
+      "root_cause_type": "addressable",
+      "root_cause_description": "Not below 40, but borderline. Alert apps get opened weekly at best and go silent between events. An application ledger (gap 2) and document vault add data lock-in, and the correction-window, admit-card, answer-key and DV milestones add more natural triggers per application. Still event-driven, not daily.",
+      "failure_mode": "Users install around one exam, then uninstall during long silent stretches or when the phone runs out of storage."
+    },
+    {
+      "dimension": "founder_market_fit",
+      "score": 50,
+      "root_cause_type": "knowledge-gap",
+      "root_cause_description": "user_profile.md is still missing, so this is a neutral default. Every pivot needs either Hindi or state-recruitment domain knowledge (rule curation) or operator-facing sales, and neither is evidenced. Together with market_size.json, this missing profile also triggers the 5/7 missing-input discount (x0.714), which on its own caps any variant below ~54.",
+      "failure_mode": "The founder cannot curate per-notification rules accurately or fast enough, a wrong check causes a rejection, and trust collapses."
+    }
+  ],
+  "critical_weaknesses": [
+    "monetization (15): the wrong step is monetized. Fixable only by changing the paid unit (per-application service or operator SaaS), not by tuning price.",
+    "competition (22): the feature is a commodity. Fixable only by moving to post-alert application work, which is less crowded but now contested by TrueJobs and SarkariFilled."
+  ],
+  "addressable_weaknesses": ["monetization", "competition", "distribution (partly situational)", "retention"],
+  "knowledge_gaps": ["founder_market_fit (no user_profile.md)", "market size (no market_size.json)", "operator willingness to pay (no primary evidence)", "direct Play review mining (blocked)"],
+  "structural_weaknesses": [
+    "For ANY alerts-only or alerts-plus-reminders variant, monetization is structural: the information is free and the intent carries no commercial value.",
+    "Liability and trust: any product that touches the application inherits blame for rejections. Courts hold the candidate responsible, which creates the demand but also the reputational risk."
+  ],
+  "overall_weakness_severity": "major",
+  "severity_rationale": "Not 'fatal': the two floor-breaking weaknesses are addressable by changing the paid unit and the job-to-be-done while keeping the same audience and the same Android/push foundation. Not 'minor': the fix is effectively a feature and monetization pivot (2 variables), and no original dimension is >= 60, so a pivot cannot 'preserve a strong dimension' as the pivot-engine criteria require."
+}

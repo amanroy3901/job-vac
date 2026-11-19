@@ -1,0 +1,9 @@
+# Optional local PostgreSQL 16 for `make run` when Docker is available.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: sarkari
+    ports: ["5432:5432"]

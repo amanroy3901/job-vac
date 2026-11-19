@@ -1,0 +1,15 @@
+{
+  "scores": {
+    "survival": 4,
+    "status": 3,
+    "belonging": 2,
+    "control": 4,
+    "curiosity": 1
+  },
+  "primary_driver": "control",
+  "secondary_driver": "survival",
+  "desire_strength": 3.3,
+  "desire_strength_label": "moderate",
+  "virality_potential": "medium",
+  "notes": "Inputs: idea.md (v2), ../govt-exam-reminders/desire_scores.json (v1: same scores), market_insights (3 files), extra-context core-human-desires framework. user_extraction.json does not exist. WHAT CHANGED vs v1: Pro reframes the product as loss-avoidance ('don't lose this job because of a miss or a mistake') — a survival framing that is more vivid than 'alerts' (a missed DV slot or rejected form can cost a year; age cut-offs make some losses permanent). Persistent reminders and the what-you-need card strengthen control. Family mode adds a thin belonging thread (parent involvement is culturally real in Indian govt-job pursuit) but does not lift belonging above 2 because it is notification-sharing, not community. WHY SCORES DID NOT RISE: the survival pain is real but episodic and low-probability per user — most applicants never miss a DV slot (only ~5% of SSC CGL applicants even reach Tier 2), boards SMS/email registered candidates, and Telegram/YouTube broadcast every admit card. Desire for the OUTCOME is strong; desire for THIS PRODUCT stays moderate. Weighted strength = 4x0.3 + 4x0.3 + 3x0.2 + 2x0.1 + 1x0.1 = 3.3 -> moderate (identical to v1; Form Pakka was argued slightly higher on survival because its pain — rejection — is more frequent than lifecycle misses). Virality medium: aspirants forward notifications heavily; an 'eligible for X, last date Y' card could ride it; family mode creates a second recipient but usually via WhatsApp, not an install. Unvalidated."
+}

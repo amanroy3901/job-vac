@@ -1,0 +1,6 @@
+// Shared build settings for iosApp. Set TEAM_ID (Apple Developer team) locally or in CI; never commit secrets here.
+TEAM_ID=
+BUNDLE_ID=in.sarkarimatch.app
+APP_NAME=Sarkari Match
+// API base URL (placeholder domain, docs/api/README.md §1). Staging: https://api-staging.sarkarimatch.in/
+SM_API_BASE_URL=https:/$()/api.sarkarimatch.in/

@@ -1,0 +1,209 @@
+{
+  "_meta": {
+    "skill": "competitor-mapper v0.2.0",
+    "analyzed_at": "2026-11-19",
+    "data_caveats": "Play Store, AppGoblin and Similarweb pages could not be fetched directly (network-blocked in this environment). Install counts/ratings come from third-party tracker snippets surfaced via web search; treat as approximate. Direct 1-star/3-star review mining of 20+20+10 reviews per competitor (Step 3) could NOT be performed; complaint themes below are drawn from secondary sources (Quash release-health analysis of 3,000 Testbook reviews, Trustpilot, Unstar, news reports) and are flagged as partial.",
+    "currency_note": "INR; ~INR 88 = USD 1 (approximate, Nov 2026 estimate)"
+  },
+  "direct_competitors": [
+    {
+      "name": "Testbook",
+      "platform": "Android, iOS, web",
+      "estimated_users": "50M+ Play installs (AppBrain cross-listing); company claims 5+ crore registered users (marketing claim)",
+      "app_store_rating": 4.34,
+      "review_count": 879105,
+      "last_updated": "Actively maintained (frequent releases per Quash release-health)",
+      "pricing": "Free alerts/notifications + free tests; unified Testbook Pass ~INR 674-749/year (list INR 1,199); legacy Pass Pro INR 499/mo or INR 699/yr on iOS listing",
+      "pricing_model": "freemium -> annual pass",
+      "top_features": ["All-exam mock tests and PYQs", "Free job alerts / exam notifications and SEO notification pages", "SuperCoaching live classes"],
+      "top_complaints": ["App failures/bugs (8.7% of 3,000 reviews analysed describe app failing - Quash)", "Refund and aggressive counselling/sales calls (Trustpilot)", "Spammy ads/upsell (Trustpilot, YouTube ads)"],
+      "complaint_themes": ["reliability", "sales pressure", "refunds"],
+      "distribution_channels_observed": ["SEO notification pages (testbook.com/free-job-alerts)", "YouTube", "Telegram channels", "ASO", "paid ads"]
+    },
+    {
+      "name": "Adda247",
+      "platform": "Android, iOS, web",
+      "estimated_users": "10M+ installs across developer account (AppBrain); claims 40-50M monthly users, ~2M paid (company claims)",
+      "app_store_rating": 0,
+      "review_count": 0,
+      "last_updated": "Actively maintained",
+      "pricing": "App free; listing advertises 'Exam Notification, Govt. Job Alerts' free; paid courses/test series/Mahapack (price not confirmed in this run)",
+      "pricing_model": "free alerts + paid courses",
+      "top_features": ["Govt job alerts & exam notifications", "Free daily GK/current affairs, PYQs, e-books", "Paid live batches/test series"],
+      "top_complaints": ["Not mined (data gap)"],
+      "complaint_themes": [],
+      "distribution_channels_observed": ["Massive SEO footprint (adda247.com/jobs, bankersadda, sscadda, careerpower)", "YouTube channels", "Telegram", "Offline Career Power centres"]
+    },
+    {
+      "name": "FreeJobAlert.com app",
+      "platform": "Android + web",
+      "estimated_users": "~2.4-2.5M installs (AppGoblin estimate)",
+      "app_store_rating": 0,
+      "review_count": 5200,
+      "last_updated": "Unknown",
+      "pricing": "Free, ad-supported",
+      "pricing_model": "ads",
+      "top_features": ["Aggregated job notices (from a public Google Sheet per listing)", "Results/admit cards", "Category lists by qualification/state"],
+      "top_complaints": ["Not mined (data gap)"],
+      "complaint_themes": [],
+      "distribution_channels_observed": ["SEO (freejobalert.com)", "ASO"]
+    },
+    {
+      "name": "Sarkari Result sites and clone apps (sarkariresult.com, sarkariexam.com, rojgarresult.com, dozens of 'Sarkari Result' Play apps)",
+      "platform": "Web-first; many thin Android wrappers",
+      "estimated_users": "Head keyword 'sarkari result' ~79-124M searches/mo; individual clone apps 0.5K-113K installs (AppGoblin)",
+      "app_store_rating": 0,
+      "review_count": 0,
+      "last_updated": "Varies; many stale clones",
+      "pricing": "Free",
+      "pricing_model": "display ads",
+      "top_features": ["Latest jobs / admit card / result / answer key lists", "Direct official links", "Important dates tables"],
+      "top_complaints": ["Clutter and ads; impersonation/clone confusion; 'not a government app' disclaimers; fake recruitment notices risk (govt warnings)"],
+      "complaint_themes": ["trust", "noise/ads", "no personalization"],
+      "distribution_channels_observed": ["SEO", "ASO keyword-stuffed listings"]
+    },
+    {
+      "name": "Eligibility matchers: Sarkari Scan (Android), India Govt Job Finder (iOS), TrueJobs (web eligibility checker)",
+      "platform": "Android / iOS / web",
+      "estimated_users": "Small (not quantified)",
+      "app_store_rating": 0,
+      "review_count": 0,
+      "last_updated": "2025-2026",
+      "pricing": "Free",
+      "pricing_model": "ads/free",
+      "top_features": ["Match by education, age, category, experience", "Filters by qualification/location/exam type", "Age-limit checker"],
+      "top_complaints": ["Not mined"],
+      "complaint_themes": [],
+      "distribution_channels_observed": ["SEO long-tail (e.g., 'govt jobs age limit 30-35')", "ASO"]
+    },
+    {
+      "name": "Oliveboard / Physics Wallah (PW) / Unacademy / Prepp / Rojgar with Ankit app",
+      "platform": "Android, web",
+      "estimated_users": "PW and Unacademy tens of millions overall; Rojgar with Ankit YouTube ~20M subs",
+      "app_store_rating": 0,
+      "review_count": 0,
+      "last_updated": "Active",
+      "pricing": "PW govt batches INR 399-1,999 (SSC CHSL 2026 Standard INR 1,499); Oliveboard ~INR 1,899 (unconfirmed product)",
+      "pricing_model": "paid batches; free alerts/blogs as funnel",
+      "top_features": ["Batches + test series", "Notification blogs", "Current affairs"],
+      "top_complaints": ["No-refund policies (PW batch pages)"],
+      "complaint_themes": ["refunds"],
+      "distribution_channels_observed": ["YouTube creators", "Telegram", "SEO"]
+    }
+  ],
+  "indirect_competitors": [
+    {
+      "name": "YouTube govt-job news creators (Rojgar with Ankit ~20M subs; Recruitment Hub ~1.1M; Rojgar Samachar India ~573K)",
+      "approach": "Daily 'new vacancy' videos + notifications via YouTube bell",
+      "why_users_choose_it": "Already where aspirants spend time; explanation + motivation + trust in a face; free"
+    },
+    {
+      "name": "Official portals and apps (mySSC app, UMANG exam calendar, ssc.gov.in, rrbapply.gov.in, IBPS, state PSC sites)",
+      "approach": "Authoritative source; mySSC allows full application in-app since June 2025 (Aadhaar OTP + face recognition)",
+      "why_users_choose_it": "Must use them to apply anyway; zero trust risk"
+    },
+    {
+      "name": "Coaching-institute WhatsApp groups and Telegram alert channels",
+      "approach": "Push alerts with PDFs into chats users already check hourly",
+      "why_users_choose_it": "Zero install, zero cost, social; delivery reliability better than app push on Indian OEM phones"
+    }
+  ],
+  "substitutes": [
+    {
+      "description": "Googling 'sarkari result' / '<exam> last date' periodically",
+      "cost": "Free",
+      "friction_level": "low",
+      "switching_cost_to_app": "Must install and fill a profile; benefit only felt when an alert arrives that the user would have missed"
+    },
+    {
+      "description": "Telegram/WhatsApp channels (multiple, often 5-10 per aspirant)",
+      "cost": "Free",
+      "friction_level": "low",
+      "switching_cost_to_app": "High noise but already habitual; app must be visibly more accurate and less noisy"
+    },
+    {
+      "description": "Friends, coaching teachers, local cyber cafe operator (who also fills the form for INR 30-150)",
+      "cost": "Free to INR 150 per form",
+      "friction_level": "medium",
+      "switching_cost_to_app": "Cyber cafe does the whole job (find + fill + pay); app only notifies"
+    },
+    {
+      "description": "Doing nothing / relying on newspaper Employment News (Rojgar Samachar)",
+      "cost": "Free to low",
+      "friction_level": "medium",
+      "switching_cost_to_app": "Low urgency until a deadline is actually missed"
+    }
+  ],
+  "emerging_threats": [
+    {
+      "name": "mySSC official app (SSC)",
+      "stage": "launched",
+      "funded": true,
+      "threat_level": "high",
+      "notes": "Government-backed, Android-only, OTR + full applications in-app from June 2025; any SSC-only alert value is subsumed. Other boards may follow."
+    },
+    {
+      "name": "Edtech incumbents adding personalized exam feeds (Testbook/Adda247 already capture target exam at onboarding)",
+      "stage": "launched",
+      "funded": true,
+      "threat_level": "high",
+      "notes": "Any proven personalization angle is a sprint-sized feature for them; they already have the target-exam profile and 10-50M installs."
+    },
+    {
+      "name": "AI assistants / Google AI Overviews answering 'when is <exam> last date'",
+      "stage": "launched",
+      "funded": true,
+      "threat_level": "medium",
+      "notes": "Erodes pull-based lookup; does not yet provide proactive push."
+    }
+  ],
+  "review_mining_summary": {
+    "most_common_complaint_across_competitors": "Noise and untrustworthiness (ads, upsell/sales pressure, clone sites, stale or fake notices) — inferred from secondary sources, NOT from systematic 1/3/5-star mining (data gap).",
+    "strongest_gap_signal": "Trust + signal-to-noise: aspirants subscribe to many free channels because none is reliably complete AND quiet. Also: no free option does the 'act on it' step (form filling) that cyber cafes charge INR 30-150 for.",
+    "competitors_mined": 1
+  },
+  "positioning_gaps": [
+    {
+      "gap_type": "trust",
+      "description": "Verified, source-linked, ad-light alerts with zero upsell calls — positioned against noisy aggregators and sales-heavy edtechs",
+      "defensibility": "medium",
+      "evidence": "Trustpilot complaints on Testbook sales calls/refunds; govt warnings about fake recruitment notices; clone apps carrying 'not a government app' disclaimers"
+    },
+    {
+      "gap_type": "audience",
+      "description": "Vernacular, state-level recruitment (state police, patwari, TET, state PSC) for a single state where national players' coverage is thinner",
+      "defensibility": "medium",
+      "evidence": "Hinglish head term; state-specific alert apps exist with small installs (e.g., Sarkari Job Alerts Rajasthan ~113K installs per AppGoblin) — demand exists, quality is low"
+    },
+    {
+      "gap_type": "feature",
+      "description": "Eligibility-precise personalization (DOB on cut-off date, category relaxations, domicile, qualification) for ALL boards in one feed",
+      "defensibility": "low",
+      "evidence": "Already offered by Sarkari Scan, India Govt Job Finder, TrueJobs checker; incumbents can copy in a sprint"
+    },
+    {
+      "gap_type": "experience",
+      "description": "'Do it for me' — from alert to completed application (documents, photo/signature resizing, fee reminders)",
+      "defensibility": "medium",
+      "evidence": "Cyber cafe/CSC charges INR 30-150 per form; news reports of aspirants failing to apply due to portal congestion near deadlines"
+    }
+  ],
+  "saturation_score": {
+    "direct_competitor_count": 3,
+    "incumbent_dominance": 3,
+    "funding_in_space": 3,
+    "keyword_saturation": 3,
+    "content_saturation": 3,
+    "total": 15
+  },
+  "market_saturation": "high",
+  "differentiation_opportunities": [
+    "Trust/quiet positioning: 'only the alerts you are eligible for, each linked to the official PDF, no sales calls'",
+    "Single-state vernacular depth (e.g., one Hindi-belt state's police/teacher/patwari recruitments)",
+    "Move from notify to act: application-readiness checklist and assisted form prep (monetizable per transaction)"
+  ],
+  "market_insights_sources_used": [
+    "memory/market_insights/govt-exam-alerts-india-apps-2026-11.md",
+    "memory/market_insights/govt-exam-alerts-india-web-search-2026-11.md"
+  ]
+}

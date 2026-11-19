@@ -1,0 +1,2 @@
+{{template "head" .}}<h1>{{.P.Status}} {{.P.Title}}</h1><p>{{.P.Code}}{{if .P.Detail}}: {{.P.Detail}}{{end}}</p>
+{{range .P.Errors}}<div class="blocking">{{.Field}}: {{.Code}}</div>{{end}}<p><a href="/admin/">Back to queue</a></p>{{template "foot" .}}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="channel_critical">Last dates &amp; critical</string>
+    <string name="channel_new_match">New job matches</string>
+    <string name="channel_reminders">Reminders</string>
+    <string name="channel_job_updates">Notice changes</string>
+    <string name="channel_digest">Daily digest</string>
+    <string name="channel_account">Account &amp; Pro</string>
+    <string name="channel_family">Family alerts</string>
+</resources>

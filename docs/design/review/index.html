@@ -1,0 +1,120 @@
+<title>Sarkari Match Designs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: a review board — status strip, style picker, then screen groups as large scrollable plates */
+:root{
+  --bg:#F3F5F9; --surface:#FFFFFF; --fg:#151A24; --muted:#5A6375; --line:#DCE1EA;
+  --accent:#1F4FB8; --accent-soft:#E6EDFB; --warn:#9A4A00; --warn-soft:#FFF1E2; --ok:#1D7A43; --ok-soft:#E3F4EA;
+  --font-ui:"Inter","Mukta",system-ui,sans-serif; --font-hi:"Mukta","Noto Sans Devanagari",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1117; --surface:#171B23; --fg:#E7EAF0; --muted:#A3ABBA; --line:#2A303C;
+  --accent:#9DB8FF; --accent-soft:#1C2A4A; --warn:#FFB874; --warn-soft:#3A2510; --ok:#7FD49A; --ok-soft:#12321F; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1117; --surface:#171B23; --fg:#E7EAF0; --muted:#A3ABBA; --line:#2A303C;
+  --accent:#9DB8FF; --accent-soft:#1C2A4A; --warn:#FFB874; --warn-soft:#3A2510; --ok:#7FD49A; --ok-soft:#12321F; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-ui);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:40px}
+header{display:grid;gap:8px}
+.brand{font-family:var(--font-hi);font-weight:700;font-size:15px;color:var(--accent);letter-spacing:.02em}
+h1{font-size:clamp(26px,4vw,36px);line-height:1.15;margin:0;text-wrap:balance}
+h2{font-size:21px;margin:0;text-wrap:balance}
+h3{font-size:16px;margin:0}
+p{margin:0;max-width:68ch}
+.muted{color:var(--muted)}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:4px;min-width:0}
+.chip b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.section{display:grid;gap:16px}
+.styles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.style{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:10px;align-content:start;min-width:0}
+.swatches{display:flex;gap:6px}
+.swatches i{width:28px;height:28px;border-radius:8px;border:1px solid var(--line)}
+.pill{justify-self:start;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.new{background:var(--accent-soft);color:var(--accent)}
+nav.toc{display:flex;flex-wrap:wrap;gap:8px}
+nav.toc a{font-size:14px;color:var(--fg);text-decoration:none;border:1px solid var(--line);background:var(--surface);padding:6px 12px;border-radius:999px}
+nav.toc a:hover,nav.toc a:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+.plate{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:grid}
+.plate-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+.plate-head .t{display:grid;gap:2px;min-width:0}
+.plate img{display:block;width:100%;height:auto;background:#DDE2EA}
+.plate a.full{font-size:13px;color:var(--accent);text-decoration:none;font-weight:600}
+.plate a.full:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.note{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:12px 16px;font-size:14px}
+footer{font-size:13px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">Sarkari Match · सिर्फ़ आपकी नौकरियाँ</div>
+    <h1>App design review</h1>
+    <p class="muted">Live board for checking the Android app design. It updates here as new screens are ready. Last updated 19 Nov 2026.</p>
+  </header>
+
+  <div class="strip" aria-label="Status">
+    <div class="chip"><b>Chosen</b><span>Option C · Marigold Home</span></div>
+    <div class="chip"><b>Done</b><span>124 screens in English and Hindi, plus dark mode and Tamil/Urdu previews</span></div>
+    <div class="chip"><b>Next</b><span>Android app built in this style; Go backend in progress</span></div>
+  </div>
+
+  <section class="section" id="final" aria-labelledby="final-h">
+    <h2 id="final-h">Final design · Marigold Home</h2>
+    <p class="muted">Every screen in the chosen style, shown in English. Hindi versions of each are in the repo. Scroll each plate or open it full size.</p>
+    <nav class="toc" aria-label="Final design sections"><a href="#v-ob1">Onboarding</a><a href="#v-ob2">Sign-in &amp; alert delivery</a><a href="#v-core1">Home &amp; job detail</a><a href="#v-core2">Notifications &amp; action sheets</a><a href="#v-acc1">My forms &amp; Pro</a><a href="#v-acc2">Profile, settings &amp; family</a><a href="#v-st1">States &amp; edge cases</a><a href="#v-st2">Account, minor mode &amp; accessibility</a><a href="#v-dark">Dark mode</a><a href="#v-loc">Other languages (preview)</a></nav>
+    <article class="plate" id="v-ob1"><div class="plate-head"><div class="t"><h3>Onboarding</h3><span class="muted">Splash, language, welcome, privacy notice, profile steps, under-18 minor mode, your matches</span></div></div><img src="img/v2/onboarding-en-1.png" alt="Onboarding screens in the Marigold Home style" loading="lazy" width="3592" height="8198"><div class="plate-head"><a class="full" href="img/v2/onboarding-en-1.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="v-ob2"><div class="plate-head"><div class="t"><h3>Sign-in &amp; alert delivery</h3><span class="muted">Google sign-in or guest, notification permission, backup reminders, Xiaomi/Vivo setup, test alert, dark</span></div></div><img src="img/v2/onboarding-en-2.png" alt="Sign-in &amp; alert delivery screens in the Marigold Home style" loading="lazy" width="3592" height="7584"><div class="plate-head"><a class="full" href="img/v2/onboarding-en-2.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="v-core1"><div class="plate-head"><div class="t"><h3>Home &amp; job detail</h3><span class="muted">Urgency groups, ad at feed end, loading and empty states, job detail, what you need, why you match</span></div></div><img src="img/v2/core-en-1.png" alt="Home &amp; job detail screens in the Marigold Home style" loading="lazy" width="3592" height="8374"><div class="plate-head"><a class="full" href="img/v2/core-en-1.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="v-core2"><div class="plate-head"><div class="t"><h3>Notifications &amp; action sheets</h3><span class="muted">Lock screen, Applied/Later, family alerts, Well done applied, not interested, snooze, check yourself, history</span></div></div><img src="img/v2/core-en-2.png" alt="Notifications &amp; action sheets screens in the Marigold Home style" loading="lazy" width="3592" height="7596"><div class="plate-head"><a class="full" href="img/v2/core-en-2.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="v-acc1"><div class="plate-head"><div class="t"><h3>My forms &amp; Pro</h3><span class="muted">Application tracker and timeline, paywall, trial, Google Play purchase states, manage plan</span></div></div><img src="img/v2/account-en-1.png" alt="My forms &amp; Pro screens in the Marigold Home style" loading="lazy" width="3440" height="10420"><div class="plate-head"><a class="full" href="img/v2/account-en-1.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="v-acc2"><div class="plate-head"><div class="t"><h3>Profile, settings &amp; family</h3><span class="muted">Profile, edit, alert settings, reliability, account &amp; data, family invite by link or QR</span></div></div><img src="img/v2/account-en-2.png" alt="Profile, settings &amp; family screens in the Marigold Home style" loading="lazy" width="3440" height="7788"><div class="plate-head"><a class="full" href="img/v2/account-en-2.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="v-st1"><div class="plate-head"><div class="t"><h3>States &amp; edge cases</h3><span class="muted">Offline, outage, force update, re-match, notice changed or cancelled, age limit, why ads</span></div></div><img src="img/v2/states-en-1.png" alt="States &amp; edge cases screens in the Marigold Home style" loading="lazy" width="3496" height="6135"><div class="plate-head"><a class="full" href="img/v2/states-en-1.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="v-st2"><div class="plate-head"><div class="t"><h3>Account, minor mode &amp; accessibility</h3><span class="muted">Sign out, export, delete, minor mode, 200% text, screen reader order</span></div></div><img src="img/v2/states-en-2.png" alt="Account, minor mode &amp; accessibility screens in the Marigold Home style" loading="lazy" width="3496" height="7206"><div class="plate-head"><a class="full" href="img/v2/states-en-2.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="v-dark"><div class="plate-head"><div class="t"><h3>Dark mode</h3><span class="muted">Home, job detail, why you match, timeline, paywall, settings</span></div></div><img src="img/v2/dark-1.png" alt="Dark mode screens in the Marigold Home style" loading="lazy" width="3496" height="4139"><div class="plate-head"><a class="full" href="img/v2/dark-1.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="v-loc"><div class="plate-head"><div class="t"><h3>Other languages (preview)</h3><span class="muted">Tamil and Urdu right-to-left, to prove the layout scales</span></div></div><img src="img/v2/locales.png" alt="Other languages (preview) screens in the Marigold Home style" loading="lazy" width="3496" height="2263"><div class="plate-head"><a class="full" href="img/v2/locales.png" target="_blank" rel="noopener">Open full size</a></div></article>
+  </section>
+
+  <section class="section" id="styles" aria-labelledby="styles-h">
+    <h2 id="styles-h">Style options (C chosen)</h2>
+    <p class="muted">Three premium options, shown in English. Each has the same screens: home, end of the feed with the ad, job details, what you need, my forms, the Applied moment with the Pro offer, and dark mode. Every one also works in Hindi.</p>
+    <div class="styles">
+      <article class="style"><span class="pill new">Option A</span><h3>Ivory &amp; Ink</h3><p class="muted">Calm and quietly expensive, like a private-bank app. Warm ivory, ink-black buttons, one red accent only when a deadline is close, brass for Pro.</p><div class="swatches" aria-hidden="true"><i style="background:#F6F3EE"></i><i style="background:#1B1A17"></i><i style="background:#C2381F"></i><i style="background:#7E5F24"></i></div></article>
+      <article class="style"><span class="pill new">Option B</span><h3>Midnight Ledger</h3><p class="muted">Dark first, like Cred or Linear. Big countdown numbers read like a departure board, coral for urgency, champagne gold for Pro.</p><div class="swatches" aria-hidden="true"><i style="background:#0E0D0C"></i><i style="background:#F3EFE8"></i><i style="background:#FF7A59"></i><i style="background:#E3C07E"></i></div></article>
+      <article class="style"><span class="pill ok">Option C · recommended</span><h3>Marigold Home</h3><p class="muted">Warm and friendly. Cream, forest-green buttons, marigold highlights, big icons beside every label, and a confetti "Well done, applied!" moment.</p><div class="swatches" aria-hidden="true"><i style="background:#FBF5EC"></i><i style="background:#1E5B46"></i><i style="background:#F2A93B"></i><i style="background:#B3361E"></i></div></article>
+    </div>
+    <article class="plate" id="compare"><div class="plate-head"><div class="t"><h3>Side by side: home screen</h3><span class="muted">Same data in all three</span></div></div><img src="img/dir/overview-en.png" alt="Home screen in the three style options side by side" loading="lazy" width="3440" height="2240"><div class="plate-head"><a class="full" href="img/dir/overview-en.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="opt-a"><div class="plate-head"><div class="t"><h3>Option A · Ivory &amp; Ink</h3><span class="muted">Palette, type and 8 screens</span></div></div><img src="img/dir/direction-a-en.png" alt="Option A Ivory and Ink, all screens" loading="lazy" width="3440" height="5306"><div class="plate-head"><a class="full" href="img/dir/direction-a-en.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="opt-b"><div class="plate-head"><div class="t"><h3>Option B · Midnight Ledger</h3><span class="muted">Palette, type and 8 screens</span></div></div><img src="img/dir/direction-b-en.png" alt="Option B Midnight Ledger, all screens" loading="lazy" width="3440" height="5306"><div class="plate-head"><a class="full" href="img/dir/direction-b-en.png" target="_blank" rel="noopener">Open full size</a></div></article>
+    <article class="plate" id="opt-c"><div class="plate-head"><div class="t"><h3>Option C · Marigold Home</h3><span class="muted">Palette, type and 8 screens</span></div></div><img src="img/dir/direction-c-en.png" alt="Option C Marigold Home, all screens" loading="lazy" width="3440" height="5306"><div class="plate-head"><a class="full" href="img/dir/direction-c-en.png" target="_blank" rel="noopener">Open full size</a></div></article>
+  </section>
+
+  <section class="section" id="screens" aria-labelledby="screens-h">
+    <h2 id="screens-h">Version 1 screens (old look)</h2>
+    <p class="note">These were designed before your latest decisions. Phone-number OTP login (group B) and WhatsApp alerts (groups E and F) are being removed, and Google sign-in is being added.</p>
+    <nav class="toc" aria-label="Screen groups">
+      <a href="#g-a">A · Onboarding</a><a href="#g-b">B · Sign-in &amp; permissions</a><a href="#g-c">C · Home &amp; job detail</a><a href="#g-d">D · Action sheets</a><a href="#g-e">E · Tracker &amp; settings</a><a href="#g-f">F · Pro &amp; payments</a><a href="#g-g">G · Edge cases</a><a href="#g-h">H · Dark mode</a>
+    </nav>
+
+    <article class="plate" id="g-a"><div class="plate-head"><div class="t"><h3>A · Onboarding</h3><span class="muted">Language, exam interests, qualification, DOB, category, more details, your matches</span></div><span class="pill ok">Keeps</span></div><img src="img/A.png" alt="Onboarding screens S02 to S10" loading="lazy" width="1576" height="1772"><div class="plate-head"><a class="full" href="img/A.png" target="_blank" rel="noopener">Open full size</a></div></article>
+
+    <article class="plate" id="g-b"><div class="plate-head"><div class="t"><h3>B · Sign-in, permissions &amp; delivery</h3><span class="muted">Notification permission, Redmi battery guide, delivery self-test</span></div><span class="pill">OTP screens replaced by Google sign-in</span></div><img src="img/B.png" alt="Sign-in, permission and delivery screens S11 to S16" loading="lazy" width="1576" height="1772"><div class="plate-head"><a class="full" href="img/B.png" target="_blank" rel="noopener">Open full size</a></div></article>
+
+    <article class="plate" id="g-c"><div class="plate-head"><div class="t"><h3>C · Core loop: home &amp; job detail</h3><span class="muted">Jobs grouped by last date, ad slot, what you need, why you match, push on lock screen</span></div><span class="pill ok">Keeps</span></div><img src="img/C.png" alt="Home feed, job detail and push notification screens" loading="lazy" width="1576" height="1772"><div class="plate-head"><a class="full" href="img/C.png" target="_blank" rel="noopener">Open full size</a></div></article>
+
+    <article class="plate" id="g-d"><div class="plate-head"><div class="t"><h3>D · Action sheets</h3><span class="muted">Confirm applied, Pro trial offer, not interested, snooze, check yourself, report wrong match</span></div><span class="pill ok">Keeps</span></div><img src="img/D.png" alt="Bottom sheets B01 to B06" loading="lazy" width="1576" height="1772"><div class="plate-head"><a class="full" href="img/D.png" target="_blank" rel="noopener">Open full size</a></div></article>
+
+    <article class="plate" id="g-e"><div class="plate-head"><div class="t"><h3>E · Tracker, profile &amp; settings</h3><span class="muted">My forms, application timeline, profile, alert health, alert settings</span></div><span class="pill">WhatsApp row being removed</span></div><img src="img/E.png" alt="Application tracker, profile and settings screens" loading="lazy" width="1576" height="1772"><div class="plate-head"><a class="full" href="img/E.png" target="_blank" rel="noopener">Open full size</a></div></article>
+
+    <article class="plate" id="g-f"><div class="plate-head"><div class="t"><h3>F · Pro &amp; payments</h3><span class="muted">Paywall, payment success, pending, failed</span></div><span class="pill">WhatsApp benefit and opt-in being removed</span></div><img src="img/F.png" alt="Pro paywall and Google Play payment states" loading="lazy" width="1576" height="1772"><div class="plate-head"><a class="full" href="img/F.png" target="_blank" rel="noopener">Open full size</a></div></article>
+
+    <article class="plate" id="g-g"><div class="plate-head"><div class="t"><h3>G · States &amp; edge cases</h3><span class="muted">No matches, offline, notifications off, no longer eligible, re-match, account &amp; data, 200% font, force update</span></div><span class="pill">Phone OTP delete flow changes</span></div><img src="img/G.png" alt="Empty, offline, error and edge case screens" loading="lazy" width="1576" height="2664"><div class="plate-head"><a class="full" href="img/G.png" target="_blank" rel="noopener">Open full size</a></div></article>
+
+    <article class="plate" id="g-h"><div class="plate-head"><div class="t"><h3>H · Dark mode</h3><span class="muted">Home, job detail, why you match, paywall</span></div><span class="pill ok">Keeps</span></div><img src="img/H.png" alt="Dark mode versions of key screens" loading="lazy" width="1576" height="900"><div class="plate-head"><a class="full" href="img/H.png" target="_blank" rel="noopener">Open full size</a></div></article>
+  </section>
+
+  <footer>Source files live in the job-vac repo under docs/design. This page is a review copy.</footer>
+</div>

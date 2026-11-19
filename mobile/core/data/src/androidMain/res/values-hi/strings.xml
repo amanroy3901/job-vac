@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="channel_critical">आखिरी तारीख और ज़रूरी सूचना</string>
+    <string name="channel_new_match">नई नौकरी</string>
+    <string name="channel_reminders">याद दिलाना</string>
+    <string name="channel_job_updates">नोटिस में बदलाव</string>
+    <string name="channel_digest">रोज़ का सारांश</string>
+    <string name="channel_account">अकाउंट और Pro</string>
+    <string name="channel_family">परिवार के अलर्ट</string>
+</resources>

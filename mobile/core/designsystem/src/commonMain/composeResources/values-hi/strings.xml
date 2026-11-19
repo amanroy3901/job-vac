@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ds_verdict_eligible">योग्य</string>
+    <string name="ds_verdict_check">ख़ुद जाँचें</string>
+    <string name="ds_verdict_not_eligible">योग्य नहीं</string>
+    <string name="ds_ribbon_today">आज आखिरी दिन</string>
+    <string name="ds_ribbon_today_until">आज आखिरी दिन · %1$s तक</string>
+    <plurals name="ds_ribbon_days_left">
+        <item quantity="one">सिर्फ़ %1$d दिन बाकी · %2$s तक</item>
+        <item quantity="other">सिर्फ़ %1$d दिन बाकी · %2$s तक</item>
+    </plurals>
+    <plurals name="ds_days_left">
+        <item quantity="one">%1$d दिन बाकी</item>
+        <item quantity="other">%1$d दिन बाकी</item>
+    </plurals>
+    <string name="ds_closed">बंद</string>
+    <string name="ds_action_applied">फ़ॉर्म भर दिया</string>
+    <string name="ds_action_later">बाद में</string>
+    <string name="ds_vacancies">%1$s · %2$s पद</string>
+    <string name="ds_fee_free">मुफ़्त</string>
+    <string name="ds_hour_am">सुबह %1$d बजे</string>
+    <string name="ds_hour_pm">रात %1$d बजे</string>
+    <string name="ds_continue">आगे बढ़ें</string>
+    <string name="ds_back">पीछे</string>
+    <string name="ds_placeholder_body">स्क्रीन %1$s अभी खाली है (स्केलेटन)। रूट, ViewModel और स्टेट: docs/frontend/navigation.md</string>
+</resources>

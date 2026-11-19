@@ -1,0 +1,45 @@
+# Builds on detekt's default config (buildUponDefaultConfig = true); only deviations are listed.
+config:
+  validation: true
+
+complexity:
+  LongMethod:
+    threshold: 80
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 20
+    ignoreDefaultParameters: true
+    ignoreAnnotated: ['Composable']
+  CyclomaticComplexMethod:
+    # Rule evaluators are branchy by nature; keep them readable, not split for the metric.
+    threshold: 40
+    ignoreSimpleWhenEntries: true
+  ComplexCondition:
+    threshold: 5
+  TooManyFunctions:
+    active: false
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable', 'Test']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][A-Za-z0-9_]*'
+  MatchingDeclarationName:
+    active: false
+
+style:
+  MagicNumber:
+    active: false
+  MaxLineLength:
+    maxLineLength: 140
+  WildcardImport:
+    active: true
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview']
+  ReturnCount:
+    active: false
+  LoopWithTooManyJumpStatements:
+    maxJumpCount: 3
+  ForbiddenComment:
+    active: false

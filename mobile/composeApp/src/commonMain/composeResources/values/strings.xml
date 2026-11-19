@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- English (fallback). Hindi lives in values-hi/ and is the default app language (AppLanguage.DEFAULT). -->
+<resources>
+    <!-- app -->
+    <string name="tab_jobs">Jobs</string>
+    <string name="tab_forms">My forms</string>
+    <string name="tab_profile">Profile</string>
+    <string name="force_update">Update the app</string>
+    <string name="outage">Service is down for a while</string>
+    <!-- onboarding -->
+    <string name="onb_language_title">Choose your language</string>
+    <string name="onb_language_subtitle">You can change it any time in Profile.</string>
+    <string name="onb_language_helper_hi">Hindi · हिंदी में सब कुछ</string>
+    <string name="onb_language_helper_en">English · everything in English</string>
+    <string name="onb_language_coming_soon">Coming soon</string>
+    <string name="onb_language_continue">Continue</string>
+    <string name="onb_welcome">Welcome</string>
+    <string name="onb_privacy">Your privacy</string>
+    <string name="onb_exams">Which exams?</string>
+    <string name="onb_qualification">Your qualification</string>
+    <string name="onb_dob">Date of birth</string>
+    <string name="onb_category">Category</string>
+    <string name="onb_state">Your state</string>
+    <string name="onb_more">A few more details</string>
+    <string name="onb_result">Your matches</string>
+    <string name="onb_edit_profile">Edit profile</string>
+    <string name="onb_language_settings">App language</string>
+    <!-- jobs -->
+    <string name="jobs_app_name">Sarkari Match</string>
+    <string name="jobs_notifications">Alerts</string>
+    <string name="jobs_greeting">Namaste</string>
+    <string name="jobs_greeting_subtitle">Today %1$s · %2$s</string>
+    <plurals name="jobs_waiting_for_you">
+        <item quantity="one">%1$d job is waiting for your reply</item>
+        <item quantity="other">%1$d jobs are waiting for your reply</item>
+    </plurals>
+    <string name="jobs_pill_today">%1$d today</string>
+    <string name="jobs_pill_three_days">%1$d in 3 days</string>
+    <string name="jobs_pill_later">%1$d later</string>
+    <string name="jobs_section_today">Last day today</string>
+    <string name="jobs_section_three_days">In 3 days</string>
+    <string name="jobs_section_later">Later</string>
+    <string name="jobs_disclaimer">We match from official notices. Always check the official notice before you apply.</string>
+    <string name="jobs_job_detail">Job details</string>
+    <string name="jobs_inbox">Alert history</string>
+    <string name="jobs_archive">Archive</string>
+    <string name="jobs_digest">Daily digest</string>
+    <!-- alerts -->
+    <string name="alerts_notif_primer">Turn on alerts</string>
+    <string name="alerts_exact_alarm">Reminders even without internet</string>
+    <string name="alerts_oem_guide">Keep alerts working on your phone</string>
+    <string name="alerts_self_test">Test an alert</string>
+    <string name="alerts_settings">Alert settings</string>
+    <string name="alerts_delivery_health">Are alerts reaching you?</string>
+    <string name="alerts_done">Done</string>
+    <!-- applications -->
+    <string name="apps_applied">My forms</string>
+    <string name="apps_timeline">Form timeline</string>
+    <string name="apps_clash">Exam date clash</string>
+    <!-- pro -->
+    <string name="pro_paywall">Sarkari Match Pro</string>
+    <string name="pro_payment_status">Payment status</string>
+    <string name="pro_manage_plan">Your plan</string>
+    <!-- profile -->
+    <string name="profile_title">Profile</string>
+    <string name="profile_account">Account &amp; privacy</string>
+    <string name="profile_help">Help</string>
+    <string name="profile_certificates">Certificates</string>
+    <string name="profile_family">Family</string>
+    <string name="profile_family_accept">Family invite</string>
+    <string name="profile_family_invite">Invite family</string>
+    <string name="profile_family_following">Following</string>
+    <string name="profile_refer">Refer a friend</string>
+    <string name="profile_share_card">Share card</string>
+    <string name="profile_age_countdown">Age countdown</string>
+    <string name="profile_open_language">App language</string>
+    <string name="profile_open_alerts">Alert settings</string>
+    <!-- ads -->
+    <string name="ad_label">Ad</string>
+</resources>

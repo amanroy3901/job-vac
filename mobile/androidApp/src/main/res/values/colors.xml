@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window/splash only; the UI reads colours from the Compose theme (:core:designsystem). -->
+    <color name="sm_background">#FBF5EC</color>
+    <color name="sm_marigold">#F2A93B</color>
+    <color name="sm_on_marigold">#3A2405</color>
+</resources>

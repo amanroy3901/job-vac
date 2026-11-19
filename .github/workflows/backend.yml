@@ -1,0 +1,60 @@
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", "docs/backend/**", "docs/api/openapi.yaml", ".github/workflows/backend.yml"]
+  pull_request:
+    paths: ["backend/**", "docs/backend/**", "docs/api/openapi.yaml", ".github/workflows/backend.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Integration tests create and drop one throwaway database per test next to this one.
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - name: go vet
+        run: go vet ./...
+      - name: staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@2025.1.1 ./...
+      - name: test (unit + Postgres integration + openapi contract)
+        run: go test -race -count=1 ./...
+      - name: build
+        run: CGO_ENABLED=0 go build -o bin/sarkari ./cmd/sarkari
+      - name: migrations apply on a clean database
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+        run: ./bin/sarkari migrate up && ./bin/sarkari migrate status
+
+  image:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker build (distroless)
+        run: docker build -t sarkari-match-backend:${{ github.sha }} backend

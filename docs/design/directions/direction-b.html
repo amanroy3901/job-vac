@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sarkari Match — Midnight Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Devanagari:wght@400;600&family=IBM+Plex+Sans:wght@400;600&family=Inter:wght@400;600&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,300..400,0..1,0&display=block" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{padding:48px;min-width:1700px}
+button{font:inherit;color:inherit;border:0;background:none}
+.ms{font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';flex-shrink:0;user-select:none}
+.tnum{font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}
+.grid{display:grid;grid-template-columns:repeat(4,376px);gap:48px 40px}
+.fr{display:flex;flex-direction:column;gap:14px}
+.fr figcaption{font:500 14px/20px 'Inter',system-ui,sans-serif;opacity:.8}
+.ph{width:376px;height:816px;border-radius:44px;padding:8px;display:flex;flex-direction:column;overflow:hidden;background:#0D0D0F;box-shadow:0 30px 60px -20px rgba(20,16,10,.35),0 0 0 1px rgba(0,0,0,.25)}
+.ph>*{flex-shrink:0;width:360px}
+.sb{height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 18px 0 22px;font:500 12px/1 Roboto,'Inter',system-ui,sans-serif;border-radius:36px 36px 0 0}
+.sb .ms{font-size:15px;margin-left:3px}
+.scr{height:748px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.gb{height:24px;display:flex;align-items:center;justify-content:center;border-radius:0 0 36px 36px}
+.gb i{display:block;width:108px;height:4px;border-radius:2px}
+.fill{flex:1;min-height:0;overflow:hidden;position:relative}
+.row{display:flex;align-items:center}
+.col{display:flex;flex-direction:column}
+.grow{flex:1;min-width:0}
+.nw{white-space:nowrap}
+/* header strip */
+.hd{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:40px;margin-bottom:48px;padding:40px;border-radius:28px;width:1624px}
+.hd h1{font-size:44px;line-height:1.15;margin:8px 0 12px;letter-spacing:-.02em}
+.hd .kicker{font:600 12px/1 'Inter',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+.hd .mood{font-size:18px;line-height:1.5;max-width:560px;opacity:.9}
+.hd h3{font:600 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;margin:0 0 12px;opacity:.6}
+.hd p,.hd li{font-family:'Inter',system-ui,sans-serif}
+.sw{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+.sw div{width:84px}
+.sw i{display:block;height:44px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(128,128,128,.25)}
+.sw span{display:block;font:500 11px/1.35 ui-monospace,Menlo,monospace;margin-top:6px;opacity:.85}
+.sw span b{font:600 11px/1.35 'Inter',system-ui,sans-serif;display:block;opacity:1}
+.traits{font-size:15px;line-height:1.55;padding-left:18px;margin-top:20px}
+.traits li{margin-bottom:6px}
+.fontrow{margin-bottom:16px}
+.fontrow .spec{font:500 12px/1.4 'Inter',system-ui,sans-serif;opacity:.65;margin-top:2px}
+.langhd{font:600 13px/1 'Inter',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;margin:0 0 20px;opacity:.6}
+.langblock{margin-bottom:56px}
+body.only-en .langblock.hi, body.only-hi .langblock.en{display:none}
+.toggle{position:fixed;top:12px;right:12px;display:flex;gap:4px;padding:4px;border-radius:999px;background:rgba(0,0,0,.7);z-index:9}
+.toggle button{color:#fff;font:600 12px/1 'Inter',system-ui,sans-serif;padding:8px 12px;border-radius:999px;cursor:pointer}
+body.shot .toggle{display:none}
+
+
+body.dir-b{background:#0A0908;color:#F3EFE8;font-family:'IBM Plex Sans','IBM Plex Sans Devanagari',sans-serif}
+.dir-b .hd{background:#151412;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 0 0 1px #24211E}
+.dir-b .fr figcaption,.dir-b .langhd{color:#CFC8BD}
+.dir-b .ph{font-family:'IBM Plex Sans','IBM Plex Sans Devanagari',sans-serif;background:#000}
+.dir-b .ph[lang=hi]{font-family:'IBM Plex Sans Devanagari','IBM Plex Sans',sans-serif}
+.dir-b .mono,.dir-b .mx{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.dir-b .ph[lang=hi] .mx{font-family:inherit;font-feature-settings:'tnum'}
+.dir-b .ms{font-family:'Material Symbols Sharp';font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24}
+.dir-b .ms.f{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.ph.dark{--bg:#0E0D0C;--s1:#171614;--s2:#201E1B;--hair:#2D2A26;--tx:#F3EFE8;--mut:#A39C91;--acc:#FF7A59;--accC:rgba(255,122,89,.12);--gold:#E3C07E;--goldC:rgba(227,192,126,.10);--ok:#7FD1A8;--okC:rgba(127,209,168,.10);--q:#F0C25C;--qC:rgba(240,194,92,.10);--cta:#F3EFE8;--onCta:#0E0D0C;--edge:inset 0 1px 0 rgba(255,255,255,.05);--glass:rgba(14,13,12,.82);--onAcc:#1A0C07}
+.ph.light{--bg:#F5F3EF;--s1:#FFFFFF;--s2:#EEEBE5;--hair:#E2DDD4;--tx:#151310;--mut:#5F5950;--acc:#C2381F;--accC:#FBE6E0;--gold:#7E5F24;--goldC:#F4ECDC;--ok:#1F7A52;--okC:#E3F1E9;--q:#8A5A00;--qC:#F6ECD6;--cta:#151310;--onCta:#F5F3EF;--edge:0 1px 2px rgba(40,30,20,.06),0 6px 16px rgba(40,30,20,.05);--glass:rgba(245,243,239,.86);--onAcc:#FFFFFF}
+.dir-b .sb,.dir-b .gb{background:var(--bg);color:var(--tx)}
+.dir-b .gb i{background:var(--tx);opacity:.4}
+.dir-b .scr{background:var(--bg);color:var(--tx)}
+.dir-b .t40{font-size:40px;line-height:44px;font-weight:600;letter-spacing:-.02em}
+.dir-b .t17{font-size:17px;line-height:24px;font-weight:600}
+.dir-b .ph[lang=hi] .t17{line-height:27px}
+.dir-b .t15{font-size:15px;line-height:22px}
+.dir-b .ph[lang=hi] .t15{line-height:24px}
+.dir-b .t13{font-size:13px;line-height:18px}
+.dir-b .ph[lang=hi] .t13{line-height:21px}
+.dir-b .b{font-weight:600}
+.dir-b .mut{color:var(--mut)}
+.dir-b .tb{height:56px;display:flex;align-items:center;gap:4px;padding:0 8px 0 16px}
+.dir-b .ib{width:48px;height:48px;display:grid;place-items:center;position:relative}
+.dir-b .dot{position:absolute;top:12px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--acc)}
+.dir-b .wm{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;letter-spacing:.01em}
+.dir-b .wm i{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#F3DDA8,#B8914D);display:grid;place-items:center;color:#0E0D0C;font-style:normal;font-size:12px;font-weight:700;font-family:'IBM Plex Mono'}
+/* hero summary */
+.dir-b .hs{margin:8px 16px 0;padding:16px;border-radius:14px;background:var(--s1);box-shadow:var(--edge)}
+.dir-b .hs .big{display:flex;align-items:baseline;gap:10px}
+.dir-b .segbar{display:flex;gap:4px;margin:14px 0 10px}
+.dir-b .segbar i{height:6px;border-radius:3px;background:var(--s2)}
+.dir-b .segbar .today{background:var(--acc)}
+.dir-b .segbar .urgent{background:repeating-linear-gradient(135deg,var(--acc) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1px var(--acc)}
+.dir-b .legend{display:flex;gap:14px}
+.dir-b .legend span{display:flex;align-items:center;gap:6px}
+.dir-b .legend i{width:10px;height:10px;border-radius:3px;background:var(--s2)}
+.dir-b .legend .today{background:var(--acc)}
+.dir-b .legend .urgent{background:repeating-linear-gradient(135deg,var(--acc) 0 2px,transparent 2px 4px);box-shadow:inset 0 0 0 1px var(--acc)}
+/* section */
+.dir-b .sh{display:flex;align-items:center;gap:8px;padding:18px 16px 8px;color:var(--mut)}
+.dir-b .sh .ms{font-size:18px}
+.dir-b .sh .ln{flex:1;height:1px;background:var(--hair)}
+.dir-b .sh.today{color:var(--acc)}
+/* board row */
+.dir-b .brd{margin:0 16px;border-radius:14px;background:var(--s1);box-shadow:var(--edge);overflow:hidden}
+.dir-b .br{display:flex;gap:14px;padding:14px}
+.dir-b .br+.br{box-shadow:0 -1px 0 var(--hair)}
+.dir-b .cd{width:68px;align-self:flex-start;flex-shrink:0;border-radius:10px;padding:8px 0;text-align:center;background:var(--s2)}
+.dir-b .cd b{display:block;font-family:'IBM Plex Mono';font-weight:600;font-size:22px;line-height:28px;font-variant-numeric:tabular-nums}
+.dir-b .cd span{display:block;font-size:12px;line-height:16px;color:var(--mut)}
+.dir-b .cd.today{background:var(--acc);color:var(--onAcc)}
+.dir-b .cd.today b{font-size:18px}
+.dir-b .cd.today span{color:var(--onAcc);opacity:.85}
+.dir-b .cd.urgent{background:var(--accC);color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.dir-b .cd.urgent span{color:var(--acc)}
+.dir-b .meta{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px;color:var(--mut)}
+.dir-b .meta span{display:flex;align-items:center;gap:4px}
+.dir-b .meta .ms{font-size:16px}
+.dir-b .tag{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap}
+.dir-b .tag .ms{font-size:14px}
+.dir-b .tag.ok{background:var(--okC);color:var(--ok)}
+.dir-b .tag.q{background:var(--qC);color:var(--q)}
+.dir-b .tag.today{background:var(--acc);color:var(--onAcc)}
+.dir-b .tag.urgent{background:var(--accC);color:var(--acc)}
+.dir-b .tag.gold{background:var(--goldC);color:var(--gold)}
+.dir-b .tag.n{background:var(--s2);color:var(--mut)}
+.dir-b .rl{display:flex;gap:6px;align-items:flex-start;margin-top:8px}
+.dir-b .rl .ms{font-size:16px;margin-top:2px}
+.dir-b .rl.ok .ms{color:var(--ok)}
+.dir-b .rl.q .ms{color:var(--q)}
+.dir-b .acts{display:flex;gap:8px;margin-top:12px}
+.dir-b .btn{height:48px;border-radius:12px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:600;white-space:nowrap}
+.dir-b .btn .ms{font-size:20px}
+.dir-b .btn.sm{height:40px;padding:0 12px;font-size:13px;border-radius:10px}
+.dir-b .btn.sm .ms{font-size:18px}
+.dir-b .btn.pri{background:var(--cta);color:var(--onCta);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.12),0 8px 20px -10px rgba(243,239,232,.35)}
+.dir-b .btn.sec{background:var(--s2);color:var(--tx);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 0 1px var(--hair)}
+.dir-b .btn.full{width:100%}
+.dir-b .btn.gold{background:linear-gradient(180deg,#F1D9A4,#D5AE66);color:#1A140A;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 10px 24px -10px rgba(227,192,126,.6)}
+/* ad */
+.dir-b .ad{margin:12px 16px;border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center;border:1px dashed var(--hair)}
+.dir-b .adl{font-size:12px;line-height:16px;font-weight:600;color:var(--mut);box-shadow:inset 0 0 0 1px var(--hair);border-radius:4px;padding:1px 6px}
+.dir-b .adimg{width:44px;height:44px;border-radius:10px;background:var(--s2);display:grid;place-items:center;color:var(--mut)}
+.dir-b .disc{display:flex;gap:8px;margin:4px 16px;color:var(--mut)}
+.dir-b .disc .ms{font-size:16px;margin-top:2px}
+/* nav */
+.dir-b .nav{height:76px;display:flex;background:var(--glass);backdrop-filter:blur(16px);box-shadow:0 -1px 0 var(--hair)}
+.dir-b .nav div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--mut);position:relative;font-size:13px;line-height:18px}
+.dir-b .nav .on{color:var(--tx);font-weight:600}
+.dir-b .nav .on:before{content:'';position:absolute;top:0;width:32px;height:2px;border-radius:0 0 2px 2px;background:var(--tx)}
+.dir-b .nav .w{position:relative}
+.dir-b .nav .bdg{position:absolute;top:-4px;left:16px;min-width:18px;height:18px;border-radius:5px;background:var(--acc);color:var(--onAcc);font:600 11px/18px 'IBM Plex Mono';text-align:center;padding:0 4px}
+/* detail */
+.dir-b .dh{margin:0 16px}
+.dir-b .clock{margin:16px 16px 0;padding:16px;border-radius:14px;background:linear-gradient(180deg,var(--accC),transparent 140%),var(--s1);box-shadow:inset 0 0 0 1px rgba(255,122,89,.35)}
+.dir-b .ph.light .clock{box-shadow:inset 0 0 0 1px rgba(194,56,31,.35)}
+.dir-b .clock .fig{font-family:'IBM Plex Mono';font-weight:600;font-size:40px;line-height:44px;color:var(--acc);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.dir-b .clock .fig small{font-size:17px;margin:0 8px 0 2px}
+.dir-b .chg{display:flex;gap:8px;align-items:center;margin:8px 16px 0;padding:8px 12px;border-radius:10px;background:var(--qC);color:var(--q)}
+.dir-b .chg .ms{font-size:18px}
+.dir-b .blk{margin:12px 16px 0;padding:14px 16px;border-radius:14px;background:var(--s1);box-shadow:var(--edge)}
+.dir-b .bt{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:var(--mut)}
+.dir-b .bt .ms{font-size:18px}
+.dir-b .wl{display:flex;gap:10px;padding:6px 0}
+.dir-b .wl .k{font-family:'IBM Plex Mono';font-weight:600;font-size:13px;line-height:22px;width:24px;height:22px;border-radius:6px;text-align:center;flex-shrink:0}
+.dir-b .ph[lang=hi] .wl .k{line-height:22px;margin-top:1px}
+.dir-b .wl.ok .k{background:var(--okC);color:var(--ok)}
+.dir-b .wl.q .k{background:var(--qC);color:var(--q)}
+.dir-b .dl{display:flex;justify-content:space-between;gap:12px;padding:7px 0}
+.dir-b .dl+.dl{box-shadow:0 -1px 0 var(--hair)}
+.dir-b .dl .mx{font-size:13px;font-weight:600;white-space:nowrap}
+.dir-b .dl.past{color:var(--mut)}
+.dir-b .dl.past .mx{text-decoration:line-through}
+.dir-b .dl.key{color:var(--acc)}
+.dir-b .abar{position:absolute;left:0;right:0;bottom:0;padding:4px 16px 16px;background:var(--glass);backdrop-filter:blur(16px);box-shadow:0 -1px 0 var(--hair)}
+.dir-b .abar .ni{display:flex;justify-content:center;align-items:center;gap:6px;height:40px;color:var(--mut);font-size:13px;font-weight:600}
+.dir-b .abar .ni .ms{font-size:18px}
+.dir-b .fee{display:flex;align-items:baseline;gap:8px}
+.dir-b .fee .mono{font-size:40px;line-height:44px;font-weight:600;letter-spacing:-.02em}
+.dir-b .chk{display:flex;gap:10px;align-items:center;padding:3px 0}
+.dir-b .bx{width:20px;height:20px;border-radius:5px;box-shadow:inset 0 0 0 1.5px var(--mut);display:grid;place-items:center;flex-shrink:0}
+.dir-b .bx.on{background:var(--ok);box-shadow:none;color:var(--bg)}
+.dir-b .bx .ms{font-size:16px}
+.dir-b .chk.on .tx{color:var(--mut)}
+.dir-b .st{width:100%;border-collapse:collapse;font-size:13px;line-height:18px}
+.dir-b .ph[lang=hi] .st{line-height:21px}
+.dir-b .st th{text-align:left;font-weight:600;padding:0 0 6px;color:var(--mut)}
+.dir-b .st th .ms{font-size:16px;vertical-align:-3px}
+.dir-b .st td{padding:5px 0;box-shadow:0 -1px 0 var(--hair)}
+.dir-b .st td.mx{font-weight:600}
+.dir-b .lk{display:flex;align-items:center;gap:12px;min-height:56px}
+.dir-b .lk+.lk{box-shadow:0 -1px 0 var(--hair)}
+.dir-b .lk .adimg{width:40px;height:40px;color:var(--tx)}
+/* tracker */
+.dir-b .tabs{display:flex;gap:20px;padding:0 16px;box-shadow:inset 0 -1px 0 var(--hair)}
+.dir-b .tabs div{height:44px;display:flex;align-items:center;font-size:15px;font-weight:600;color:var(--mut)}
+.dir-b .tabs .on{color:var(--tx);box-shadow:inset 0 -2px 0 var(--tx)}
+.dir-b .up{margin:12px 16px 0;padding:12px 12px 12px 14px;border-radius:14px;display:flex;align-items:center;gap:12px;background:linear-gradient(100deg,var(--goldC),transparent),var(--s1);box-shadow:inset 0 0 0 1px rgba(227,192,126,.3)}
+.dir-b .ph.light .up{box-shadow:inset 0 0 0 1px rgba(138,106,43,.3)}
+.dir-b .up .ms{color:var(--gold)}
+.dir-b .up .pp{margin-left:auto;height:36px;padding:0 12px;border-radius:9px;background:var(--gold);color:#1A140A;font-size:13px;font-weight:600;display:grid;place-items:center;white-space:nowrap}
+.dir-b .ph.light .up .pp{color:#fff}
+.dir-b .sx{display:flex;gap:12px;position:relative;padding:3px 0}
+.dir-b .sx .n{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font:600 12px/1 'IBM Plex Mono';background:var(--s2);color:var(--mut);flex-shrink:0;position:relative;z-index:1}
+.dir-b .sx:not(:last-child):after{content:'';position:absolute;left:13.5px;top:33px;bottom:-5px;width:1px;background:var(--hair)}
+.dir-b .sx.done .n{background:var(--ok);color:var(--bg)}
+.dir-b .sx.next .n{background:var(--bg);color:var(--tx);box-shadow:inset 0 0 0 1.5px var(--tx)}
+.dir-b .sx.locked .tt{color:var(--mut)}
+.dir-b .sx .when{margin-left:auto;text-align:right;white-space:nowrap}
+.dir-b .sx .lock{display:inline-flex;gap:2px;align-items:center;color:var(--gold);font-size:12px;font-weight:600}
+.dir-b .sx .lock .ms{font-size:14px}
+.dir-b .nextbox{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:var(--s2);margin:8px 0 6px}
+/* paywall */
+.dir-b .stamp{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;margin:0 auto 12px;background:radial-gradient(circle at 50% 35%,#F7E6BE,#C9A15A);color:#1A140A;box-shadow:0 0 0 6px rgba(227,192,126,.12),0 0 40px 4px rgba(227,192,126,.25),inset 0 1px 0 rgba(255,255,255,.6)}
+.dir-b .stamp .ms{font-size:36px}
+.dir-b .pc{margin:0 12px;border-radius:18px;padding:18px 16px;background:linear-gradient(180deg,rgba(227,192,126,.10),rgba(227,192,126,0) 45%),var(--s1);box-shadow:inset 0 0 0 1px rgba(227,192,126,.28),inset 0 1px 0 rgba(255,255,255,.08)}
+.dir-b .ph.light .pc{box-shadow:inset 0 0 0 1px rgba(138,106,43,.28),0 16px 32px -16px rgba(40,30,20,.25)}
+.dir-b .mini{display:flex;align-items:center;margin:12px 0 10px}
+.dir-b .mini span{flex:1;text-align:center;font-size:11px;line-height:14px;color:var(--mut);position:relative;padding-top:14px}
+.dir-b .mini span:before{content:'';position:absolute;top:0;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:var(--gold)}
+.dir-b .mini span:after{content:'';position:absolute;top:3.5px;left:calc(50% + 6px);right:calc(-50% + 6px);height:1px;background:rgba(227,192,126,.4)}
+.dir-b .mini span:last-child:after{display:none}
+.dir-b .bn{display:flex;gap:10px;align-items:flex-start;padding:4px 0}
+.dir-b .bn .ms{font-size:18px;color:var(--gold);margin-top:2px}
+.dir-b .plans{display:flex;gap:8px;margin:12px 0}
+.dir-b .pl{flex:1;border-radius:12px;padding:10px 12px;background:var(--s2);box-shadow:inset 0 0 0 1px var(--hair);position:relative}
+.dir-b .pl.sel{box-shadow:inset 0 0 0 1.5px var(--gold);background:var(--goldC)}
+.dir-b .pl .pr{font:600 22px/28px 'IBM Plex Mono';font-variant-numeric:tabular-nums}
+.dir-b .pl .bd{position:absolute;top:10px;right:10px}
+.dir-b .pl .rd{position:absolute;top:12px;right:12px;width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--mut)}
+.dir-b .pl.sel .rd{box-shadow:inset 0 0 0 5px var(--gold)}
+</style></head>
+<body class="dir-b">
+<div class="toggle"><button onclick="document.body.classList.remove('only-hi');document.body.classList.add('only-en')">English</button><button onclick="document.body.classList.remove('only-en');document.body.classList.add('only-hi')">हिंदी</button><button onclick="document.body.classList.remove('only-en','only-hi')">Both</button></div>
+<header class="hd">
+  <div><div class="kicker">Sarkari Match · Direction B</div><h1>Midnight Ledger</h1><p class="mood">Focused, confident and premium, in the register of Cred, Linear or a stock terminal. Dark-first: deadlines read like a departure board, with big monospace countdowns, coral for urgency and champagne gold for Pro.</p>
+  <ul class="traits"><li>60/30/10: warm black 60 · bone-white text and hairline surfaces 30 · coral and gold 10 (urgency and Pro only)</li><li>Countdown is the hero: IBM Plex Mono tabular figures (02d 14h, ₹100); urgency also written in words and icons</li><li>Departure-board rows: fixed countdown column + content, hairline-separated, very scannable</li><li>Bone-white CTA with a top inner highlight; glass sheets with a 1 px light edge</li><li>Peak moment: a gold ring "stamp" with a soft glow, then a gold-edged Pro card</li></ul></div>
+  <div><h3>Palette · dark (default)</h3><div class="sw"><div><i style="background:#0E0D0C"></i><span><b>bg 60%</b>#0E0D0C</span></div><div><i style="background:#171614"></i><span><b>surface</b>#171614</span></div><div><i style="background:#201E1B"></i><span><b>raised</b>#201E1B</span></div><div><i style="background:#2D2A26"></i><span><b>hairline</b>#2D2A26</span></div><div><i style="background:#F3EFE8"></i><span><b>text 30%</b>#F3EFE8</span></div><div><i style="background:#A39C91"></i><span><b>muted</b>#A39C91</span></div><div><i style="background:#FF7A59"></i><span><b>coral 10%</b>#FF7A59</span></div><div><i style="background:#E3C07E"></i><span><b>gold Pro</b>#E3C07E</span></div><div><i style="background:#7FD1A8"></i><span><b>mint ✓</b>#7FD1A8</span></div><div><i style="background:#F0C25C"></i><span><b>amber ?</b>#F0C25C</span></div></div><h3 style="margin-top:20px">Palette · light</h3><div class="sw"><div><i style="background:#F5F3EF"></i><span><b>bg</b>#F5F3EF</span></div><div><i style="background:#FFFFFF"></i><span><b>surface</b>#FFFFFF</span></div><div><i style="background:#EEEBE5"></i><span><b>raised</b>#EEEBE5</span></div><div><i style="background:#E2DDD4"></i><span><b>hairline</b>#E2DDD4</span></div><div><i style="background:#151310"></i><span><b>text</b>#151310</span></div><div><i style="background:#5F5950"></i><span><b>muted</b>#5F5950</span></div><div><i style="background:#C2381F"></i><span><b>coral</b>#C2381F</span></div><div><i style="background:#7E5F24"></i><span><b>gold</b>#7E5F24</span></div><div><i style="background:#1F7A52"></i><span><b>mint</b>#1F7A52</span></div><div><i style="background:#8A5A00"></i><span><b>amber</b>#8A5A00</span></div></div></div>
+  <div><h3>Type</h3><div class="fontrow"><div style="font:600 30px/1.2 'IBM Plex Sans'">IBM Plex Sans · Aa</div><div class="spec">Latin UI. Weights 400 / 600</div></div>
+  <div class="fontrow"><div style="font:600 28px/1.4 'IBM Plex Sans Devanagari'">आखिरी तारीख · फ़ॉर्म</div><div class="spec">IBM Plex Sans Devanagari, drawn as one family with the Latin</div></div>
+  <div class="fontrow"><div style="font:600 30px/1.2 'IBM Plex Mono';color:#FF7A59">02d 14h · ₹199</div><div class="spec">IBM Plex Mono, figures only: countdowns, fees, dates</div></div>
+  <div class="spec">Scale: 40 hero figure · 17 title · 15 body · 13 meta (4 sizes)</div><h3 style="margin-top:20px">Shape · depth · icons</h3><p style="font-size:15px;line-height:1.55">Radius 14 (cards) / 12 (buttons) / 8 (chips): crisp, not bubbly. No drop shadows on dark: depth from 3 surface steps + 1 px top inner highlight rgba(255,255,255,.05). Glow only at the peak moment. Icons: Material Symbols Sharp weight 300. 8-pt grid, 16 dp gutters, denser rows.</p></div>
+</header>
+<section class="langblock en"><div class="langhd">English</div><div class="grid"><figure class="fr"><div class="ph dark" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="wm"><i>S</i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">notifications</span><span class="dot"></span></span><span class="ib"><span class="ms " aria-hidden="true">account_circle</span></span></div>
+    <div class="hs">
+      <div class="t13 mut">Hi, Ravi · 19 Nov</div>
+      <div class="big"><span class="t40 mono">05</span><span class="t15">jobs need your reply</span></div>
+      <div class="segbar"><i class="today" style="flex:1"></i><i class="urgent" style="flex:1"></i><i style="flex:3"></i></div>
+      <div class="legend t13 mut"><span><i class="today"></i><b class="mono" style="color:var(--tx)">1</b> Today</span><span><i class="urgent"></i><b class="mono" style="color:var(--tx)">1</b> In 3 days</span><span><i class="calm"></i><b class="mono" style="color:var(--tx)">3</b> Later</span></div>
+    </div>
+    <div class="sh today t13 b"><span class="ms f" aria-hidden="true">alarm</span><span>Last day today</span><span class="ln"></span><span class="mono">01</span></div><div class="brd"><div class="br"><div class="cd today"><b>23:00</b><span>today</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>Eligible</span><span class="tag today"><span class="ms f" aria-hidden="true">alarm</span>Last day today</span></div>
+    <div class="t17">UP Police Constable 2026</div>
+    <div class="meta t13"><span>UPPRPB</span><span class="mono">₹400</span><span>Class 12</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>Age: 23 (limit 22, OBC +5 = 27)</span></div>
+    <div class="acts"><span class="btn pri sm"><span class="ms " aria-hidden="true">done_all</span>Applied</span><span class="btn sec sm">Later</span><span class="ib" style="width:32px;height:40px;margin-left:auto"><span class="ms " aria-hidden="true">more_horiz</span></span></div>
+  </div></div></div><div class="sh urgent t13 b"><span class="ms f" aria-hidden="true">timer</span><span>Closing in 3 days</span><span class="ln"></span><span class="mono">01</span></div><div class="brd"><div class="br"><div class="cd urgent"><b>02</b><span>days</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>Eligible</span><span class="tag urgent"><span class="ms f" aria-hidden="true">timer</span>2 days left</span></div>
+    <div class="t17">SSC GD Constable 2027</div>
+    <div class="meta t13"><span>Staff Selection Commission</span><span class="mono">₹100</span><span>Class 10</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>Age: 23 (limit 23, OBC +3 = 26)</span></div>
+    <div class="acts"><span class="btn pri sm"><span class="ms " aria-hidden="true">done_all</span>Applied</span><span class="btn sec sm">Later</span><span class="ib" style="width:32px;height:40px;margin-left:auto"><span class="ms " aria-hidden="true">more_horiz</span></span></div>
+  </div></div></div>
+  </div><div class="nav"><div class="on"><span class="w"><span class="ms f" aria-hidden="true">work</span><span class="bdg">5</span></span>Jobs</div><div class=""><span class="w"><span class="ms " aria-hidden="true">assignment_turned_in</span></span>My forms</div><div class=""><span class="w"><span class="ms " aria-hidden="true">account_circle</span></span>Profile</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1</b> · Home · matches feed</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="wm"><i>S</i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">notifications</span></span><span class="ib"><span class="ms " aria-hidden="true">account_circle</span></span></div>
+    <div class="sh t13 b"><span class="ms f" aria-hidden="true">event</span><span>Later</span><span class="ln"></span><span class="mono">03</span></div>
+    <div class="brd"><div class="br"><div class="cd soon"><b>06</b><span>days</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>Eligible</span></div>
+    <div class="t15 b">RRB NTPC Graduate 2026</div>
+    <div class="meta t13"><span>Railway Recruitment Board</span><span class="mono">₹500</span><span>Graduate</span><span class="mx">25 Nov</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>Age: 23 (limit 18–33)</span></div>
+    
+  </div></div><div class="br"><div class="cd calm"><b>09</b><span>days</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>Eligible</span></div>
+    <div class="t15 b">IBPS Clerk (CSA) 2026</div>
+    <div class="meta t13"><span>IBPS</span><span class="mono">₹850</span><span>Graduate</span><span class="mx">28 Nov</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>Education: Graduate needed — you are one</span></div>
+    
+  </div></div><div class="br"><div class="cd calm"><b>21</b><span>days</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag q"><span class="ms f" aria-hidden="true">help</span>Check yourself</span></div>
+    <div class="t15 b">UPSSSC Junior Assistant</div>
+    <div class="meta t13"><span>UP Subordinate Services Board</span><span class="mono">₹25</span><span>Class 12 + CCC</span><span class="mx">10 Dec</span></div>
+    <div class="rl q t13"><span class="ms f" aria-hidden="true">help</span><span>Computer: CCC needed — not in your profile</span></div>
+    
+  </div></div></div>
+    <div class="ad"><span class="adimg"><span class="ms " aria-hidden="true">storefront</span></span><div class="grow"><div class="row" style="gap:6px"><span class="adl">Ad</span><span class="t13 mut">Remove ads</span></div><div class="t15 b" style="margin-top:2px">Kisan Mobile Store</div><div class="t13 mut">New smartphones on easy EMI</div></div><span class="btn sec sm">View</span></div>
+    <div class="disc t13"><span class="ms " aria-hidden="true">info</span><span>Not a government app · Always verify with the official notice</span></div>
+  </div><div class="nav"><div class="on"><span class="w"><span class="ms f" aria-hidden="true">work</span><span class="bdg">5</span></span>Jobs</div><div class=""><span class="w"><span class="ms " aria-hidden="true">assignment_turned_in</span></span>My forms</div><div class=""><span class="w"><span class="ms " aria-hidden="true">account_circle</span></span>Profile</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1b</b> · Home · feed end with ad slot</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill"><div class="tb" style="padding-left:4px"><span class="ib"><span class="ms " aria-hidden="true">arrow_back</span></span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">share</span></span><span class="ib"><span class="ms " aria-hidden="true">more_vert</span></span></div>
+    <div class="dh"><div class="row" style="gap:6px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>Eligible</span><span class="tag n">SSC</span></div>
+      <div class="t17" style="font-size:22px;line-height:30px;margin-top:8px">SSC GD Constable 2027</div>
+      <div class="t13 mut" style="margin-top:2px">Staff Selection Commission · 39,481 posts · All India</div></div>
+    <div class="clock"><div class="t13 b" style="color:var(--acc);display:flex;gap:6px;align-items:center"><span class="ms f" aria-hidden="true">timer</span>Time left</div>
+      <div class="fig">02<small>d</small>14<small>h</small></div>
+      <div class="t13 mut">Last date: <span style="color:var(--tx)">Fri, 21 Nov 2026, 11 pm</span></div></div>
+    <div class="chg t13 b"><span class="ms " aria-hidden="true">update</span><span>Last date extended: 14 → 21 Nov</span></div>
+    <div class="blk"><div class="bt t13 b"><span class="ms " aria-hidden="true">fact_check</span>Why you match</div>
+      <div class="wl ok t15"><span class="k">✓</span><span><span class="b">Age</span> · 23 y 9 m on 1 Jan 2027 — limit 23, OBC +3 = 26</span></div><div class="wl ok t15"><span class="k">✓</span><span><span class="b">Education</span> · Class 10 needed — you are a graduate</span></div><div class="wl ok t15"><span class="k">✓</span><span><span class="b">Category</span> · OBC (non-creamy layer) — central list</span></div><div class="wl q t15"><span class="k">?</span><span><span class="b">Physical standard</span> · Check height/chest yourself — notice p. 12</span></div>
+    </div>
+    <div class="blk"><div class="bt t13 b"><span class="ms " aria-hidden="true">event</span>Key dates</div>
+      <div class="dl past t15"><span>Form opened</span><span class="mx">5 Nov</span></div><div class="dl key t15"><span>Last date</span><span class="mx">21 Nov · 11 pm</span></div><div class="dl next t15"><span>Fee payment by</span><span class="mx">22 Nov</span></div><div class="dl next t15"><span>Correction window</span><span class="mx">25–27 Nov</span></div><div class="dl next t15"><span>Exam (expected)</span><span class="mx">Feb–Mar 2027</span></div>
+    </div>
+  </div><div class="abar"><div class="ni"><span class="ms " aria-hidden="true">visibility_off</span>Not interested</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5"><span class="ms " aria-hidden="true">done_all</span>Applied</span><span class="btn sec" style="flex:1"><span class="ms " aria-hidden="true">snooze</span>Later</span></div></div></div><div class="gb"><i></i></div></div><figcaption><b>2</b> · Job detail · countdown, why you match, dates</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill"><div class="tb" style="padding-left:4px"><span class="ib"><span class="ms " aria-hidden="true">arrow_back</span></span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">share</span></span><span class="ib"><span class="ms " aria-hidden="true">more_vert</span></span></div>
+    <div class="blk" style="margin-top:0"><div class="bt t13 b"><span class="ms " aria-hidden="true">payments</span>Your fee · OBC, male</div>
+      <div class="fee"><span class="mono">₹100</span></div>
+      <div class="t13 mut">SC/ST/women/ex-servicemen: no fee</div></div>
+    <div class="blk"><div class="bt t13 b"><span class="ms " aria-hidden="true">description</span><span class="grow">Keep documents ready</span><span class="mono" style="color:var(--ok)">2/4</span></div>
+      <div class="chk t15 on"><span class="bx on"><span class="ms " aria-hidden="true">check</span></span><span class="tx">Class 10 marksheet</span></div><div class="chk t15 "><span class="bx "></span><span class="tx">OBC-NCL certificate (central format)</span></div><div class="chk t15 "><span class="bx "></span><span class="tx">Aadhaar or any photo ID</span></div><div class="chk t15 on"><span class="bx on"><span class="ms " aria-hidden="true">check</span></span><span class="tx">Working mobile number and email</span></div></div>
+    <div class="blk"><table class="st"><tr><th></th><th><span class="ms " aria-hidden="true">photo_camera</span> Photo</th><th><span class="ms " aria-hidden="true">draw</span> Signature</th></tr><tr><td class="mut">Format</td><td class="mx">JPEG</td><td class="mx">JPEG</td></tr><tr><td class="mut">Size</td><td class="mx">20–50 KB</td><td class="mx">10–20 KB</td></tr><tr><td class="mut">Dimensions</td><td class="mx">3.5 × 4.5 cm</td><td class="mx">6 × 2 cm</td></tr><tr><td class="mut">Background</td><td class="mx">White</td><td class="mx">Black/blue</td></tr></table></div>
+    <div class="blk" style="padding:4px 16px">
+      <div class="lk"><span class="adimg"><span class="ms " aria-hidden="true">picture_as_pdf</span></span><div class="grow"><div class="t15 b">Official notice (PDF)</div><div class="t13 mut">ssc.gov.in · 2.1 MB</div></div><span class="ms " aria-hidden="true">download</span></div>
+      <div class="lk"><span class="adimg"><span class="ms " aria-hidden="true">language</span></span><div class="grow"><div class="t15 b">Open the apply website</div><div class="t13 mut">ssc.gov.in — official website</div></div><span class="ms " aria-hidden="true">north_east</span></div>
+    </div>
+  </div><div class="abar"><div class="ni"><span class="ms " aria-hidden="true">visibility_off</span>Not interested</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5"><span class="ms " aria-hidden="true">done_all</span>Applied</span><span class="btn sec" style="flex:1"><span class="ms " aria-hidden="true">snooze</span>Later</span></div></div></div><div class="gb"><i></i></div></div><figcaption><b>2b</b> · Job detail · what you need, links</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="t17" style="font-size:22px;line-height:30px">My forms</span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">tune</span></span></div>
+    <div class="tabs"><div class="on">Active (3)</div><div class="">Completed (1)</div></div>
+    <div class="up"><span class="ms f" aria-hidden="true">workspace_premium</span><span class="t13 b grow">Alerts after you apply are part of Pro</span><span class="pp">From ₹17/mo</span></div>
+    <div class="blk">
+      <div class="row"><div class="grow"><div class="t17">SSC CGL 2026</div><div class="t13 mut">Applied 15 Jul</div></div><span class="tag ok"><span class="ms " aria-hidden="true">done_all</span>Applied</span></div>
+      <div class="nextbox"><span class="ms " aria-hidden="true">location_city</span><div class="grow"><div class="t15 b">Next: city slip</div><div class="t13 mut">in about 6 days</div></div><span class="tag gold"><span class="ms f" aria-hidden="true">lock</span>Pro</span></div>
+      <div class="sx done"><span class="n"><span class="ms " aria-hidden="true">check</span></span><div class="grow tt"><div class="t15 b">Applied</div></div><div class="when"><div class="t13 mx ">15 Jul</div></div></div><div class="sx next"><span class="n">02</span><div class="grow tt"><div class="t15 b">City slip</div></div><div class="when"><div class="t13 mx ">Expected 25 Nov</div></div></div><div class="sx locked"><span class="n">03</span><div class="grow tt"><div class="t15 ">Admit card</div></div><div class="when"><div class="t13 mx mut">Expected 1 Dec</div><div class="lock"><span class="ms f" aria-hidden="true">lock</span>Alert in Pro</div></div></div><div class="sx locked"><span class="n">04</span><div class="grow tt"><div class="t15 ">Exam</div></div><div class="when"><div class="t13 mx mut">9–26 Dec</div><div class="lock"><span class="ms f" aria-hidden="true">lock</span>Alert in Pro</div></div></div><div class="sx locked"><span class="n">05</span><div class="grow tt"><div class="t15 ">Answer key</div></div><div class="when"><div class="t13 mx mut">Expected Jan</div><div class="lock"><span class="ms f" aria-hidden="true">lock</span>Alert in Pro</div></div></div><div class="sx locked"><span class="n">06</span><div class="grow tt"><div class="t15 ">Result</div></div><div class="when"><div class="t13 mx mut">Expected Feb</div><div class="lock"><span class="ms f" aria-hidden="true">lock</span>Alert in Pro</div></div></div><div class="sx locked"><span class="n">07</span><div class="grow tt"><div class="t15 ">Document verification</div></div><div class="when"><div class="t13 mx mut">After result</div><div class="lock"><span class="ms f" aria-hidden="true">lock</span>Alert in Pro</div></div></div>
+    </div>
+  </div><div class="nav"><div class=""><span class="w"><span class="ms " aria-hidden="true">work</span><span class="bdg">5</span></span>Jobs</div><div class="on"><span class="w"><span class="ms f" aria-hidden="true">assignment_turned_in</span></span>My forms</div><div class=""><span class="w"><span class="ms " aria-hidden="true">account_circle</span></span>Profile</div></div></div><div class="gb"><i></i></div></div><figcaption><b>3</b> · My forms · lifecycle, free user (Pro-locked)</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb" style="height:48px;padding-left:4px"><span class="ib"><span class="ms " aria-hidden="true">close</span></span></div>
+    <div style="text-align:center;padding:0 24px 16px"><div class="stamp"><span class="ms " aria-hidden="true">done_all</span></div><div class="t17" style="font-size:22px;line-height:30px">Applied</div><div class="t13 mut">SSC GD Constable 2027 · added to My forms</div></div>
+    <div class="pc">
+      <div class="row" style="gap:8px"><span class="tag gold"><span class="ms f" aria-hidden="true">workspace_premium</span>PRO</span><span class="t17 grow">Track it to the end?</span></div>
+      <div class="mini"><span>Admit</span><span>Exam</span><span>Key</span><span>Result</span><span>DV</span></div>
+      <div class="bn t13"><span class="ms " aria-hidden="true">badge</span><span>Admit card & city slip the moment they’re out</span></div><div class="bn t13"><span class="ms " aria-hidden="true">update</span><span>Instant alert if the exam date changes</span></div><div class="bn t13"><span class="ms " aria-hidden="true">key</span><span>Answer key, result, cut-off and DV</span></div><div class="bn t13"><span class="ms " aria-hidden="true">block</span><span>No ads, anywhere</span></div>
+      <div class="plans"><div class="pl sel"><span class="rd"></span><div class="t13 mut">Yearly</div><div class="pr">₹199</div><div class="t13 " style="color:var(--gold)">Best value · Just ₹17/month</div></div><div class="pl "><span class="rd"></span><div class="t13 mut">One season</div><div class="pr">₹49</div><div class="t13 mut" style="">4 months</div></div></div>
+      <span class="btn gold full">Try 14 days free</span>
+      <div class="t13 mut" style="text-align:center;margin:4px 0 8px">No payment, no card needed</div>
+      <span class="btn sec full"><span class="ms " aria-hidden="true">shop</span>Get Pro for ₹199</span>
+      <div class="t13 mut" style="text-align:center;margin-top:8px">Paid via Google Play · cancel anytime</div>
+    </div>
+  </div></div><div class="gb"><i></i></div></div><figcaption><b>4</b> · Applied ✓ peak + Pro paywall</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="wm"><i>S</i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">notifications</span><span class="dot"></span></span><span class="ib"><span class="ms " aria-hidden="true">account_circle</span></span></div>
+    <div class="hs">
+      <div class="t13 mut">Hi, Ravi · 19 Nov</div>
+      <div class="big"><span class="t40 mono">05</span><span class="t15">jobs need your reply</span></div>
+      <div class="segbar"><i class="today" style="flex:1"></i><i class="urgent" style="flex:1"></i><i style="flex:3"></i></div>
+      <div class="legend t13 mut"><span><i class="today"></i><b class="mono" style="color:var(--tx)">1</b> Today</span><span><i class="urgent"></i><b class="mono" style="color:var(--tx)">1</b> In 3 days</span><span><i class="calm"></i><b class="mono" style="color:var(--tx)">3</b> Later</span></div>
+    </div>
+    <div class="sh today t13 b"><span class="ms f" aria-hidden="true">alarm</span><span>Last day today</span><span class="ln"></span><span class="mono">01</span></div><div class="brd"><div class="br"><div class="cd today"><b>23:00</b><span>today</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>Eligible</span><span class="tag today"><span class="ms f" aria-hidden="true">alarm</span>Last day today</span></div>
+    <div class="t17">UP Police Constable 2026</div>
+    <div class="meta t13"><span>UPPRPB</span><span class="mono">₹400</span><span>Class 12</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>Age: 23 (limit 22, OBC +5 = 27)</span></div>
+    <div class="acts"><span class="btn pri sm"><span class="ms " aria-hidden="true">done_all</span>Applied</span><span class="btn sec sm">Later</span><span class="ib" style="width:32px;height:40px;margin-left:auto"><span class="ms " aria-hidden="true">more_horiz</span></span></div>
+  </div></div></div><div class="sh urgent t13 b"><span class="ms f" aria-hidden="true">timer</span><span>Closing in 3 days</span><span class="ln"></span><span class="mono">01</span></div><div class="brd"><div class="br"><div class="cd urgent"><b>02</b><span>days</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>Eligible</span><span class="tag urgent"><span class="ms f" aria-hidden="true">timer</span>2 days left</span></div>
+    <div class="t17">SSC GD Constable 2027</div>
+    <div class="meta t13"><span>Staff Selection Commission</span><span class="mono">₹100</span><span>Class 10</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>Age: 23 (limit 23, OBC +3 = 26)</span></div>
+    <div class="acts"><span class="btn pri sm"><span class="ms " aria-hidden="true">done_all</span>Applied</span><span class="btn sec sm">Later</span><span class="ib" style="width:32px;height:40px;margin-left:auto"><span class="ms " aria-hidden="true">more_horiz</span></span></div>
+  </div></div></div>
+  </div><div class="nav"><div class="on"><span class="w"><span class="ms f" aria-hidden="true">work</span><span class="bdg">5</span></span>Jobs</div><div class=""><span class="w"><span class="ms " aria-hidden="true">assignment_turned_in</span></span>My forms</div><div class=""><span class="w"><span class="ms " aria-hidden="true">account_circle</span></span>Profile</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1</b> · Home · light mode</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill"><div class="tb" style="padding-left:4px"><span class="ib"><span class="ms " aria-hidden="true">arrow_back</span></span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">share</span></span><span class="ib"><span class="ms " aria-hidden="true">more_vert</span></span></div>
+    <div class="dh"><div class="row" style="gap:6px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>Eligible</span><span class="tag n">SSC</span></div>
+      <div class="t17" style="font-size:22px;line-height:30px;margin-top:8px">SSC GD Constable 2027</div>
+      <div class="t13 mut" style="margin-top:2px">Staff Selection Commission · 39,481 posts · All India</div></div>
+    <div class="clock"><div class="t13 b" style="color:var(--acc);display:flex;gap:6px;align-items:center"><span class="ms f" aria-hidden="true">timer</span>Time left</div>
+      <div class="fig">02<small>d</small>14<small>h</small></div>
+      <div class="t13 mut">Last date: <span style="color:var(--tx)">Fri, 21 Nov 2026, 11 pm</span></div></div>
+    <div class="chg t13 b"><span class="ms " aria-hidden="true">update</span><span>Last date extended: 14 → 21 Nov</span></div>
+    <div class="blk"><div class="bt t13 b"><span class="ms " aria-hidden="true">fact_check</span>Why you match</div>
+      <div class="wl ok t15"><span class="k">✓</span><span><span class="b">Age</span> · 23 y 9 m on 1 Jan 2027 — limit 23, OBC +3 = 26</span></div><div class="wl ok t15"><span class="k">✓</span><span><span class="b">Education</span> · Class 10 needed — you are a graduate</span></div><div class="wl ok t15"><span class="k">✓</span><span><span class="b">Category</span> · OBC (non-creamy layer) — central list</span></div><div class="wl q t15"><span class="k">?</span><span><span class="b">Physical standard</span> · Check height/chest yourself — notice p. 12</span></div>
+    </div>
+    <div class="blk"><div class="bt t13 b"><span class="ms " aria-hidden="true">event</span>Key dates</div>
+      <div class="dl past t15"><span>Form opened</span><span class="mx">5 Nov</span></div><div class="dl key t15"><span>Last date</span><span class="mx">21 Nov · 11 pm</span></div><div class="dl next t15"><span>Fee payment by</span><span class="mx">22 Nov</span></div><div class="dl next t15"><span>Correction window</span><span class="mx">25–27 Nov</span></div><div class="dl next t15"><span>Exam (expected)</span><span class="mx">Feb–Mar 2027</span></div>
+    </div>
+  </div><div class="abar"><div class="ni"><span class="ms " aria-hidden="true">visibility_off</span>Not interested</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5"><span class="ms " aria-hidden="true">done_all</span>Applied</span><span class="btn sec" style="flex:1"><span class="ms " aria-hidden="true">snooze</span>Later</span></div></div></div><div class="gb"><i></i></div></div><figcaption><b>2</b> · Job detail · light mode</figcaption></figure></div></section>
+<section class="langblock hi"><div class="langhd">हिंदी · Hindi</div><div class="grid"><figure class="fr"><div class="ph dark" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="wm"><i>S</i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">notifications</span><span class="dot"></span></span><span class="ib"><span class="ms " aria-hidden="true">account_circle</span></span></div>
+    <div class="hs">
+      <div class="t13 mut">नमस्ते, Ravi · 19 नवंबर</div>
+      <div class="big"><span class="t40 mono">05</span><span class="t15">नौकरियाँ आपका जवाब माँग रही हैं</span></div>
+      <div class="segbar"><i class="today" style="flex:1"></i><i class="urgent" style="flex:1"></i><i style="flex:3"></i></div>
+      <div class="legend t13 mut"><span><i class="today"></i><b class="mono" style="color:var(--tx)">1</b> आज</span><span><i class="urgent"></i><b class="mono" style="color:var(--tx)">1</b> 3 दिन में</span><span><i class="calm"></i><b class="mono" style="color:var(--tx)">3</b> बाद में</span></div>
+    </div>
+    <div class="sh today t13 b"><span class="ms f" aria-hidden="true">alarm</span><span>आज आखिरी दिन</span><span class="ln"></span><span class="mono">01</span></div><div class="brd"><div class="br"><div class="cd today"><b>23:00</b><span>आज</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>योग्य</span><span class="tag today"><span class="ms f" aria-hidden="true">alarm</span>आज आखिरी दिन</span></div>
+    <div class="t17">UP Police कांस्टेबल भर्ती 2026</div>
+    <div class="meta t13"><span>UPPRPB</span><span class="mono">₹400</span><span>12वीं पास</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>उम्र: 23 (सीमा 22, OBC +5 = 27)</span></div>
+    <div class="acts"><span class="btn pri sm"><span class="ms " aria-hidden="true">done_all</span>फ़ॉर्म भर दिया</span><span class="btn sec sm">बाद में</span><span class="ib" style="width:32px;height:40px;margin-left:auto"><span class="ms " aria-hidden="true">more_horiz</span></span></div>
+  </div></div></div><div class="sh urgent t13 b"><span class="ms f" aria-hidden="true">timer</span><span>3 दिन में</span><span class="ln"></span><span class="mono">01</span></div><div class="brd"><div class="br"><div class="cd urgent"><b>02</b><span>दिन</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>योग्य</span><span class="tag urgent"><span class="ms f" aria-hidden="true">timer</span>2 दिन बाकी</span></div>
+    <div class="t17">SSC GD कांस्टेबल भर्ती 2027</div>
+    <div class="meta t13"><span>कर्मचारी चयन आयोग</span><span class="mono">₹100</span><span>10वीं पास</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>उम्र: 23 (सीमा 23, OBC +3 = 26)</span></div>
+    <div class="acts"><span class="btn pri sm"><span class="ms " aria-hidden="true">done_all</span>फ़ॉर्म भर दिया</span><span class="btn sec sm">बाद में</span><span class="ib" style="width:32px;height:40px;margin-left:auto"><span class="ms " aria-hidden="true">more_horiz</span></span></div>
+  </div></div></div>
+  </div><div class="nav"><div class="on"><span class="w"><span class="ms f" aria-hidden="true">work</span><span class="bdg">5</span></span>नौकरियाँ</div><div class=""><span class="w"><span class="ms " aria-hidden="true">assignment_turned_in</span></span>मेरे फ़ॉर्म</div><div class=""><span class="w"><span class="ms " aria-hidden="true">account_circle</span></span>प्रोफ़ाइल</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1</b> · Home · matches feed</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="wm"><i>S</i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">notifications</span></span><span class="ib"><span class="ms " aria-hidden="true">account_circle</span></span></div>
+    <div class="sh t13 b"><span class="ms f" aria-hidden="true">event</span><span>बाद में</span><span class="ln"></span><span class="mono">03</span></div>
+    <div class="brd"><div class="br"><div class="cd soon"><b>06</b><span>दिन</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>योग्य</span></div>
+    <div class="t15 b">RRB NTPC ग्रेजुएट 2026</div>
+    <div class="meta t13"><span>रेलवे भर्ती बोर्ड</span><span class="mono">₹500</span><span>ग्रेजुएट</span><span class="mx">25 नवं</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>उम्र: 23 (सीमा 18–33)</span></div>
+    
+  </div></div><div class="br"><div class="cd calm"><b>09</b><span>दिन</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>योग्य</span></div>
+    <div class="t15 b">IBPS क्लर्क (CSA) 2026</div>
+    <div class="meta t13"><span>IBPS</span><span class="mono">₹850</span><span>ग्रेजुएट</span><span class="mx">28 नवं</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>पढ़ाई: ग्रेजुएट चाहिए — आप ग्रेजुएट हैं</span></div>
+    
+  </div></div><div class="br"><div class="cd calm"><b>21</b><span>दिन</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag q"><span class="ms f" aria-hidden="true">help</span>ख़ुद जाँचें</span></div>
+    <div class="t15 b">UPSSSC जूनियर असिस्टेंट</div>
+    <div class="meta t13"><span>UP अधीनस्थ सेवा चयन आयोग</span><span class="mono">₹25</span><span>12वीं + CCC</span><span class="mx">10 दिसं</span></div>
+    <div class="rl q t13"><span class="ms f" aria-hidden="true">help</span><span>कंप्यूटर: CCC ज़रूरी — आपने नहीं बताया</span></div>
+    
+  </div></div></div>
+    <div class="ad"><span class="adimg"><span class="ms " aria-hidden="true">storefront</span></span><div class="grow"><div class="row" style="gap:6px"><span class="adl">विज्ञापन</span><span class="t13 mut">विज्ञापन हटाएँ</span></div><div class="t15 b" style="margin-top:2px">किसान मोबाइल स्टोर</div><div class="t13 mut">नया स्मार्टफ़ोन आसान EMI पर</div></div><span class="btn sec sm">देखें</span></div>
+    <div class="disc t13"><span class="ms " aria-hidden="true">info</span><span>सरकारी ऐप नहीं · हर जानकारी आधिकारिक नोटिस से मिलाएँ</span></div>
+  </div><div class="nav"><div class="on"><span class="w"><span class="ms f" aria-hidden="true">work</span><span class="bdg">5</span></span>नौकरियाँ</div><div class=""><span class="w"><span class="ms " aria-hidden="true">assignment_turned_in</span></span>मेरे फ़ॉर्म</div><div class=""><span class="w"><span class="ms " aria-hidden="true">account_circle</span></span>प्रोफ़ाइल</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1b</b> · Home · feed end with ad slot</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill"><div class="tb" style="padding-left:4px"><span class="ib"><span class="ms " aria-hidden="true">arrow_back</span></span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">share</span></span><span class="ib"><span class="ms " aria-hidden="true">more_vert</span></span></div>
+    <div class="dh"><div class="row" style="gap:6px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>योग्य</span><span class="tag n">SSC</span></div>
+      <div class="t17" style="font-size:22px;line-height:30px;margin-top:8px">SSC GD कांस्टेबल भर्ती 2027</div>
+      <div class="t13 mut" style="margin-top:2px">कर्मचारी चयन आयोग (SSC) · 39,481 पद · पूरे भारत में</div></div>
+    <div class="clock"><div class="t13 b" style="color:var(--acc);display:flex;gap:6px;align-items:center"><span class="ms f" aria-hidden="true">timer</span>बचा समय</div>
+      <div class="fig">02<small>दिन</small>14<small>घंटे</small></div>
+      <div class="t13 mut">आखिरी तारीख: <span style="color:var(--tx)">शुक्रवार, 21 नवंबर 2026, रात 11 बजे</span></div></div>
+    <div class="chg t13 b"><span class="ms " aria-hidden="true">update</span><span>आखिरी तारीख बढ़ी: 14 → 21 नवंबर</span></div>
+    <div class="blk"><div class="bt t13 b"><span class="ms " aria-hidden="true">fact_check</span>आप योग्य क्यों हैं</div>
+      <div class="wl ok t15"><span class="k">✓</span><span><span class="b">उम्र</span> · 23 साल 9 महीने — सीमा 23, OBC +3 = 26 तक</span></div><div class="wl ok t15"><span class="k">✓</span><span><span class="b">पढ़ाई</span> · 10वीं पास चाहिए — आप ग्रेजुएट हैं</span></div><div class="wl ok t15"><span class="k">✓</span><span><span class="b">वर्ग</span> · OBC (नॉन-क्रीमी लेयर) — केंद्र की सूची</span></div><div class="wl q t15"><span class="k">?</span><span><span class="b">शारीरिक मानक</span> · ऊँचाई/छाती ख़ुद जाँचें — नोटिस पेज 12</span></div>
+    </div>
+    <div class="blk"><div class="bt t13 b"><span class="ms " aria-hidden="true">event</span>ज़रूरी तारीख़ें</div>
+      <div class="dl past t15"><span>फ़ॉर्म शुरू</span><span class="mx">5 नवं</span></div><div class="dl key t15"><span>आखिरी तारीख</span><span class="mx">21 नवं · रात 11</span></div><div class="dl next t15"><span>फ़ीस की आखिरी तारीख</span><span class="mx">22 नवं</span></div><div class="dl next t15"><span>सुधार विंडो</span><span class="mx">25–27 नवं</span></div><div class="dl next t15"><span>परीक्षा (संभावित)</span><span class="mx">फ़र–मार्च 2027</span></div>
+    </div>
+  </div><div class="abar"><div class="ni"><span class="ms " aria-hidden="true">visibility_off</span>मुझे इसमें रुचि नहीं</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5"><span class="ms " aria-hidden="true">done_all</span>फ़ॉर्म भर दिया</span><span class="btn sec" style="flex:1"><span class="ms " aria-hidden="true">snooze</span>बाद में</span></div></div></div><div class="gb"><i></i></div></div><figcaption><b>2</b> · Job detail · countdown, why you match, dates</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill"><div class="tb" style="padding-left:4px"><span class="ib"><span class="ms " aria-hidden="true">arrow_back</span></span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">share</span></span><span class="ib"><span class="ms " aria-hidden="true">more_vert</span></span></div>
+    <div class="blk" style="margin-top:0"><div class="bt t13 b"><span class="ms " aria-hidden="true">payments</span>आपकी फ़ीस · OBC, पुरुष</div>
+      <div class="fee"><span class="mono">₹100</span></div>
+      <div class="t13 mut">SC/ST/महिला/पूर्व सैनिक: कोई फ़ीस नहीं</div></div>
+    <div class="blk"><div class="bt t13 b"><span class="ms " aria-hidden="true">description</span><span class="grow">दस्तावेज़ तैयार रखें</span><span class="mono" style="color:var(--ok)">2/4</span></div>
+      <div class="chk t15 on"><span class="bx on"><span class="ms " aria-hidden="true">check</span></span><span class="tx">10वीं की मार्कशीट</span></div><div class="chk t15 "><span class="bx "></span><span class="tx">OBC-NCL सर्टिफ़िकेट (केंद्र वाला)</span></div><div class="chk t15 "><span class="bx "></span><span class="tx">आधार या कोई फ़ोटो ID</span></div><div class="chk t15 on"><span class="bx on"><span class="ms " aria-hidden="true">check</span></span><span class="tx">चालू मोबाइल नंबर और ईमेल</span></div></div>
+    <div class="blk"><table class="st"><tr><th></th><th><span class="ms " aria-hidden="true">photo_camera</span> फ़ोटो</th><th><span class="ms " aria-hidden="true">draw</span> हस्ताक्षर</th></tr><tr><td class="mut">फ़ॉर्मेट</td><td class="mx">JPEG</td><td class="mx">JPEG</td></tr><tr><td class="mut">साइज़</td><td class="mx">20–50 KB</td><td class="mx">10–20 KB</td></tr><tr><td class="mut">माप</td><td class="mx">3.5 × 4.5 cm</td><td class="mx">6 × 2 cm</td></tr><tr><td class="mut">पृष्ठभूमि</td><td class="mx">सफ़ेद</td><td class="mx">काली/नीली</td></tr></table></div>
+    <div class="blk" style="padding:4px 16px">
+      <div class="lk"><span class="adimg"><span class="ms " aria-hidden="true">picture_as_pdf</span></span><div class="grow"><div class="t15 b">आधिकारिक नोटिस (PDF)</div><div class="t13 mut">ssc.gov.in · 2.1 MB</div></div><span class="ms " aria-hidden="true">download</span></div>
+      <div class="lk"><span class="adimg"><span class="ms " aria-hidden="true">language</span></span><div class="grow"><div class="t15 b">फ़ॉर्म भरने की साइट खोलें</div><div class="t13 mut">ssc.gov.in — आधिकारिक वेबसाइट</div></div><span class="ms " aria-hidden="true">north_east</span></div>
+    </div>
+  </div><div class="abar"><div class="ni"><span class="ms " aria-hidden="true">visibility_off</span>मुझे इसमें रुचि नहीं</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5"><span class="ms " aria-hidden="true">done_all</span>फ़ॉर्म भर दिया</span><span class="btn sec" style="flex:1"><span class="ms " aria-hidden="true">snooze</span>बाद में</span></div></div></div><div class="gb"><i></i></div></div><figcaption><b>2b</b> · Job detail · what you need, links</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="t17" style="font-size:22px;line-height:30px">मेरे फ़ॉर्म</span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">tune</span></span></div>
+    <div class="tabs"><div class="on">चालू (3)</div><div class="">पूरे हुए (1)</div></div>
+    <div class="up"><span class="ms f" aria-hidden="true">workspace_premium</span><span class="t13 b grow">फ़ॉर्म भरने के बाद की सूचना Pro में मिलती है</span><span class="pp">₹17/महीना से</span></div>
+    <div class="blk">
+      <div class="row"><div class="grow"><div class="t17">SSC CGL 2026</div><div class="t13 mut">भरा: 15 जुलाई</div></div><span class="tag ok"><span class="ms " aria-hidden="true">done_all</span>भरा</span></div>
+      <div class="nextbox"><span class="ms " aria-hidden="true">location_city</span><div class="grow"><div class="t15 b">अगला: सिटी स्लिप</div><div class="t13 mut">लगभग 6 दिन में</div></div><span class="tag gold"><span class="ms f" aria-hidden="true">lock</span>Pro</span></div>
+      <div class="sx done"><span class="n"><span class="ms " aria-hidden="true">check</span></span><div class="grow tt"><div class="t15 b">फ़ॉर्म भरा</div></div><div class="when"><div class="t13 mx ">15 जुलाई</div></div></div><div class="sx next"><span class="n">02</span><div class="grow tt"><div class="t15 b">सिटी स्लिप</div></div><div class="when"><div class="t13 mx ">संभावित 25 नवं</div></div></div><div class="sx locked"><span class="n">03</span><div class="grow tt"><div class="t15 ">एडमिट कार्ड</div></div><div class="when"><div class="t13 mx mut">संभावित 1 दिसं</div><div class="lock"><span class="ms f" aria-hidden="true">lock</span>सूचना Pro में</div></div></div><div class="sx locked"><span class="n">04</span><div class="grow tt"><div class="t15 ">परीक्षा</div></div><div class="when"><div class="t13 mx mut">9–26 दिसं</div><div class="lock"><span class="ms f" aria-hidden="true">lock</span>सूचना Pro में</div></div></div><div class="sx locked"><span class="n">05</span><div class="grow tt"><div class="t15 ">आंसर की</div></div><div class="when"><div class="t13 mx mut">संभावित जनवरी</div><div class="lock"><span class="ms f" aria-hidden="true">lock</span>सूचना Pro में</div></div></div><div class="sx locked"><span class="n">06</span><div class="grow tt"><div class="t15 ">रिज़ल्ट</div></div><div class="when"><div class="t13 mx mut">संभावित फ़रवरी</div><div class="lock"><span class="ms f" aria-hidden="true">lock</span>सूचना Pro में</div></div></div><div class="sx locked"><span class="n">07</span><div class="grow tt"><div class="t15 ">DV (दस्तावेज़ जाँच)</div></div><div class="when"><div class="t13 mx mut">रिज़ल्ट के बाद</div><div class="lock"><span class="ms f" aria-hidden="true">lock</span>सूचना Pro में</div></div></div>
+    </div>
+  </div><div class="nav"><div class=""><span class="w"><span class="ms " aria-hidden="true">work</span><span class="bdg">5</span></span>नौकरियाँ</div><div class="on"><span class="w"><span class="ms f" aria-hidden="true">assignment_turned_in</span></span>मेरे फ़ॉर्म</div><div class=""><span class="w"><span class="ms " aria-hidden="true">account_circle</span></span>प्रोफ़ाइल</div></div></div><div class="gb"><i></i></div></div><figcaption><b>3</b> · My forms · lifecycle, free user (Pro-locked)</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb" style="height:48px;padding-left:4px"><span class="ib"><span class="ms " aria-hidden="true">close</span></span></div>
+    <div style="text-align:center;padding:0 24px 16px"><div class="stamp"><span class="ms " aria-hidden="true">done_all</span></div><div class="t17" style="font-size:22px;line-height:30px">फ़ॉर्म भर दिया</div><div class="t13 mut">SSC GD कांस्टेबल 2027 · मेरे फ़ॉर्म में जुड़ गया</div></div>
+    <div class="pc">
+      <div class="row" style="gap:8px"><span class="tag gold"><span class="ms f" aria-hidden="true">workspace_premium</span>PRO</span><span class="t17 grow">इसे आखिर तक ट्रैक करें?</span></div>
+      <div class="mini"><span>एडमिट कार्ड</span><span>परीक्षा</span><span>आंसर की</span><span>रिज़ल्ट</span><span>DV</span></div>
+      <div class="bn t13"><span class="ms " aria-hidden="true">badge</span><span>एडमिट कार्ड, सिटी स्लिप — आते ही सूचना</span></div><div class="bn t13"><span class="ms " aria-hidden="true">update</span><span>परीक्षा की तारीख बदली तो तुरंत</span></div><div class="bn t13"><span class="ms " aria-hidden="true">key</span><span>आंसर की, रिज़ल्ट, कट-ऑफ़, DV</span></div><div class="bn t13"><span class="ms " aria-hidden="true">block</span><span>कोई विज्ञापन नहीं</span></div>
+      <div class="plans"><div class="pl sel"><span class="rd"></span><div class="t13 mut">साल भर</div><div class="pr">₹199</div><div class="t13 " style="color:var(--gold)">सबसे सस्ता · सिर्फ़ ₹17/महीना</div></div><div class="pl "><span class="rd"></span><div class="t13 mut">एक सीज़न</div><div class="pr">₹49</div><div class="t13 mut" style="">4 महीने</div></div></div>
+      <span class="btn gold full">14 दिन मुफ़्त आज़माएँ</span>
+      <div class="t13 mut" style="text-align:center;margin:4px 0 8px">कोई पैसा नहीं, कार्ड नहीं चाहिए</div>
+      <span class="btn sec full"><span class="ms " aria-hidden="true">shop</span>₹199 में Pro लें</span>
+      <div class="t13 mut" style="text-align:center;margin-top:8px">Google Play से भुगतान · कभी भी बंद करें</div>
+    </div>
+  </div></div><div class="gb"><i></i></div></div><figcaption><b>4</b> · Applied ✓ peak + Pro paywall</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="wm"><i>S</i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">notifications</span><span class="dot"></span></span><span class="ib"><span class="ms " aria-hidden="true">account_circle</span></span></div>
+    <div class="hs">
+      <div class="t13 mut">नमस्ते, Ravi · 19 नवंबर</div>
+      <div class="big"><span class="t40 mono">05</span><span class="t15">नौकरियाँ आपका जवाब माँग रही हैं</span></div>
+      <div class="segbar"><i class="today" style="flex:1"></i><i class="urgent" style="flex:1"></i><i style="flex:3"></i></div>
+      <div class="legend t13 mut"><span><i class="today"></i><b class="mono" style="color:var(--tx)">1</b> आज</span><span><i class="urgent"></i><b class="mono" style="color:var(--tx)">1</b> 3 दिन में</span><span><i class="calm"></i><b class="mono" style="color:var(--tx)">3</b> बाद में</span></div>
+    </div>
+    <div class="sh today t13 b"><span class="ms f" aria-hidden="true">alarm</span><span>आज आखिरी दिन</span><span class="ln"></span><span class="mono">01</span></div><div class="brd"><div class="br"><div class="cd today"><b>23:00</b><span>आज</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>योग्य</span><span class="tag today"><span class="ms f" aria-hidden="true">alarm</span>आज आखिरी दिन</span></div>
+    <div class="t17">UP Police कांस्टेबल भर्ती 2026</div>
+    <div class="meta t13"><span>UPPRPB</span><span class="mono">₹400</span><span>12वीं पास</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>उम्र: 23 (सीमा 22, OBC +5 = 27)</span></div>
+    <div class="acts"><span class="btn pri sm"><span class="ms " aria-hidden="true">done_all</span>फ़ॉर्म भर दिया</span><span class="btn sec sm">बाद में</span><span class="ib" style="width:32px;height:40px;margin-left:auto"><span class="ms " aria-hidden="true">more_horiz</span></span></div>
+  </div></div></div><div class="sh urgent t13 b"><span class="ms f" aria-hidden="true">timer</span><span>3 दिन में</span><span class="ln"></span><span class="mono">01</span></div><div class="brd"><div class="br"><div class="cd urgent"><b>02</b><span>दिन</span></div><div class="grow">
+    <div class="row" style="gap:6px;margin-bottom:4px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>योग्य</span><span class="tag urgent"><span class="ms f" aria-hidden="true">timer</span>2 दिन बाकी</span></div>
+    <div class="t17">SSC GD कांस्टेबल भर्ती 2027</div>
+    <div class="meta t13"><span>कर्मचारी चयन आयोग</span><span class="mono">₹100</span><span>10वीं पास</span></div>
+    <div class="rl ok t13"><span class="ms " aria-hidden="true">check</span><span>उम्र: 23 (सीमा 23, OBC +3 = 26)</span></div>
+    <div class="acts"><span class="btn pri sm"><span class="ms " aria-hidden="true">done_all</span>फ़ॉर्म भर दिया</span><span class="btn sec sm">बाद में</span><span class="ib" style="width:32px;height:40px;margin-left:auto"><span class="ms " aria-hidden="true">more_horiz</span></span></div>
+  </div></div></div>
+  </div><div class="nav"><div class="on"><span class="w"><span class="ms f" aria-hidden="true">work</span><span class="bdg">5</span></span>नौकरियाँ</div><div class=""><span class="w"><span class="ms " aria-hidden="true">assignment_turned_in</span></span>मेरे फ़ॉर्म</div><div class=""><span class="w"><span class="ms " aria-hidden="true">account_circle</span></span>प्रोफ़ाइल</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1</b> · Home · light mode</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill"><div class="tb" style="padding-left:4px"><span class="ib"><span class="ms " aria-hidden="true">arrow_back</span></span><span class="grow"></span><span class="ib"><span class="ms " aria-hidden="true">share</span></span><span class="ib"><span class="ms " aria-hidden="true">more_vert</span></span></div>
+    <div class="dh"><div class="row" style="gap:6px"><span class="tag ok"><span class="ms " aria-hidden="true">check</span>योग्य</span><span class="tag n">SSC</span></div>
+      <div class="t17" style="font-size:22px;line-height:30px;margin-top:8px">SSC GD कांस्टेबल भर्ती 2027</div>
+      <div class="t13 mut" style="margin-top:2px">कर्मचारी चयन आयोग (SSC) · 39,481 पद · पूरे भारत में</div></div>
+    <div class="clock"><div class="t13 b" style="color:var(--acc);display:flex;gap:6px;align-items:center"><span class="ms f" aria-hidden="true">timer</span>बचा समय</div>
+      <div class="fig">02<small>दिन</small>14<small>घंटे</small></div>
+      <div class="t13 mut">आखिरी तारीख: <span style="color:var(--tx)">शुक्रवार, 21 नवंबर 2026, रात 11 बजे</span></div></div>
+    <div class="chg t13 b"><span class="ms " aria-hidden="true">update</span><span>आखिरी तारीख बढ़ी: 14 → 21 नवंबर</span></div>
+    <div class="blk"><div class="bt t13 b"><span class="ms " aria-hidden="true">fact_check</span>आप योग्य क्यों हैं</div>
+      <div class="wl ok t15"><span class="k">✓</span><span><span class="b">उम्र</span> · 23 साल 9 महीने — सीमा 23, OBC +3 = 26 तक</span></div><div class="wl ok t15"><span class="k">✓</span><span><span class="b">पढ़ाई</span> · 10वीं पास चाहिए — आप ग्रेजुएट हैं</span></div><div class="wl ok t15"><span class="k">✓</span><span><span class="b">वर्ग</span> · OBC (नॉन-क्रीमी लेयर) — केंद्र की सूची</span></div><div class="wl q t15"><span class="k">?</span><span><span class="b">शारीरिक मानक</span> · ऊँचाई/छाती ख़ुद जाँचें — नोटिस पेज 12</span></div>
+    </div>
+    <div class="blk"><div class="bt t13 b"><span class="ms " aria-hidden="true">event</span>ज़रूरी तारीख़ें</div>
+      <div class="dl past t15"><span>फ़ॉर्म शुरू</span><span class="mx">5 नवं</span></div><div class="dl key t15"><span>आखिरी तारीख</span><span class="mx">21 नवं · रात 11</span></div><div class="dl next t15"><span>फ़ीस की आखिरी तारीख</span><span class="mx">22 नवं</span></div><div class="dl next t15"><span>सुधार विंडो</span><span class="mx">25–27 नवं</span></div><div class="dl next t15"><span>परीक्षा (संभावित)</span><span class="mx">फ़र–मार्च 2027</span></div>
+    </div>
+  </div><div class="abar"><div class="ni"><span class="ms " aria-hidden="true">visibility_off</span>मुझे इसमें रुचि नहीं</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5"><span class="ms " aria-hidden="true">done_all</span>फ़ॉर्म भर दिया</span><span class="btn sec" style="flex:1"><span class="ms " aria-hidden="true">snooze</span>बाद में</span></div></div></div><div class="gb"><i></i></div></div><figcaption><b>2</b> · Job detail · light mode</figcaption></figure></div></section>
+</body></html>
