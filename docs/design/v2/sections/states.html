@@ -133,10 +133,11 @@
 .dir-c .ph.st-tall{height:auto}
 .dir-c .ph.st-tall .scr{height:auto}
 .dir-c .st-fs2 .t28{font-size:47px;line-height:58px}
-.dir-c .st-fs2 .t19,.dir-c .st-fs2 .logo{font-size:34px;line-height:44px}
+.dir-c .st-fs2 .t19{font-size:34px;line-height:44px}
+.dir-c .st-fs2 .logo{font-size:19px;line-height:26px} /* wordmark = brand image, not scaled text */
 .dir-c .st-fs2 .t16{font-size:30px;line-height:40px}
 .dir-c .st-fs2 .t14{font-size:28px;line-height:38px}
-.dir-c .st-fs2[lang=hi] .t19,.dir-c .st-fs2[lang=hi] .logo{line-height:50px}
+.dir-c .st-fs2[lang=hi] .t19{line-height:50px}
 .dir-c .st-fs2[lang=hi] .t16{line-height:46px}
 .dir-c .st-fs2[lang=hi] .t14{line-height:42px}
 .dir-c .st-fs2 .rib{font-size:28px;line-height:38px;align-items:flex-start;padding:10px 16px}
@@ -165,7 +166,7 @@
 /* ---------- annotation (TalkBack) ---------- */
 .dir-c .st-fo{position:absolute;border:2.5px solid var(--st-ann);border-radius:26px;z-index:3;pointer-events:none}
 .dir-c .st-fo.d{border-style:dashed;border-width:2px}
-.dir-c .st-fo b{position:absolute;top:-13px;left:-11px;width:26px;height:26px;border-radius:50%;background:var(--st-ann);color:#fff;font:600 14px/26px Inter,sans-serif;text-align:center}
+.dir-c .st-fo b{position:absolute;top:-13px;right:14px;width:26px;height:26px;border-radius:50%;background:var(--st-ann);color:#fff;font:600 14px/26px Inter,sans-serif;text-align:center}
 .st-anno{width:376px;border-radius:28px;padding:22px;background:#FBF5EC;box-shadow:0 2px 4px rgba(120,70,10,.05),0 16px 40px rgba(120,70,10,.08);font-family:Inter,Hind,sans-serif;color:#2A1E14}
 .st-anno h4{font:600 11px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.65;margin:16px 0 8px}
 .st-anno h4:first-child{margin-top:0}
@@ -209,6 +210,9 @@
 .dir-c .scr[dir=rtl] .dot{right:auto;left:10px}
 .dir-c .scr[dir=rtl] .greet svg{right:auto;left:-12px;transform:scaleX(-1)}
 .dir-c .scr[dir=rtl] .nav .bdg{right:auto;left:8px}
+.dir-c .scr[dir=rtl] .sh .n{margin-left:0;margin-right:auto}
+.dir-c .ph.st-ta .acts{flex-direction:column}
+.dir-c .ph.st-ta .acts .btn{width:100%;flex:none!important}
 .dir-c .st-mir{transform:scaleX(-1)}
 bdi.st-ltr{unicode-bidi:isolate;direction:ltr}
 </style>
@@ -539,7 +543,7 @@ D.settings=()=>phone({theme:'dark',id:'S28 · dark',name:t('Alert settings','Ale
 
 /* ====================== E · LOCALIZATION (ta, ur) ====================== */
 const pv=(native)=>`<div class="st-pv">PREVIEW — translation not reviewed<span>${native}</span></div>`;
-function taHome(){return phone({lang:'ta',cls:'st-ta',id:'S20 · தமிழ்',name:'Home in Tamil',p:'preview, not a launch language',note:'Longest strings (×1.6): “Applied” becomes 21 characters, so the card’s action row wraps to two lines inside the button; nav grows to 88 dp.',
+function taHome(){return phone({lang:'ta',cls:'st-ta',id:'S20 · தமிழ்',name:'Home in Tamil',p:'preview, not a launch language',note:'Longest strings (×1.6): “Applied” becomes 21 characters and fills the card width, so the card’s two buttons stack full width (07 §3 rule 1); nav grows to 88 dp.',
  scr:scr(`<div class="tb"><span class="logo"><i>${ms('notifications_active')}</i>Sarkari Match</span><span class="grow"></span><span class="ib">${ms('notifications','o')}<span class="dot"></span></span></div>${pv('முன்னோட்டம் · மொழிபெயர்ப்பு சரிபார்க்கப்படவில்லை')}
  <div class="greet" style="margin-top:4px"><svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle cx="80" cy="40" r="26" fill="#F2A93B" opacity=".35"/></svg><div class="t28" style="position:relative">வணக்கம், Ravi</div><div class="t16 mut" style="position:relative">வியா, 19 நவ. · 5 வேலைகள் உங்கள் பதிலுக்குக் காத்திருக்கின்றன</div></div>
  ${'<div class="sh today t19">'+ms('alarm')+'<span>இன்றே கடைசி நாள்</span><span class="n">1</span></div>'}
