@@ -2,8 +2,173 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "43c9706aca780debc6a00eeee186e092",
+    "identityHash": "4bb6f5e951e4c531039f6550a7dc6cb1",
     "entities": [
+      {
+        "tableName": "catalog_notices",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `version` INTEGER NOT NULL, `catalog_seq` INTEGER NOT NULL, `status` TEXT NOT NULL, `apply_end` TEXT, `apply_end_time` TEXT, `new_match_paused` INTEGER NOT NULL, `body_json` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "catalogSeq",
+            "columnName": "catalog_seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "applyEnd",
+            "columnName": "apply_end",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "applyEndTime",
+            "columnName": "apply_end_time",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "newMatchPaused",
+            "columnName": "new_match_paused",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodyJson",
+            "columnName": "body_json",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "catalog_posts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `notice_id` TEXT NOT NULL, `rule_version` INTEGER NOT NULL, `evaluator_min_version` INTEGER NOT NULL, `status` TEXT NOT NULL, `rule_json` TEXT NOT NULL, `post_json` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noticeId",
+            "columnName": "notice_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ruleVersion",
+            "columnName": "rule_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evaluatorMinVersion",
+            "columnName": "evaluator_min_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ruleJson",
+            "columnName": "rule_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "postJson",
+            "columnName": "post_json",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_catalog_posts_notice_id",
+            "unique": false,
+            "columnNames": [
+              "notice_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_catalog_posts_notice_id` ON `${TABLE_NAME}` (`notice_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "catalog_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`locales` TEXT NOT NULL, `seq` INTEGER NOT NULL, `snapshot_seq` INTEGER NOT NULL, `synced_at` INTEGER NOT NULL, `server_offset_ms` INTEGER NOT NULL, PRIMARY KEY(`locales`))",
+        "fields": [
+          {
+            "fieldPath": "locales",
+            "columnName": "locales",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seq",
+            "columnName": "seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "snapshotSeq",
+            "columnName": "snapshot_seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncedAtEpochMs",
+            "columnName": "synced_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverOffsetMs",
+            "columnName": "server_offset_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "locales"
+          ]
+        }
+      },
       {
         "tableName": "profile",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `json` TEXT NOT NULL, `version` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
@@ -41,61 +206,8 @@
         }
       },
       {
-        "tableName": "catalog_posts",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `notice_id` TEXT NOT NULL, `rule_version` INTEGER NOT NULL, `evaluator_min_version` INTEGER NOT NULL, `rule_json` TEXT NOT NULL, PRIMARY KEY(`id`))",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "noticeId",
-            "columnName": "notice_id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "ruleVersion",
-            "columnName": "rule_version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "evaluatorMinVersion",
-            "columnName": "evaluator_min_version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "ruleJson",
-            "columnName": "rule_json",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_catalog_posts_notice_id",
-            "unique": false,
-            "columnNames": [
-              "notice_id"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_catalog_posts_notice_id` ON `${TABLE_NAME}` (`notice_id`)"
-          }
-        ]
-      },
-      {
         "tableName": "matches",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `post_id` TEXT NOT NULL, `verdict` TEXT NOT NULL, `status` TEXT NOT NULL, `rule_version` INTEGER NOT NULL, `fee_paise` INTEGER, `last_date` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `post_id` TEXT NOT NULL, `notice_id` TEXT NOT NULL, `verdict` TEXT NOT NULL, `status` TEXT NOT NULL, `rule_version` INTEGER NOT NULL, `reason_codes` TEXT NOT NULL, `fee_paise` INTEGER, `last_date` TEXT NOT NULL, `last_date_time` TEXT, `matched_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -106,6 +218,12 @@
           {
             "fieldPath": "postId",
             "columnName": "post_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noticeId",
+            "columnName": "notice_id",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -128,6 +246,12 @@
             "notNull": true
           },
           {
+            "fieldPath": "reasonCodes",
+            "columnName": "reason_codes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "feePaise",
             "columnName": "fee_paise",
             "affinity": "INTEGER"
@@ -136,6 +260,17 @@
             "fieldPath": "lastDate",
             "columnName": "last_date",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastDateTime",
+            "columnName": "last_date_time",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "matchedAtEpochMs",
+            "columnName": "matched_at",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -169,13 +304,250 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_matches_last_date` ON `${TABLE_NAME}` (`last_date`)"
+          },
+          {
+            "name": "index_matches_notice_id",
+            "unique": false,
+            "columnNames": [
+              "notice_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_matches_notice_id` ON `${TABLE_NAME}` (`notice_id`)"
           }
         ]
+      },
+      {
+        "tableName": "match_actions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`action_id` TEXT NOT NULL, `match_id` TEXT NOT NULL, `type` TEXT NOT NULL, `occurred_at` INTEGER NOT NULL, `previous_status` TEXT NOT NULL, `payload` TEXT, PRIMARY KEY(`action_id`))",
+        "fields": [
+          {
+            "fieldPath": "actionId",
+            "columnName": "action_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchId",
+            "columnName": "match_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurredAtEpochMs",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "previousStatus",
+            "columnName": "previous_status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payload",
+            "columnName": "payload",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "action_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_match_actions_match_id",
+            "unique": false,
+            "columnNames": [
+              "match_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_match_actions_match_id` ON `${TABLE_NAME}` (`match_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "applications",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `match_id` TEXT NOT NULL, `notice_id` TEXT NOT NULL, `post_id` TEXT NOT NULL, `applied_at` INTEGER NOT NULL, `fee_paid` INTEGER, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchId",
+            "columnName": "match_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noticeId",
+            "columnName": "notice_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "postId",
+            "columnName": "post_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appliedAtEpochMs",
+            "columnName": "applied_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "feePaid",
+            "columnName": "fee_paid",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "updatedAtEpochMs",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_applications_notice_id",
+            "unique": false,
+            "columnNames": [
+              "notice_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_applications_notice_id` ON `${TABLE_NAME}` (`notice_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "account",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `user_id` TEXT NOT NULL, `auth_provider` TEXT NOT NULL, `billing_account_ref` TEXT, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "user_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "authProvider",
+            "columnName": "auth_provider",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "billingAccountRef",
+            "columnName": "billing_account_ref",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAtEpochMs",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "entitlement",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `json` TEXT NOT NULL, `fetched_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "json",
+            "columnName": "json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAtEpochMs",
+            "columnName": "fetched_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "app_config",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `json` TEXT NOT NULL, `etag` TEXT, `fetched_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "json",
+            "columnName": "json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "etag",
+            "columnName": "etag",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fetchedAtEpochMs",
+            "columnName": "fetched_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '43c9706aca780debc6a00eeee186e092')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4bb6f5e951e4c531039f6550a7dc6cb1')"
     ]
   }
 }

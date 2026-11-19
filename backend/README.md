@@ -53,6 +53,34 @@ curl -XPOST localhost:8080/v1/me/purchases/google-play -H 'Authorization: Bearer
   -H "Idempotency-Key: $(uuidgen)" -d '{"product_id":"pro","purchase_token":"fake:season-4m-prepaid"}'
 ```
 
+### Dev seed data (`scripts/seed-dev.sh`)
+
+`scripts/seed-dev.sh` fills a local backend with six current notices through the real curation flow (admin JSON API:
+draft → rule per post → approve, with the second reviewer `rev@example.com` when the validator flags risk → publish →
+catalog batch + snapshot). Needs `jq`, `ADMIN_AUTH_MODE=dev` and a running server; it adds the two dev admins with
+`bin/sarkari admin add` when `bin/` and `.env` exist. Re-running skips notices that already exist (409 on
+`org_code`+`advt_no`) and resumes an unpublished task.
+
+```sh
+make run &                        # or ./bin/sarkari serve with .env loaded
+scripts/seed-dev.sh               # BASE=http://localhost:8080 OWNER=founder@example.com REVIEWER=rev@example.com
+```
+
+| File (`scripts/seed/`) | Notice | Scope | Expected for a 23-year-old OBC male BA graduate from UP (mobile e2e) |
+|---|---|---|---|
+| `ssc-gd-2027` | SSC GD Constable 2027 | all India | eligible (18–23 + OBC 3) |
+| `up-police-2026` | UP Police Constable 2026 | UP | eligible (male 18–22 + UP OBC 5) |
+| `rrb-ntpc-grad-2026` | RRB NTPC Graduate 2026 | all India | eligible |
+| `ibps-clerk-2026` | IBPS Clerk 2026 | all India | eligible |
+| `upsssc-ja-2026` | UPSSSC Junior Assistant 2026 | UP | check yourself (CCC + Hindi typing, PET scorecard) |
+| `upsc-nda-1-2027` | UPSC NDA & NA (I) 2027 | all India | not eligible (16–19) |
+
+**DEV SEED DATA:** modelled on real recruitments but not checked against official PDFs. `advt_no` starts with
+`DEV-SEED/`, `provenance.dev_seed` is true, rules say so in `review.notes`, and every `source.page` (required by the
+publish check for age limits and relaxation rows) is a placeholder. Apply windows are fixed dates in Nov–Dec 2026;
+move them forward in the `*.notice.json` files (and the rules' `must_complete_by`) when they pass. Never run it against
+staging or prod.
+
 iOS locally: with `APPSTORE_MODE=fake` the verifier also accepts StoreKit-configuration (Xcode / LocalTesting)
 transactions from the simulator without a chain check (Apple's library does the same; refused in prod), so
 `POST /v1/me/purchases/app-store {"signed_transaction": "<jwsRepresentation>"}` works against a local StoreKit

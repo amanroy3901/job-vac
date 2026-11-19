@@ -8,6 +8,9 @@ enum class Platform { ANDROID, IOS }
  * + build type), iOS from Info.plist (`SMApiBaseUrl`, `CFBundleVersion`) via MainViewController.
  *
  * @property versionCode sent as `X-App-Version` (docs/api/README.md; Android versionCode / iOS CFBundleVersion).
+ * @property devAuth local development only (Android `dev` flavour, desktop dev target): account calls send the
+ *   backend's dev token `Authorization: Bearer dev:<uid>` (AUTH_MODE=dev) instead of a Firebase ID token. Never true
+ *   in prod/staging builds; the backend refuses dev auth when APP_ENV=prod.
  */
 data class AppConfig(
     val platform: Platform,
@@ -15,4 +18,5 @@ data class AppConfig(
     val versionName: String,
     val versionCode: Int,
     val httpLogging: Boolean,
+    val devAuth: Boolean = false,
 )

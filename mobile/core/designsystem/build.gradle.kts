@@ -24,6 +24,9 @@ val generateTokensSource = tasks.register("generateTokensSource") {
 }
 
 kotlin {
+    // Dev-only desktop (JVM) target: lets :composeApp run the shared UI on Linux/macOS for e2e runs and headless
+    // screenshots (mobile/README.md "Desktop dev target"). Never shipped.
+    jvm("desktop")
     sourceSets {
         commonMain.dependencies {
             api(projects.core.model)

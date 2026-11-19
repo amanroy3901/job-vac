@@ -1,0 +1,19 @@
+{
+  "kind": "original",
+  "org_code": "upsssc",
+  "advt_no": "DEV-SEED/07-Exam/2026",
+  "exam_type": "state_psc",
+  "scope": "state",
+  "state": "UP",
+  "status": "open",
+  "content": {
+    "title": {"en": "UPSSSC Junior Assistant Recruitment 2026", "hi": "UPSSSC कनिष्ठ सहायक भर्ती 2026"},
+    "short_title": {"en": "UPSSSC Junior Assistant", "hi": "UPSSSC कनिष्ठ सहायक"},
+    "org": {"en": "UP Subordinate Services Selection Commission", "hi": "उ.प्र. अधीनस्थ सेवा चयन आयोग"},
+    "key_dates": [{"kind": "apply_start", "date": "2026-11-12"}, {"kind": "apply_end", "date": "2026-12-10"}],
+    "links": [{"kind": "official_pdf", "url": "https://upsssc.gov.in"}, {"kind": "apply", "url": "https://upsssc.gov.in"}],
+    "source": {"url": "https://upsssc.gov.in"}
+  },
+  "provenance": {"dev_seed": true},
+  "posts": [{"code": "JA", "name": {"en": "Junior Assistant (Group C)", "hi": "कनिष्ठ सहायक (समूह ग)"}, "short_name": {"en": "UPSSSC Junior Assistant", "hi": "UPSSSC कनिष्ठ सहायक"}, "exam_tags": ["state_psc"], "vacancies": {"total": 2702}}]
+}

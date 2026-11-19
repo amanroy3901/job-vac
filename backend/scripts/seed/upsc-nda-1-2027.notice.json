@@ -1,0 +1,19 @@
+{
+  "kind": "original",
+  "org_code": "upsc",
+  "advt_no": "DEV-SEED/NDA-NA-I/2027",
+  "exam_type": "defence",
+  "scope": "all_india",
+  "state": null,
+  "status": "open",
+  "content": {
+    "title": {"en": "UPSC NDA & NA Examination (I) 2027", "hi": "UPSC NDA और NA परीक्षा (I) 2027"},
+    "short_title": {"en": "UPSC NDA (I) 2027", "hi": "UPSC NDA (I) 2027"},
+    "org": {"en": "Union Public Service Commission", "hi": "संघ लोक सेवा आयोग"},
+    "key_dates": [{"kind": "apply_start", "date": "2026-11-17"}, {"kind": "apply_end", "date": "2026-12-07", "time": "18:00"}],
+    "links": [{"kind": "official_pdf", "url": "https://upsc.gov.in"}, {"kind": "apply", "url": "https://upsconline.nic.in"}],
+    "source": {"url": "https://upsc.gov.in"}
+  },
+  "provenance": {"dev_seed": true},
+  "posts": [{"code": "NDA-NA", "name": {"en": "Army, Navy and Air Force wings of NDA; Indian Naval Academy (10+2 Cadet Entry)", "hi": "NDA के थल, नौ व वायु सेना विंग; भारतीय नौसेना अकादमी (10+2 कैडेट एंट्री)"}, "short_name": {"en": "UPSC NDA (I) 2027", "hi": "UPSC NDA (I) 2027"}, "exam_tags": ["defence", "upsc"], "vacancies": {"total": 406}}]
+}

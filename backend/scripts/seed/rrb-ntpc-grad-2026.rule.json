@@ -1,0 +1,50 @@
+{
+  "schema_version": "1",
+  "evaluator_min_version": 1,
+  "post": {
+    "code": "NTPC-GRAD",
+    "name": { "hi": "स्टेशन मास्टर, गुड्स ट्रेन मैनेजर, क्लर्क-कम-टाइपिस्ट व अन्य स्नातक पद", "en": "Station Master, Goods Train Manager, Clerk-cum-Typist and other graduate posts" },
+    "short_name": { "hi": "RRB NTPC स्नातक", "en": "RRB NTPC Graduate" },
+    "pay_level": "Level-5/6",
+    "vacancies": { "total": 8850, "allocation_basis": "region_choice", "source": { "doc": "dev-seed:rrb_ntpc_2026", "page": 3 } }
+  },
+  "exam_tags": ["railway"],
+  "scope": { "kind": "all_india", "state": null },
+  "age": {
+    "cutoff_date": "2027-01-01",
+    "max_convention": "not_attained",
+    "limits": [ { "min_years": 18, "max_years": 33 } ],
+    "general_extension_years": 0,
+    "relaxations": [
+      { "id": "obc", "when": { "category": ["obc"] }, "years": 3, "mode": "add_to_max", "label": { "hi": "OBC", "en": "OBC" }, "source": { "doc": "dev-seed:rrb_ntpc_2026", "page": 7 } },
+      { "id": "sc_st", "when": { "category": ["sc", "st"] }, "years": 5, "mode": "add_to_max", "label": { "hi": "SC/ST", "en": "SC/ST" }, "source": { "doc": "dev-seed:rrb_ntpc_2026", "page": 7 } }
+    ],
+    "printed_dob_window": { "born_on_or_after": "1994-01-02", "born_on_or_before": "2009-01-01" },
+    "source": { "doc": "dev-seed:rrb_ntpc_2026", "page": 6, "quote": "18-33 years as on 01.01.2027" }
+  },
+  "qualification": {
+    "any_of": [ { "codes": ["grad.any"], "include_higher": true } ],
+    "must_complete_by": "2026-12-14",
+    "appearing_policy": "not_allowed",
+    "equivalence": "check_yourself_same_level",
+    "text": { "hi": "किसी मान्यता प्राप्त विश्वविद्यालय से स्नातक (Graduation)", "en": "Graduation from a recognised university" },
+    "source": { "doc": "dev-seed:rrb_ntpc_2026", "page": 8 }
+  },
+  "required_attributes": [ { "any_of_codes": ["typing_en", "typing_hi"], "stage": "before_joining", "source": { "doc": "dev-seed:rrb_ntpc_2026", "page": 9 } } ],
+  "domicile": null,
+  "gender": null,
+  "category": null,
+  "pwd": { "eligible": true },
+  "ex_serviceman": { "eligible": true },
+  "marital_status": null,
+  "physical": null,
+  "other_conditions": [
+    { "text": { "hi": "क्लर्क-कम-टाइपिस्ट पदों के लिए टाइपिंग टेस्ट (केवल क्वालिफ़ाइंग)", "en": "Typing skill test (qualifying) for Clerk-cum-Typist posts" }, "severity": "advisory" }
+  ],
+  "fees": [
+    { "when": { "any": [ { "gender": ["female"] }, { "category": ["sc", "st"] }, { "esm": true }, { "pwd": true } ] }, "amount_paise": 25000, "note": { "hi": "CBT-1 में बैठने पर ₹250 वापस", "en": "₹250 refunded on appearing in CBT-1" }, "source": { "doc": "dev-seed:rrb_ntpc_2026", "page": 10 } },
+    { "amount_paise": 50000, "note": { "hi": "CBT-1 में बैठने पर ₹400 वापस", "en": "₹400 refunded on appearing in CBT-1" }, "source": { "doc": "dev-seed:rrb_ntpc_2026", "page": 10 } }
+  ],
+  "review": { "notes": "DEV SEED DATA (backend/scripts/seed-dev.sh). Page numbers are placeholders." },
+  "source": { "doc": "dev-seed:rrb_ntpc_2026 (https://indianrailways.gov.in)" }
+}

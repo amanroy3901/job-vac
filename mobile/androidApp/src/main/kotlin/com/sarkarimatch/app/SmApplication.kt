@@ -14,6 +14,7 @@ class SmApplication : Application() {
                 versionName = BuildConfig.VERSION_NAME,
                 versionCode = BuildConfig.VERSION_CODE,
                 httpLogging = BuildConfig.DEBUG,
+                devAuth = BuildConfig.DEV_AUTH,
             ),
             googleServerClientId = BuildConfig.GOOGLE_SERVER_CLIENT_ID.ifBlank { null },
         )

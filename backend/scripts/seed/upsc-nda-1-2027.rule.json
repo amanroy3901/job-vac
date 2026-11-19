@@ -1,0 +1,44 @@
+{
+  "schema_version": "1",
+  "evaluator_min_version": 1,
+  "post": {
+    "code": "NDA-NA",
+    "name": { "hi": "NDA के थल, नौ व वायु सेना विंग; भारतीय नौसेना अकादमी (10+2 कैडेट एंट्री)", "en": "Army, Navy and Air Force wings of NDA; Indian Naval Academy (10+2 Cadet Entry)" },
+    "short_name": { "hi": "UPSC NDA (I) 2027", "en": "UPSC NDA (I) 2027" },
+    "vacancies": { "total": 406, "allocation_basis": "none", "source": { "doc": "dev-seed:upsc_nda_1_2027", "page": 1 } }
+  },
+  "exam_tags": ["defence", "upsc"],
+  "scope": { "kind": "all_india", "state": null },
+  "age": {
+    "cutoff_date": "2027-07-01",
+    "max_convention": "not_attained",
+    "limits": [ { "min_years": 16, "max_years": 19 } ],
+    "general_extension_years": 0,
+    "relaxations": [],
+    "printed_dob_window": { "born_on_or_after": "2008-07-02", "born_on_or_before": "2011-07-01" },
+    "source": { "doc": "dev-seed:upsc_nda_1_2027", "page": 3, "quote": "born not earlier than 02nd July, 2008 and not later than 1st July, 2011" }
+  },
+  "qualification": {
+    "any_of": [ { "codes": ["class12"], "include_higher": true } ],
+    "must_complete_by": "2027-12-01",
+    "appearing_policy": "allowed",
+    "equivalence": "check_yourself_same_level",
+    "text": { "hi": "12वीं पास या 12वीं में पढ़ रहे (वायु/नौ सेना के लिए भौतिकी व गणित)", "en": "12th pass or appearing (Physics and Mathematics for Air Force/Navy)" },
+    "source": { "doc": "dev-seed:upsc_nda_1_2027", "page": 4 }
+  },
+  "required_attributes": [],
+  "domicile": null,
+  "gender": { "allowed": ["male", "female"] },
+  "category": null,
+  "pwd": { "eligible": false },
+  "ex_serviceman": { "eligible": false },
+  "marital_status": { "allowed": ["unmarried"], "source": { "doc": "dev-seed:upsc_nda_1_2027", "page": 3 } },
+  "physical": { "text": { "hi": "सेना के चिकित्सा मानक लागू; SSB इंटरव्यू", "en": "Armed Forces medical standards apply; SSB interview" } },
+  "other_conditions": [],
+  "fees": [
+    { "when": { "any": [ { "gender": ["female"] }, { "category": ["sc", "st"] } ] }, "amount_paise": 0, "source": { "doc": "dev-seed:upsc_nda_1_2027", "page": 5 } },
+    { "amount_paise": 10000, "source": { "doc": "dev-seed:upsc_nda_1_2027", "page": 5 } }
+  ],
+  "review": { "notes": "DEV SEED DATA (backend/scripts/seed-dev.sh). Page numbers are placeholders." },
+  "source": { "doc": "dev-seed:upsc_nda_1_2027 (https://upsc.gov.in)" }
+}

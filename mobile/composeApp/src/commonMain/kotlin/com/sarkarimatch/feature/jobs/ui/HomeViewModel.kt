@@ -3,7 +3,10 @@ package com.sarkarimatch.feature.jobs.ui
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sarkarimatch.core.data.repository.MatchActionRepository
 import com.sarkarimatch.core.data.repository.MatchRepository
+import com.sarkarimatch.core.data.repository.UserAction
+import kotlinx.coroutines.launch
 import com.sarkarimatch.core.model.DeadlineTone
 import com.sarkarimatch.core.model.Ist
 import com.sarkarimatch.core.model.MatchCardUi
@@ -29,12 +32,19 @@ data class HomeUiState(
     val waitingCount: Int get() = dueToday.size + withinThreeDays.size + later.size
 }
 
-class HomeViewModel(matchRepository: MatchRepository) : ViewModel() {
+class HomeViewModel(matchRepository: MatchRepository, private val actions: MatchActionRepository) : ViewModel() {
     private val today: LocalDate get() = Ist.today()
 
     val state: StateFlow<HomeUiState> = matchRepository.observeFeed()
         .map { cards -> group(cards, today) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState(today = today))
+
+    fun onApplied(matchId: String, then: () -> Unit) {
+        viewModelScope.launch {
+            actions.record(matchId, UserAction.Applied())
+            then()
+        }
+    }
 
     companion object {
         fun group(cards: List<MatchCardUi>, today: LocalDate): HomeUiState {

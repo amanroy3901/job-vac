@@ -8,7 +8,6 @@ import androidx.navigation.navDeepLink
 import androidx.navigation.toRoute
 import com.sarkarimatch.app.resources.Res
 import com.sarkarimatch.app.resources.onb_category
-import com.sarkarimatch.app.resources.onb_dob
 import com.sarkarimatch.app.resources.onb_edit_profile
 import com.sarkarimatch.app.resources.onb_exams
 import com.sarkarimatch.app.resources.onb_more
@@ -21,6 +20,7 @@ import com.sarkarimatch.core.designsystem.component.PlaceholderScreen
 import com.sarkarimatch.core.designsystem.component.continueLabel
 import com.sarkarimatch.core.model.ProfileField
 import com.sarkarimatch.core.model.SetupMode
+import com.sarkarimatch.feature.onboarding.ui.DobRoute
 import com.sarkarimatch.feature.onboarding.ui.LanguageRoute
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.StringResource
@@ -66,7 +66,7 @@ fun NavGraphBuilder.onboardingGraph(
         step<Onb.Welcome>("S03", Res.string.onb_welcome, navController) { onOpenPrivacy() }
         step<Onb.Exams>("S04", Res.string.onb_exams, navController) { navController.navigate(Onb.Qualification) }
         step<Onb.Qualification>("S05", Res.string.onb_qualification, navController) { navController.navigate(Onb.Dob) }
-        step<Onb.Dob>("S06", Res.string.onb_dob, navController) { navController.navigate(Onb.Category) }
+        composable<Onb.Dob> { DobRoute(onBack = navController::popBackStack, onNext = { navController.navigate(Onb.Category) }) }
         step<Onb.Category>("S07", Res.string.onb_category, navController) { navController.navigate(Onb.State) }
         step<Onb.State>("S08", Res.string.onb_state, navController) { navController.navigate(Onb.More) }
         step<Onb.More>("S09", Res.string.onb_more, navController) { navController.navigate(Onb.Result) }

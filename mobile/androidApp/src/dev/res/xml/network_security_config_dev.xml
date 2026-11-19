@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- dev flavour only: cleartext HTTP is allowed so the app reaches the local backend at 10.0.2.2 (emulator) or a LAN
+     address passed with -Psm.apiBaseUrl.dev. prod and staging have no such config (HTTPS only, the platform default). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

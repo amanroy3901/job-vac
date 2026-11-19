@@ -23,14 +23,19 @@ class SmApiTest {
             assertEquals("hi", request.headers[HttpHeaders.AcceptLanguage])
             assertEquals("\"e1\"", request.headers[HttpHeaders.IfNoneMatch])
             respond(
-                content = """{"seq": 42, "server_time": "2026-11-19T10:00:00Z", "batches": [40, 41], "unknown": true}""",
+                content = """{"seq": 42, "server_time": "2026-11-19T10:00:00Z",
+                    "snapshot": {"seq": 40, "url": "/v1/catalog/snapshots/40", "sha256": {"en,hi": "ab"}},
+                    "batches": [{"seq": 41, "url": "/v1/catalog/batches/41", "sha256": {"en,hi": "cd"}, "reason": "publish"},
+                                {"seq": 42, "url": "/v1/catalog/batches/42", "sha256": {}}],
+                    "evaluator_min_version_any": 1, "unknown": true}""",
                 headers = headersOf(HttpHeaders.ContentType to listOf("application/json"), HttpHeaders.ETag to listOf("\"e2\"")),
             )
         }
         val api = SmApi(createHttpClient(engine, config) { "hi" })
         val result = assertIs<ApiResult.Ok<CatalogHeadDto>>(api.getCatalogHead(etag = "\"e1\""))
         assertEquals(42, result.value.seq)
-        assertEquals(listOf(40L, 41L), result.value.batches)
+        assertEquals(40L, result.value.snapshot?.seq)
+        assertEquals(listOf(41L, 42L), result.value.batches.map { it.seq })
         assertEquals("\"e2\"", result.etag)
     }
 

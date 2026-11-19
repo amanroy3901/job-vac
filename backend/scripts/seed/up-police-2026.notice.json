@@ -1,0 +1,19 @@
+{
+  "kind": "original",
+  "org_code": "uppbpb",
+  "advt_no": "DEV-SEED/PRPB-1-1(CP)/2026",
+  "exam_type": "police",
+  "scope": "state",
+  "state": "UP",
+  "status": "open",
+  "content": {
+    "title": {"en": "UP Police Constable Recruitment 2026", "hi": "UP Police कांस्टेबल भर्ती 2026"},
+    "short_title": {"en": "UP Police Constable 2026", "hi": "UP Police कांस्टेबल 2026"},
+    "org": {"en": "UP Police Recruitment and Promotion Board", "hi": "उ.प्र. पुलिस भर्ती एवं प्रोन्नति बोर्ड"},
+    "key_dates": [{"kind": "apply_start", "date": "2026-10-23"}, {"kind": "apply_end", "date": "2026-11-21", "time": "23:59"}],
+    "links": [{"kind": "official_pdf", "url": "https://uppbpb.gov.in"}, {"kind": "apply", "url": "https://uppbpb.gov.in"}],
+    "source": {"url": "https://uppbpb.gov.in"}
+  },
+  "provenance": {"dev_seed": true},
+  "posts": [{"code": "UPP-CONST-CP", "name": {"en": "Constable, Civil Police (male/female)", "hi": "आरक्षी नागरिक पुलिस (पुरुष/महिला)"}, "short_name": {"en": "UP Police Constable", "hi": "UP Police कांस्टेबल"}, "exam_tags": ["police"], "vacancies": {"total": 19220}}]
+}

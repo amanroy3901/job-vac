@@ -11,6 +11,7 @@ plugins {
 }
 
 kotlin {
+    jvm("desktop") // dev-only desktop target (see :composeApp); OkHttp engine, files in a local directory
     android {
         // The notification channel names (androidMain/res) are Android resources.
         androidResources.enable = true
@@ -47,6 +48,9 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
+        getByName("desktopMain").dependencies {
+            implementation(libs.ktor.client.okhttp)
+        }
         commonTest.dependencies {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
@@ -63,4 +67,5 @@ dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+    add("kspDesktop", libs.androidx.room.compiler)
 }

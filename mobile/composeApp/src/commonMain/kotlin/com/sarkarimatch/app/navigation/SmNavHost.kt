@@ -20,7 +20,10 @@ import com.sarkarimatch.feature.alerts.navigation.Setup
 import com.sarkarimatch.feature.alerts.navigation.alertSettingsDestinations
 import com.sarkarimatch.feature.alerts.navigation.setupDestinations
 import com.sarkarimatch.feature.applications.navigation.formsGraph
+import com.sarkarimatch.feature.jobs.navigation.AppliedMoment
 import com.sarkarimatch.feature.jobs.navigation.JobDetail
+import com.sarkarimatch.feature.applications.ui.AppliedMomentRoute
+import androidx.navigation.toRoute
 import com.sarkarimatch.feature.jobs.navigation.JobsGraph
 import com.sarkarimatch.feature.jobs.navigation.jobsGraph
 import com.sarkarimatch.feature.onboarding.navigation.EditProfile
@@ -87,12 +90,16 @@ fun SmNavHost(
         navigation<MainGraph>(startDestination = JobsGraph) {
             jobsGraph(
                 onOpenJob = { navController.navigate(JobDetail(it)) },
+                onAppliedMoment = { navController.navigate(AppliedMoment(it)) },
                 onOpenPaywall = { navController.navigate(Paywall(it)) },
                 onOpenDeliveryHealth = { navController.navigate(DeliveryHealth) },
                 onEditProfileField = { navController.navigate(EditProfile(it)) },
                 onBack = back,
             )
-            formsGraph(onBack = back)
+            formsGraph(onOpenJob = { navController.navigate(JobDetail(it)) }, onBack = back)
+            composable<AppliedMoment> { entry ->
+                AppliedMomentRoute(matchId = entry.toRoute<AppliedMoment>().matchId, onClose = back)
+            }
             profileGraph(
                 navController = navController,
                 onOpenLanguage = { navController.navigate(LanguageSettings) },

@@ -76,4 +76,60 @@
     <string name="profile_open_alerts">अलर्ट सेटिंग</string>
     <!-- ads -->
     <string name="ad_label">विज्ञापन</string>
+    <!-- S21 job detail -->
+    <string name="jd_posts">%1$s पद</string>
+    <string name="jd_last_date">आखिरी तारीख</string>
+    <string name="jd_until">%1$s तक</string>
+    <string name="jd_apply_window">आवेदन %1$s – %2$s</string>
+    <string name="jd_why_title">आप योग्य क्यों हैं</string>
+    <string name="jd_why_title_check">ये बातें ख़ुद जाँचें</string>
+    <string name="jd_why_title_not">आप योग्य क्यों नहीं</string>
+    <string name="jd_need_title">आपको क्या चाहिए</string>
+    <string name="jd_fee">आपकी फ़ीस</string>
+    <string name="jd_fee_free">आपके लिए कोई फ़ीस नहीं</string>
+    <string name="jd_qualification">पढ़ाई</string>
+    <string name="jd_official_notice">आधिकारिक नोटिस (PDF)</string>
+    <string name="jd_apply_site">आधिकारिक साइट पर आवेदन</string>
+    <string name="jd_applied">फ़ॉर्म भर दिया</string>
+    <string name="jd_later">बाद में</string>
+    <string name="jd_applied_state">आपने यह फ़ॉर्म भर दिया है</string>
+    <string name="jd_not_a_match">यह नौकरी आपकी सूची में नहीं है</string>
+    <string name="jd_stays_on_phone">आपके फ़ोन पर जाँचा गया। आपकी प्रोफ़ाइल फ़ोन से बाहर नहीं जाती।</string>
+    <!-- B02 applied moment + trial -->
+    <string name="am_title">शाबाश! फ़ॉर्म भर दिया</string>
+    <string name="am_subtitle">%1$s · मेरे फ़ॉर्म में जुड़ गया</string>
+    <string name="am_trial_badge">14 दिन मुफ़्त</string>
+    <string name="am_trial_title">इस फ़ॉर्म को आख़िर तक ट्रैक करें?</string>
+    <string name="am_trial_body">हर कदम पर सूचना देंगे — एडमिट कार्ड से रिज़ल्ट तक।</string>
+    <string name="am_step_admit">एडमिट कार्ड</string>
+    <string name="am_step_exam">परीक्षा</string>
+    <string name="am_step_answer">आंसर की</string>
+    <string name="am_step_result">रिज़ल्ट</string>
+    <string name="am_step_dv">DV</string>
+    <string name="am_no_ads">ट्रायल में कोई विज्ञापन नहीं</string>
+    <string name="am_start_trial">14 दिन मुफ़्त शुरू करें</string>
+    <string name="am_fineprint">कोई पैसा नहीं, कार्ड नहीं। अपने-आप ख़त्म।</string>
+    <string name="am_not_now">अभी नहीं</string>
+    <string name="am_trial_on">Pro ट्रायल %1$s तक चालू है</string>
+    <string name="am_trial_on_body">इस फ़ॉर्म के हर कदम की सूचना चालू है।</string>
+    <string name="am_done">ठीक है</string>
+    <string name="am_trial_error">ट्रायल शुरू नहीं हो सका। फिर कोशिश करें।</string>
+    <!-- S22 my forms -->
+    <string name="mf_subtitle">जो फ़ॉर्म आपने भरे। आगे क्या होगा, हम याद रखेंगे।</string>
+    <string name="mf_applied_on">भरा: %1$s</string>
+    <string name="mf_next">आगे: एडमिट कार्ड</string>
+    <string name="mf_empty">अभी कोई फ़ॉर्म नहीं। नौकरी पर \"फ़ॉर्म भर दिया\" दबाएँ।</string>
+    <string name="mf_pro_on">Pro ट्रायल: हर कदम की सूचना %1$s तक चालू</string>
+    <string name="mf_pro_off">फ़्री प्लान: सिर्फ़ आखिरी तारीख की सूचना</string>
+    <!-- S06 date of birth -->
+    <string name="dob_step">चरण %1$d / %2$d</string>
+    <string name="dob_title">आपकी जन्मतिथि क्या है?</string>
+    <string name="dob_subtitle">10वीं की मार्कशीट में जो लिखी है, वही डालें</string>
+    <string name="dob_day">दिन</string>
+    <string name="dob_month">महीना</string>
+    <string name="dob_year">साल</string>
+    <string name="dob_age_today">आपकी उम्र आज</string>
+    <string name="dob_age_value">%1$d साल %2$d महीने</string>
+    <string name="dob_warning">ग़लत जन्मतिथि से ग़लत नौकरियाँ दिखेंगी और फ़ॉर्म भी रद्द हो सकता है।</string>
+    <string name="dob_private">यह आपके फ़ोन पर ही रहती है। सिर्फ़ उम्र की सीमा जाँचने के लिए।</string>
 </resources>

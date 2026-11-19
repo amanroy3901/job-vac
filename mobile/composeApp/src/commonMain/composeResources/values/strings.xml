@@ -77,4 +77,60 @@
     <string name="profile_open_alerts">Alert settings</string>
     <!-- ads -->
     <string name="ad_label">Ad</string>
+    <!-- S21 job detail -->
+    <string name="jd_posts">%1$s posts</string>
+    <string name="jd_last_date">Last date</string>
+    <string name="jd_until">until %1$s</string>
+    <string name="jd_apply_window">Apply %1$s – %2$s</string>
+    <string name="jd_why_title">Why you match</string>
+    <string name="jd_why_title_check">Check these yourself</string>
+    <string name="jd_why_title_not">Why you don\'t match</string>
+    <string name="jd_need_title">What you need</string>
+    <string name="jd_fee">Fee for you</string>
+    <string name="jd_fee_free">No fee for you</string>
+    <string name="jd_qualification">Qualification</string>
+    <string name="jd_official_notice">Official notice (PDF)</string>
+    <string name="jd_apply_site">Apply on the official site</string>
+    <string name="jd_applied">I applied</string>
+    <string name="jd_later">Later</string>
+    <string name="jd_applied_state">You applied for this form</string>
+    <string name="jd_not_a_match">This job is not in your matches</string>
+    <string name="jd_stays_on_phone">Checked on your phone. Your profile never leaves it.</string>
+    <!-- B02 applied moment + trial -->
+    <string name="am_title">Well done! Form submitted</string>
+    <string name="am_subtitle">%1$s · added to My forms</string>
+    <string name="am_trial_badge">14 days free</string>
+    <string name="am_trial_title">Track this form to the end?</string>
+    <string name="am_trial_body">We alert you at every step, from admit card to result.</string>
+    <string name="am_step_admit">Admit card</string>
+    <string name="am_step_exam">Exam</string>
+    <string name="am_step_answer">Answer key</string>
+    <string name="am_step_result">Result</string>
+    <string name="am_step_dv">DV</string>
+    <string name="am_no_ads">No ads during the trial</string>
+    <string name="am_start_trial">Start 14 days free</string>
+    <string name="am_fineprint">No payment, no card. Ends by itself.</string>
+    <string name="am_not_now">Not now</string>
+    <string name="am_trial_on">Pro trial is on until %1$s</string>
+    <string name="am_trial_on_body">Alerts for every step of this form are on.</string>
+    <string name="am_done">Done</string>
+    <string name="am_trial_error">Could not start the trial. Please try again.</string>
+    <!-- S22 my forms -->
+    <string name="mf_subtitle">Forms you applied for. We keep track of what comes next.</string>
+    <string name="mf_applied_on">Applied %1$s</string>
+    <string name="mf_next">Next: admit card</string>
+    <string name="mf_empty">No forms yet. Tap \"I applied\" on a job.</string>
+    <string name="mf_pro_on">Pro trial: alerts for every step are on until %1$s</string>
+    <string name="mf_pro_off">Free plan: last-date alerts only</string>
+    <!-- S06 date of birth -->
+    <string name="dob_step">Step %1$d / %2$d</string>
+    <string name="dob_title">What is your date of birth?</string>
+    <string name="dob_subtitle">As written on your 10th marksheet</string>
+    <string name="dob_day">Day</string>
+    <string name="dob_month">Month</string>
+    <string name="dob_year">Year</string>
+    <string name="dob_age_today">Your age today</string>
+    <string name="dob_age_value">%1$d years %2$d months</string>
+    <string name="dob_warning">A wrong date shows you wrong jobs, and your form can be rejected.</string>
+    <string name="dob_private">This stays on your phone. It is only used to check age limits.</string>
 </resources>

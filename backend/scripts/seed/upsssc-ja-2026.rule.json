@@ -1,0 +1,49 @@
+{
+  "schema_version": "1",
+  "evaluator_min_version": 1,
+  "post": {
+    "code": "JA",
+    "name": { "hi": "कनिष्ठ सहायक (समूह ग)", "en": "Junior Assistant (Group C)" },
+    "short_name": { "hi": "UPSSSC कनिष्ठ सहायक", "en": "UPSSSC Junior Assistant" },
+    "pay_level": "Level-3",
+    "vacancies": { "total": 2702, "allocation_basis": "none", "source": { "doc": "dev-seed:upsssc_ja_2026", "page": 2 } }
+  },
+  "exam_tags": ["state_psc"],
+  "scope": { "kind": "state", "state": "UP" },
+  "age": {
+    "cutoff_date": "2026-07-01",
+    "max_convention": "not_attained",
+    "limits": [ { "min_years": 18, "max_years": 40 } ],
+    "general_extension_years": 0,
+    "relaxations": [
+      { "id": "up_reserved", "when": { "category": ["obc", "sc", "st"], "domicile_states": ["UP"] }, "years": 5, "mode": "add_to_max", "label": { "hi": "उ.प्र. के OBC/SC/ST", "en": "OBC/SC/ST of Uttar Pradesh" }, "source": { "doc": "dev-seed:upsssc_ja_2026", "page": 4 } }
+    ],
+    "printed_dob_window": { "born_on_or_after": "1986-07-02", "born_on_or_before": "2008-07-01" },
+    "source": { "doc": "dev-seed:upsssc_ja_2026", "page": 4, "quote": "18-40 years as on 01.07.2026" }
+  },
+  "qualification": {
+    "any_of": [ { "codes": ["class12"], "include_higher": true } ],
+    "must_complete_by": "2026-12-10",
+    "appearing_policy": "not_allowed",
+    "equivalence": "check_yourself_same_level",
+    "text": { "hi": "इंटरमीडिएट (12वीं) + DOEACC/NIELIT का CCC प्रमाणपत्र + हिंदी टाइपिंग 25 शब्द/मिनट", "en": "Intermediate (12th) + DOEACC/NIELIT CCC certificate + Hindi typing at 25 wpm" },
+    "source": { "doc": "dev-seed:upsssc_ja_2026", "page": 5 }
+  },
+  "required_attributes": [
+    { "any_of_codes": ["ccc"], "stage": "at_application", "source": { "doc": "dev-seed:upsssc_ja_2026", "page": 5 } },
+    { "any_of_codes": ["typing_hi"], "stage": "at_application", "source": { "doc": "dev-seed:upsssc_ja_2026", "page": 5 } }
+  ],
+  "domicile": null,
+  "gender": null,
+  "category": null,
+  "pwd": { "eligible": true },
+  "ex_serviceman": { "eligible": true },
+  "marital_status": null,
+  "physical": null,
+  "other_conditions": [
+    { "text": { "hi": "UPSSSC PET 2025 का वैध स्कोरकार्ड ज़रूरी", "en": "A valid UPSSSC PET 2025 scorecard is required" }, "severity": "check_yourself", "source": { "doc": "dev-seed:upsssc_ja_2026", "page": 3 } }
+  ],
+  "fees": [ { "amount_paise": 2500, "source": { "doc": "dev-seed:upsssc_ja_2026", "page": 6 } } ],
+  "review": { "risk_flags": ["state_domicile_conditional_relaxation"], "notes": "DEV SEED DATA (backend/scripts/seed-dev.sh). Page numbers are placeholders." },
+  "source": { "doc": "dev-seed:upsssc_ja_2026 (https://upsssc.gov.in)" }
+}
