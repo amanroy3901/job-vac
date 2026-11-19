@@ -173,7 +173,7 @@ All buttons: pill (`CircleShape`), `labelLarge` 16 sp/600, icon 22 dp + 8 gap, h
 
 | # | Component | Base | Notes |
 | --- | --- | --- | --- |
-| F1 | `StatusBanner` | `Surface(shape = small 12→16)` | `kind: Offline|NotifOff|Delivery|Outage|Trial|Profile`, icon 20 + `labelMedium` text + optional `SmTextButton` / dismiss. Colours: Offline/Outage → `sunken` + `onSurface`; NotifOff → `urgentContainer` + pill action (§M2.18); Delivery → `warningContainer`; Trial → `marigoldContainer` + `onSurface` (counts as the screen's marigold surface); Profile → `primaryContainer`. Margin 16, polite live region on first show. |
+| F1 | `StatusBanner` | `Surface(shape = small 12→16)` | `kind: Offline|NotifOff|Delivery|Outage|Trial|Profile`, icon 20 + `labelMedium` text + optional `SmTextButton` / dismiss. Colours (canonical = §M2.39): Offline → `sunken`; NotifOff/Delivery → `warningContainer`; Outage / notice changed against you → `urgentContainer`; new chance → `primaryContainer`; pill action on `card`; Trial → `marigoldContainer` + `onSurface` (counts as the screen's marigold surface); Profile → `primaryContainer`. Margin 16, polite live region on first show. |
 | F2 | `EmptyState` | `Column` centred, max width 320 | Illustration 120 dp: `IconTile`-style 88 dp circle in `marigoldContainer` with a 48 dp filled icon in `marigoldIcon` (dark: `marigold`), plus the decorative dashed sun ring from C15; title `titleLarge` Baloo 19; body `bodyLarge` muted; `SmPrimaryButton` / `SmTextButton`. Examples: S20 all answered "सब जवाब दे दिए — नई नौकरी आते ही बताएँगे" (`task_alt`); S22 empty "अभी कोई फ़ॉर्म नहीं भरा" (`assignment_turned_in`). |
 | F3 | `ErrorState` | F2 variant | icon `report` / `cloud_off` in `errorContainer` circle, retry `SmPrimaryButton`, optional code `E-xxx`. |
 | F4 | `Skeleton` | `Box` + shimmer brush `sunken → card` | `MatchCardSkeleton` keeps ribbon-less card geometry (24 radius, tile 48, two lines, fact strip, button pills). Static when reduced motion. |
@@ -248,7 +248,7 @@ All buttons: pill (`CircleShape`), `labelLarge` 16 sp/600, icon 22 dp + 8 gap, h
 
 ## M. Patterns from the v2 screen redesign
 
-Folded in from `v2/sections/*-NOTES.md` (screen agents' notes: `core-NOTES.md`, `onboarding-NOTES.md`; re-check `account`, `states` and others when their notes land). CSS prefixes `co-` / `ob-` are given in italics.
+Folded in from `v2/sections/*-NOTES.md` (screen agents' notes: `core-NOTES.md`, `onboarding-NOTES.md`, `account-NOTES.md`, `states-NOTES.md`). CSS prefixes `co-` / `ob-` / `ac-` / `st-` are given in italics.
 
 ### M1 Rules that change components above
 - **Sticky bars are (near-)solid, not glass** (*ob-bar*, core `.abar` at 97 %): content scrolling under a 90 % glass bar read as a glitch. `BottomActionBar` (B5) = solid `background` + a 32 dp vertical fade (`background` 0 → 100 %) above the bar, no blur; the bottom nav (H1) keeps `glass` but at 97 %.
@@ -279,7 +279,7 @@ Folded in from `v2/sections/*-NOTES.md` (screen agents' notes: `core-NOTES.md`, 
 | M2.15 | `CompletenessRing` | *ob-comp, ob-ring* | Circular progress ring 40 dp (`primary` on `sunken`) + "प्रोफ़ाइल 90% पूरी" + missing chip. Refines E12. |
 | M2.16 | `OemStepCard` | *ob-oem, ob-num, ob-done, ob-brands* | `SmCard` per step: numbered 28 dp node (done = `primary` + check, next = marigold, upcoming = hairline ring — same as JourneyPath), instruction, "सेटिंग खोलें" button, "हो गया" checkbox; brand chip row when detection is unsure. |
 | M2.17 | `GoogleAccountSaved` | *ob-gsaved* | After upgrade: `check_circle` + "{email} से सेव" row replacing K1. |
-| M2.18 | `StatusBanner` (feed) | *co-ban* | Notifications-off banner on S20 uses `urgentContainer` tint + pill action button ("चालू करें"); offline/outage use the same shape with `cloud_off` / `report` on `sunken`. Updates F1. |
+| M2.18 | `StatusBanner` (feed) | *co-ban* | Pill action button ("चालू करें") on the banner. core.html tints the notifications-off banner terracotta while states.html uses ochre; **canonical: ochre `warningContainer`** (M2.39) — terracotta is kept for our outage and adverse corrigenda. core.html to align. |
 | M2.19 | `FeedEnd` | *co-end, co-endc* | End-of-feed marker (hairline rule + "बस इतना ही" muted) and a calm info card (Pro users: "Pro · कोई विज्ञापन नहीं"). |
 | M2.20 | `NewTag` | *co-new* | Marigold `labelSmall` "नई" pill on the card title row; replaces separate "New" / "Waiting for reply" feed sections (open question to confirm). |
 | M2.21 | `AdSlot` label row | *co-ad* | J1 label row sits **above** the creative: "विज्ञापन · Ad" tag · "क्यों?" · "विज्ञापन हटाएँ". |
@@ -294,8 +294,34 @@ Folded in from `v2/sections/*-NOTES.md` (screen agents' notes: `core-NOTES.md`, 
 | M2.30 | `SegmentedControl` (2 options) | *ob-seg* | Same visual as H6 (cocoa selected pill). |
 | M2.31 | `SettingsPathCrumbs` | D01 | Chip row "सेटिंग्स › ऐप › सूचनाएँ" (`sunken` chips, `chevron_right` auto-mirrors) + "सेटिंग खोलें". |
 
+### M1b Rules from the states and account notes
+- **Scrim** is warm: cocoa `#2A1E14` @ 48–52 % in light, black @ 60–62 % in dark. **Dialog surface** in dark = `surfaceContainerHigh` `#2D241B` (one step above the card); light = `card`.
+- **Destructive actions** are terracotta *text* buttons in dialogs; the expanded delete uses an **outlined terracotta** button (`SmDangerButton`: `card` + 1.5 dp `error` border + `error` text). Never the filled green CTA.
+- **Switch / radio off state** uses `outline` (≥ 3:1, WCAG 1.4.11).
+- **Disabled rows never disappear**: in minor mode, rows get an `off` style + a "18 के बाद" / "From 18" `LockPill`-style tag (`st-tag`).
+- **No opacity for meaning** — key-date "past" chip fixed in `v2/marigold.css` (`component.keyDateChip.past`).
+- **200 % font scale:** nav labels capped at 1.5×, wordmark not scaled — needs WCAG 1.4.4 sign-off (02 §3.2, `layout.fontScale`). At ≥ 1.5× the S21 bar drops "रुचि नहीं" into the overflow menu.
+- **Data-model line** under the S38 account card: "आपकी प्रोफ़ाइल और मैच सिर्फ़ इसी फ़ोन पर हैं". Sign-out keeps the local profile (guest); export is a local JSON file (04 D02/D04).
+- **Weekday bug:** 21 Nov 2026 is a **Saturday** (direction-c.html says Friday); all v2 sections fixed.
+
+### M2b Components from the account and states sections
+| # | Component | Source | Spec |
+| --- | --- | --- | --- |
+| M2.32 | `TrialBanner` + `DaysRing` | *ac-trial, ac-ring* | `marigoldContainer` banner with a 40 dp ring (sweep = days left / 14, `marigold` on `sunken`, tnum number inside); the screen's marigold surface. |
+| M2.33 | `TrackerRow` + `StageChip` + `StageDots` + `NextStepLine` | *ac-tr, ac-stage, ac-dots, ac-next* | Refines D1: stage chip icon + words (ok forest / q ochre / tc terracotta / n sunken); 8 dots (done forest, current marigold, locked hollow hairline ring); locked next line dashed hairline + `lock` + "Pro में". |
+| M2.34 | `StageActionCard` with ribbon | *ac-act* | D3 uses a `DeadlineRibbon` (urgent, or forest-tinted "ok" variant `primaryContainer`) for the deadline sentence + two pill buttons. |
+| M2.35 | `RescheduleChip` | *ac-resch* | Ochre tinted chip, old date struck through → new date bold; allow 2 lines (`heightIn(min)`). |
+| M2.36 | `ResultIllustration` variants | *medal.ac-gold / ac-wait / ac-fail* | Same 80 dp medal as F10: success forest (+confetti on S31 success), pending marigold `hourglass_top`, failure terracotta `close`. |
+| M2.37 | `HealthSummary` + `HealthCheckRow` | *ac-hsum, ac-score, ac-hc* | Score "5/6 ठीक" with ring; bad rows tinted `urgentContainer`; status always icon + words. |
+| M2.38 | `SettingsGroup` | *ac-list, ac-row, ac-ic.{g,m,r}, st-row, st-list* | White grouped `SmCard`, inset dividers from 62 dp; icon tile 40 dp tinted green / marigold / terracotta. |
+| M2.39 | `StatusBanner` variants | *st-ban (off, warn, err, ok)* | Supersedes F1 colours: off = `sunken`, warn = `warningContainer`, err = `urgentContainer`, ok = `primaryContainer`; optional pill action on `card`, 44 dp min; **max one banner on Home**. |
+| M2.40 | `UndoSnackbar` | *st-snack* | F5 + a 20 dp countdown ring (6 s) before the action; polite live region. |
+| M2.41 | `FullScreenState` | *st-center, st-illu* | 140 dp tinted disc + dashed halo + 48 dp icon; S41, S42 (house style for blocking states). |
+| M2.42 | `FamilyExplainer`, `InviteeHeader`, `FamilyDateLine` | *ac-explain, ac-gets, ac-acc, ac-pair, ac-fdate* | "What they get" chips; aspirant ↔ you avatar pair; date lines tinted terracotta (urgent) / forest (ok). Family notification icon accent plum `#7A3D80` (= category state icon). |
+| M2.43 | `GoogleSignInButton` sizes | *ac-gbtn, st-g* | Official colours; 52 / 48 / 44 dp heights allowed (visual ≥ 40 per tokens). |
+
 ### M3 Open questions raised by the screen agents (for the founder / owners)
-Core: drop "New"/"Waiting" as feed sections? · help icon moved into the overflow menu · B05 snackbar copy after removing the 24 h promise · count `confirm_eligible` anywhere? · no snooze on the last day (S21·today) · B02 trial copy "अपने-आप ख़त्म होगा" needs billing confirmation. Onboarding: crash-report switch on S47 vs S38 only · minor-mode end behaviour · D10 "saved on {date}" from backup metadata · R1 day-before backup time (7 pm?) · Vivo OEM steps need a device check.
+Core: drop "New"/"Waiting" as feed sections? · help icon moved into the overflow menu · B05 snackbar copy after removing the 24 h promise · count `confirm_eligible` anywhere? · no snooze on the last day (S21·today) · B02 trial copy "अपने-आप ख़त्म होगा" needs billing confirmation. Onboarding: crash-report switch on S47 vs S38 only · minor-mode end behaviour · D10 "saved on {date}" from backup metadata · R1 day-before backup time (7 pm?) · Vivo OEM steps need a device check. Account: read-only S23 for free users? · completed-forms retention · season → yearly switch (proration) · S48 QR density with `#k=` fragment. States: export also include `getMe` data? (04 D04 now says yes, per data-layer) · delete with active Pro: nudge or required step · minor Pro row · 200 % caps sign-off · Tamil headings Baloo Thambi 2 (02 §3.5 says yes; 07 still Noto).
 
 ## I. Tokens → component mapping cheat-sheet
 
