@@ -101,3 +101,15 @@ func TestSpecLoadsAndSchemasCompile(t *testing.T) {
 		}
 	}
 }
+
+func TestSchemaValidationRejects(t *testing.T) {
+	loadSpec(t)
+	c, err := specComp.Compile(specURL + "#/components/schemas/Entitlement")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inst, _ := jsonschema.UnmarshalJSON(strings.NewReader(`{"plan":"gold","status":"active","features":{},"trial_available":true,"ads_enabled":true}`))
+	if c.Validate(inst) == nil {
+		t.Fatal("invalid entitlement accepted: contract validation is not effective")
+	}
+}

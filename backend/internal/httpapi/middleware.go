@@ -18,9 +18,9 @@ import (
 var uuidRe = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 type storedResponse struct {
-	ContentType string          `json:"ct,omitempty"`
-	ETag        string          `json:"etag,omitempty"`
-	Body        json.RawMessage `json:"b,omitempty"`
+	ContentType string `json:"ct,omitempty"`
+	ETag        string `json:"etag,omitempty"`
+	Body        []byte `json:"b,omitempty"` // base64 in jsonb: replays must be byte-identical (jsonb normalises JSON)
 }
 
 // idempotent implements the Idempotency-Key contract (api/README.md §5): a replay within 24 h returns the stored
@@ -93,9 +93,7 @@ func (s *Server) idempotent(w http.ResponseWriter, r *http.Request, h handler) e
 		return nil
 	}
 	sr := storedResponse{ContentType: rec.Header().Get("Content-Type"), ETag: rec.Header().Get("ETag")}
-	if b := bytes.TrimSpace(rec.buf.Bytes()); len(b) > 0 && json.Valid(b) {
-		sr.Body = b
-	}
+	sr.Body = rec.buf.Bytes()
 	rb, _ := json.Marshal(sr)
 	_, _ = s.d.Pool.Exec(ctx, `UPDATE idempotency_key SET status = $3, response = $4 WHERE user_id = $1 AND key = $2`, scope, key, rec.status, rb)
 	return nil

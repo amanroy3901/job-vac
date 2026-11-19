@@ -74,6 +74,7 @@ const (
 	keyLang
 	keyIdentity
 	keyUser
+	keyRoute
 )
 
 func reqID(ctx context.Context) string { s, _ := ctx.Value(keyReqID).(string); return s }
@@ -154,6 +155,8 @@ func (s *Server) base(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Strict-Transport-Security", "max-age=31536000")
 		sw := &statusWriter{ResponseWriter: w, status: 200}
+		route := new(string)
+		ctx = context.WithValue(ctx, keyRoute, route)
 		defer func() {
 			if p := recover(); p != nil {
 				slog.ErrorContext(ctx, "panic", "panic", p, "stack", string(debug.Stack()))
@@ -164,7 +167,7 @@ func (s *Server) base(next http.Handler) http.Handler {
 			if sw.status >= 500 {
 				level = slog.LevelError
 			}
-			slog.Log(ctx, level, "request", "request_id", rid, "method", r.Method, "route", r.Pattern, "path", r.URL.Path,
+			slog.Log(ctx, level, "request", "request_id", rid, "method", r.Method, "route", *route, "path", r.URL.Path,
 				"status", sw.status, "duration_ms", s.d.Now().Sub(start).Milliseconds(), "app_version", r.Header.Get("X-App-Version"))
 		}()
 		next.ServeHTTP(sw, r.WithContext(ctx))
@@ -218,6 +221,9 @@ func (s *Server) wrap(o opts, h handler) http.Handler {
 
 func (s *Server) pre(w http.ResponseWriter, r *http.Request, o opts, h handler) error {
 	ctx := r.Context()
+	if p, ok := ctx.Value(keyRoute).(*string); ok && r.Pattern != "" {
+		*p = r.Pattern
+	}
 	if !o.public && strings.HasPrefix(r.URL.Path, "/v1/") {
 		if v, err := strconv.Atoi(r.Header.Get("X-App-Version")); err == nil {
 			cfg := s.cfg.get(ctx)

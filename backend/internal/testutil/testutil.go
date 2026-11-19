@@ -3,13 +3,17 @@ package testutil
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/amanroy3901/job-vac/backend/internal/db"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -81,28 +85,51 @@ func Publishable(t testing.TB, raw []byte) []byte {
 	return out
 }
 
-// DB returns a migrated pool on a fresh schema of TEST_DATABASE_URL (or DATABASE_URL), skipping the test when
-// neither is set. Each call resets the database: integration tests in one package run sequentially.
+// DB returns a pool on a fresh, migrated database created next to TEST_DATABASE_URL (or DATABASE_URL) and
+// dropped after the test, so packages can run in parallel. Skips when neither variable is set.
 func DB(t testing.TB) *pgxpool.Pool {
 	t.Helper()
-	url := os.Getenv("TEST_DATABASE_URL")
-	if url == "" {
-		url = os.Getenv("DATABASE_URL")
+	base := os.Getenv("TEST_DATABASE_URL")
+	if base == "" {
+		base = os.Getenv("DATABASE_URL")
 	}
-	if url == "" {
+	if base == "" {
 		t.Skip("TEST_DATABASE_URL/DATABASE_URL not set: skipping Postgres integration test")
 	}
 	ctx := context.Background()
-	if err := db.Migrate(ctx, url, "reset"); err != nil {
-		t.Fatalf("reset: %v", err)
-	}
-	if err := db.Migrate(ctx, url, "up"); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-	pool, err := db.Open(ctx, url, 5)
+	u, err := url.Parse(base)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(pool.Close)
+	admin, err := pgx.Connect(ctx, base)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer admin.Close(ctx)
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	name := "sm_test_" + hex.EncodeToString(b)
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+name); err != nil {
+		t.Fatalf("create database (needs CREATEDB): %v", err)
+	}
+	u.Path = "/" + name
+	dsn := u.String()
+	if err := db.Migrate(ctx, dsn, "up"); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := db.Open(ctx, dsn, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		pool.Close()
+		if c, err := pgx.Connect(context.Background(), base); err == nil {
+			_, _ = c.Exec(context.Background(), "DROP DATABASE IF EXISTS "+name+" WITH (FORCE)")
+			_ = c.Close(context.Background())
+		}
+	})
 	return pool
 }
+
+// DSN returns the connection string of a pool created by DB.
+func DSN(p *pgxpool.Pool) string { return p.Config().ConnString() }
