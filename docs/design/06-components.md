@@ -272,7 +272,7 @@ Folded in from `v2/sections/*-NOTES.md` (screen agents' notes: `core-NOTES.md`, 
 | M2.8 | `AgeBanner` | *ob-age* | `primaryContainer` strip with computed age "आज आपकी उम्र: 23 साल 4 महीने", polite live region. |
 | M2.9 | `InlineNote` | *ob-note (.q), co-local* | Icon + `bodySmall` on `sunken` (or `warningContainer` for warnings). **`LocalOnlyNote`** variant: `lock` icon + "यह सिर्फ़ आपके फ़ोन में रहता है" for anything kept on the device (DOB, B03 reasons, B04 snooze, S25, B06 confirmation). |
 | M2.10 | `IconBullet` | *ob-bul, ob-bi* | 40 dp marigold `IconTile` + `bodyLarge`; `.pri` forest variant. S03, S13. |
-| M2.11 | `NotificationMock` | *ob-panel, ob-notif, co-ntf, co-na* | Marigold-gradient panel with a static notification card (onboarding explanation only, not real UI). Real notification accent proposed: forest `#1E5B46`; critical terracotta `#B3361E`; family plum `#7A3D80` (05 still says `#1F4FB8` — to update). |
+| M2.11 | `NotificationMock` | *ob-panel, ob-notif, co-ntf, co-na* | Marigold-gradient panel with a static notification card (onboarding explanation only, not real UI). Real notification accent proposed: forest `#1E5B46`; critical terracotta `#B3361E`; family plum `#7A3D80`. |
 | M2.12 | `PrivacyKeyFact` | *ob-key, ob-pv* | Lead fact on S47 "आपकी प्रोफ़ाइल आपके फ़ोन में रहती है · मिलान भी फ़ोन पर" in a `primaryContainer` card, then K4 rows; optional crash-report `Switch` (default off — open question). |
 | M2.13 | `ComingSoonGrid` | *ob-soon, ob-sgrid* | 3-column grid of native names (system Noto) with `schedule` + "जल्द"; refines L1's list. |
 | M2.14 | `MinorModeCard` | *ob-minor* | Marigold gradient + ring like `ProCard`: explains under-18 mode (no sign-in, ads, purchase); counts as the screen's marigold surface. |

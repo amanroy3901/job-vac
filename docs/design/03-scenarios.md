@@ -597,7 +597,7 @@ Always reachable: S38 "प्राइवेसी नोटिस", S39.
 ### SC-49 Using the app in another language (future languages)
 
 When a language is enabled (07 §9): S40 shows it as selectable; choosing it recreates the activity, downloads that
-script's font in the background (Mukta/system font until then, no blank text), re-registers channel names, and the
+script's font in the background (Hind/Baloo 2 or the system font until then, no blank text), re-registers channel names, and the
 server switches `lang` for rule lines. Urdu flips the layout to RTL (07 §4). Exam names, fees and dates keep their
 Western digits and official spellings. Planned languages appear in S02/S40 under "जल्द आ रही हैं" and cannot be
 selected.

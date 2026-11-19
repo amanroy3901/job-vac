@@ -404,7 +404,7 @@ Baloo 2 and Hind have sister families for several Indic scripts, so the Marigold
 | Gurmukhi (pa) | Baloo Paaji 2 | Noto Sans Gurmukhi | system | 1.0 |
 | Urdu (ur, RTL) | Noto Nastaliq Urdu | Noto Nastaliq Urdu | Noto Naskh Arabic | 1.6; body ≥ 16 sp; labels ≤ 14 sp stay 400 |
 
-Baloo Bhaijaan 2 (Arabic) is not used for Urdu: it is Naskh-style, and Urdu readers expect Nastaliq. 07-localization.md §1–§2 still lists Mukta for Devanagari/Latin; this table supersedes those rows (07 to be aligned in its next edit).
+Baloo Bhaijaan 2 (Arabic) is not used for Urdu: it is Naskh-style, and Urdu readers expect Nastaliq. 07-localization.md §1–§2 now matches this table.
 
 ## 4. Spacing and layout (8-pt grid)
 

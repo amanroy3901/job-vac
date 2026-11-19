@@ -20,7 +20,7 @@ Target devices: Android 8–15, **2 GB RAM**, slow eMMC storage, Mali/PowerVR GP
 - **Locale filtering:** `androidResources { localeFilters += <enabled locales> }` (en, hi at launch) drops hundreds of KB of library translations; App Bundle language splits deliver only the user's languages as more are enabled. Script fonts are downloadable (0 KB).
 - **No native libraries** (no SQLCipher, no ML Kit) → no ABI splits needed; App Bundle still splits density/language.
 - **No raster images in the app:** vector drawables for ~60 icons and the 2-colour illustrations; no `material-icons-extended`; no Coil/Glide (nothing to load).
-- **Fonts:** Mukta via downloadable fonts (0 KB).
+- **Fonts:** Baloo 2 + Hind via downloadable fonts (0 KB).
 - **Firebase à la carte:** Auth, Messaging, App Check (Play Integrity), Installations, Crashlytics (opt-in). No Analytics. **Not** Remote Config (we use `/v1/config`), **not** Firestore/Realtime DB, **not** Performance Monitoring (heavy, bytecode instrumentation).
 - **Ads SDK** (free-tier native ad, ads.md) is the largest single dependency: lazy-initialised on first slot scroll-in, never for Pro, excluded from the baseline profile; `AD_ID` permission removed.
 - Track per-dependency cost with `./gradlew :app:dependencies` + `apkanalyzer dex packages` in a monthly check; any new dependency PR must state its size delta.

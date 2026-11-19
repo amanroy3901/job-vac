@@ -25,7 +25,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 ---
 
 ## S01 Splash — P0
-- **Layout:** Android 12 SplashScreen API: background `primary` (`#1F4FB8`; dark `#11141B`), centred adaptive icon (white "सम" monogram in a rounded square with a check tick). No text, no custom duration.
+- **Layout:** Android 12 SplashScreen API: background `background` cream (`#FBF5EC`; dark `#17120D`), centred adaptive icon (marigold bell mark in a rounded square, Direction C). No text, no custom duration.
 - **Logic:** `setKeepOnScreenCondition { !vm.ready }` while reading DataStore (≤ 300 ms) + cached Remote Config. Route: no profile → S02; forced update → S41; `outage && no cache` → S42; else S20 (or pending deep-link).
 - **Analytics:** `app_open{cold, src}`.
 
