@@ -69,8 +69,9 @@ func (s *Server) getMe(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request) error {
 	var body struct {
-		Reason  string `json:"reason"`
-		Comment string `json:"comment"`
+		Reason                 string `json:"reason"`
+		Comment                string `json:"comment"`
+		AppleAuthorizationCode string `json:"apple_authorization_code"`
 	}
 	if err := decode(r, &body, true); err != nil {
 		return err
@@ -78,7 +79,8 @@ func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request) error {
 	if body.Reason != "" && !slices.Contains([]string{"too_many_alerts", "wrong_matches", "got_job", "privacy", "other"}, body.Reason) {
 		return problem.Validation("bad reason", problem.FieldError{Field: "reason", Code: "out_of_range"})
 	}
-	st, err := s.d.Accounts.RequestDeletion(r.Context(), user(r.Context()), body.Reason)
+	st, err := s.d.Accounts.RequestDeletion(r.Context(), user(r.Context()), account.DeletionInput{Reason: body.Reason,
+		AppleAuthorizationCode: body.AppleAuthorizationCode, AppleIdentity: identity(r.Context()).Provider == "apple.com"})
 	if err != nil {
 		return err
 	}
@@ -244,6 +246,19 @@ func (s *Server) verifyPlayPurchase(w http.ResponseWriter, r *http.Request) erro
 	}
 	u := user(r.Context())
 	e, err := s.d.Billing.VerifyPlay(r.Context(), billing.Account{ID: u.ID, BillingAccountRef: u.BillingAccountRef}, in)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, 200, e)
+}
+
+func (s *Server) verifyAppStorePurchase(w http.ResponseWriter, r *http.Request) error {
+	var in billing.AppStorePurchaseInput
+	if err := decode(r, &in, false); err != nil {
+		return err
+	}
+	u := user(r.Context())
+	e, err := s.d.Billing.VerifyAppStore(r.Context(), billing.Account{ID: u.ID, BillingAccountRef: u.BillingAccountRef}, in)
 	if err != nil {
 		return err
 	}
@@ -639,6 +654,26 @@ func (s *Server) playRTDN(w http.ResponseWriter, r *http.Request) error {
 		return err // 5xx → Pub/Sub retries, dead-letter after 10 attempts
 	}
 	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// appStoreNotification is the App Store Server Notifications V2 endpoint (App Store Connect → App Information →
+// Production / Sandbox Server URL). Authentication is the signed payload itself (x5c → Apple Root CA G3); there
+// is no bearer token. 200 acknowledges; any other status makes Apple retry (up to 5 times over ~3 days).
+func (s *Server) appStoreNotification(w http.ResponseWriter, r *http.Request) error {
+	var body struct {
+		SignedPayload string `json:"signedPayload"`
+	}
+	if err := decode(r, &body, false); err != nil {
+		return err
+	}
+	if body.SignedPayload == "" {
+		return problem.Validation("signedPayload is required")
+	}
+	if err := s.d.Billing.HandleAppStoreNotification(r.Context(), body.SignedPayload); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusOK)
 	return nil
 }
 

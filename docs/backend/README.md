@@ -12,7 +12,7 @@ The mobile contract is in [`../api/openapi.yaml`](../api/openapi.yaml), with con
 | [matching-engine.md](./matching-engine.md) + [rule.schema.json](./rule.schema.json) | Rule schema, tri-state evaluation, bucketed matching, worked examples |
 | [ingestion-pipeline.md](./ingestion-pipeline.md) | Source watchers, PDF/OCR, LLM extraction, review console, versioning |
 | [reminders-and-delivery.md](./reminders-and-delivery.md) | On-device reminder state machine and schedule, FCM topic backups, family relay, self-test |
-| [payments-and-entitlements.md](./payments-and-entitlements.md) | Play Billing only, RTDN, season pass as prepaid plan, trial, entitlement source of truth |
+| [payments-and-entitlements.md](./payments-and-entitlements.md) | Play Billing (Android) + StoreKit 2 / App Store (iOS), RTDN, App Store Server Notifications V2, season pass (Play prepaid plan / App Store non-renewing), trial, one cross-store entitlement |
 | [security-privacy.md](./security-privacy.md) | App Check, auth, rate limits, admin auth, DPDP Act, encryption, retention |
 | [operations.md](./operations.md) | Observability, CI/CD, environments, runbooks, scaling, solo-dev build plan |
 
@@ -36,8 +36,12 @@ The mobile contract is in [`../api/openapi.yaml`](../api/openapi.yaml), with con
 6. **Minimal PII under the DPDP Act 2023 (founder decisions 2026-11-19).** No names, phone numbers, Aadhaar or
    documents. The eligibility profile and matching stay **on the device** (ADR-11); the server holds the public catalog
    and minimal accounts. Everything is deletable.
-7. **No paid messaging.** No WhatsApp, no SMS, no OTP. Delivery = FCM push + on-device reminders. Payments = Google
-   Play Billing only. Login = free Google Sign-In or guest.
+7. **No paid messaging.** No WhatsApp, no SMS, no OTP. Delivery = FCM push (APNs via FCM on iOS) + on-device
+   reminders. Payments = Google Play Billing on Android, App Store in-app purchase on iOS. Login = free Google
+   Sign-In, Sign in with Apple (iOS) or guest.
+9. **Android and iOS from one Kotlin Multiplatform codebase** (founder decision 9). The backend is platform-neutral
+   except where a store or OS forces a difference: purchases, Apple sign-in token revocation and the APNs block of
+   pushes; devices and entitlements carry `platform`.
 8. **All major Indian languages.** Hindi, English, Bengali, Marathi, Telugu, Tamil, Gujarati, Kannada, Odia,
    Malayalam, Punjabi, Assamese, Urdu (RTL) are supported by the content model; Hindi + English ship at launch.
 
@@ -50,9 +54,9 @@ The mobile contract is in [`../api/openapi.yaml`](../api/openapi.yaml), with con
 | Database | **Cloud SQL for PostgreSQL 16** (`asia-south1`): db-f1-micro during the test, then db-g1-small → custom 2 vCPU + HA at ~1M installs. Holds the catalog source, accounts, purchases; also the job queue (`FOR UPDATE SKIP LOCKED`) |
 | Matching | **On the device** with the shared KMP module `:matching-core` against the public **catalog** (CDN files); the server never sees profiles ([matching-engine.md](./matching-engine.md)) |
 | Scheduling | **Cloud Scheduler** → authenticated `POST /internal/tick/*` every minute (no broker) |
-| Auth | **Firebase Auth**: **Google** provider via Android Credential Manager (Sign in with Google), or **guest** via anonymous auth created only when a server feature needs an account; `linkWithCredential` upgrades a guest to Google with the same uid. No phone auth, no OTP, no custom tokens. App Check with Play Integrity |
-| Push | **FCM HTTP v1**, data-only; **topic** messages (`catalog`, `p_{post_id}`, `n_{notice_id}`) for everything match-related, token messages only for account pushes |
-| Payments | **Google Play Billing only**: subscription `pro` with a prepaid ₹49 season base plan and a ₹199 yearly auto-renew plan; subscriptionsv2 verification, server acknowledgement, RTDN via **Pub/Sub** push |
+| Auth | **Firebase Auth**: **Google** provider (Android Credential Manager / Google Sign-In on iOS), **Apple** provider on iOS (Sign in with Apple; refresh token kept sealed only to revoke it at deletion), or **guest** via anonymous auth created only when a server feature needs an account; `linkWithCredential` upgrades a guest with the same uid. Other providers refused. No phone auth, no OTP, no custom tokens. App Check with Play Integrity / App Attest |
+| Push | **FCM HTTP v1**, data-only on Android, alert pushes with loc-keys + `mutable-content` (background for sync) via the `apns` block on iOS; **topic** messages (`catalog`, `p_{post_id}`, `n_{notice_id}`) for everything match-related, token messages only for account pushes |
+| Payments | **Google Play Billing** (Android): subscription `pro` with a prepaid ₹49 season base plan and a ₹199 yearly auto-renew plan; subscriptionsv2 verification, server acknowledgement, RTDN via **Pub/Sub** push. **App Store / StoreKit 2** (iOS): ₹49 non-renewing season + ₹199 yearly auto-renewable with a 14-day intro free trial; JWS verified offline against Apple Root CA G3, App Store Server Notifications V2, optional App Store Server API. One entitlement per account across both |
 | Files | **Cloud Storage**: raw notice PDFs (content-addressed), catalog files (public, via the CDN) |
 | Front door | **Firebase Hosting** custom domain with rewrites to Cloud Run and GCS. Free TLS and CDN caching for `Cache-Control: public` GETs (`/v1/catalog/*`, `/v1/reference`, `/v1/config`, `/v1/health`) |
 | LLM extraction | **Claude API** (`claude-opus-5-5`, structured outputs, native PDF input) + a cheap classifier pass; human review always |
@@ -154,6 +158,11 @@ Founder decision 2 (2026-11-19): login is free only. **Kept:** Google via Androi
 matching and reminders (on-device, ADR-11); a Firebase **anonymous** account is created only when a server feature
 first needs one (trial, purchase, family link) and can be linked to Google later with the same uid.
 **Removed:** our own WhatsApp/SMS OTP, MSG91/DLT, custom tokens, phone numbers, `otp_session`.
+**iOS (decision 9):** Google Sign-In for iOS plus **Sign in with Apple** (Firebase `apple.com` provider; App Store
+guideline 4.8 requires it next to Google). The server accepts only ID tokens whose `sign_in_provider` is
+`anonymous`, `google.com` or `apple.com`. Apple accounts get `auth_kind = apple`; account deletion revokes the Apple
+refresh token (guideline 5.1.1(v), security-privacy.md §2.1). Apple is a Firebase Auth provider like Google, so the
+cost analysis below is unchanged.
 
 **Cost.** Firebase Authentication without the Identity Platform upgrade charges only for phone/SMS verification;
 Google and anonymous sign-ins carry no per-MAU charge. If the project is (or must be) upgraded to Identity Platform,
@@ -188,7 +197,7 @@ endpoints, quotas and costs are removed. Family alerts go to the family member's
 ([reminders-and-delivery.md §5](./reminders-and-delivery.md#5-family-alerts-pro-p1--push-to-the-family-members-own-app)).
 SMS is dropped too (it would need a phone number); see reminders-and-delivery.md §8.
 
-### ADR-06: Payments: Google Play Billing only, server-side truth
+### ADR-06: Payments: platform stores only (Play Billing + App Store), server-side truth
 
 Google Play Billing **only** (founder decision 4). One subscription product `pro` with base plans
 `season-4m-prepaid` (₹49, **prepaid**, non-renewing, top-up allowed — recommended over a one-time product, see
@@ -196,7 +205,11 @@ payments §1.1) and `yearly-autorenew` (₹199). The 14-day trial is **server-gr
 the first Applied (B02), started when the user taps "14 दिन मुफ़्त शुरू करें" (`POST /v1/me/trial`). There is no Play
 free-trial offer (prepaid plans cannot carry offers, and it would need a payment method). Entitlement is computed only
 on the server from `entitlement_grant` rows (trial, Play, referral, promo) and handed to the app as a signed token.
-UPI links, Razorpay/Cashfree and user-choice billing are removed. See
+UPI links, Razorpay/Cashfree and user-choice billing are removed. **iOS (decision 9):** StoreKit 2 with the same two
+plans — the season as a **non-renewing subscription** (the App Store has no prepaid plan and no 4-month auto-renew
+period) and the year as an auto-renewable subscription with a 14-day introductory free trial; transactions are
+Apple-signed JWS verified offline, lifecycle from App Store Server Notifications V2. Grants from both stores feed one
+entitlement per account, so a user switching platforms keeps Pro. See
 [payments-and-entitlements.md](./payments-and-entitlements.md).
 
 ### ADR-07: Extraction: LLM-assisted, human-verified, versioned
@@ -211,7 +224,11 @@ at 40 notices. See [ingestion-pipeline.md](./ingestion-pipeline.md).
 Data-only FCM so the app controls language, buttons, quiet-hour dedupe and caps. Match-related pushes go to
 **topics** (the server does not know recipients); the device composes the text from its string resources and the
 catalog. High priority only for R1/R-last backups, critical lifecycle and the self-test. No delivery receipts, no
-escalation channel. A signed-in account has one primary alert install (B15): when another install becomes primary,
+escalation channel. **iOS:** data-only (background) pushes are throttled and not delivered to a force-quit app, so the
+FCM message also carries an `apns` block: alert pushes with localisation keys (`loc-key`, resolved from the app
+bundle in the device language — still no server text), `mutable-content` for the Notification Service Extension,
+categories with the Applied/Later actions and `time-sensitive` interruption level for last-day reminders; sync and
+entitlement refreshes stay background pushes. A signed-in account has one primary alert install (B15): when another install becomes primary,
 the others get N-47 and stop their local reminders and deadline/lifecycle topics. Guests have a single install.
 
 ### ADR-10: Ads: client-side AdMob native, server only decides *whether*
@@ -298,12 +315,13 @@ no feature has a per-message cost any more.
 | Firebase Hosting CDN + egress | $0 | $10 | $45–90 | ~150K snapshots + ~300K MAU × 0.3 MB ≈ 250–300 GB/month at 1M |
 | Cloud Storage, Scheduler, Pub/Sub, Secret Manager, KMS | $2 | $4 | $10 | |
 | Logging/monitoring (50 GB free), Sentry free | $0 | $5 | $20 | |
-| FCM (topics + tokens) | $0 | $0 | $0 | free |
+| FCM (topics + tokens, incl. APNs delivery on iOS) | $0 | $0 | $0 | free; APNs is free (auth key uploaded to Firebase) |
+| Apple Developer Program (iOS) | $8 | $8 | $8 | $99/year ([Apple](https://developer.apple.com/programs/)); App Store commission is taken from revenue (15% with the Small Business Program), not infra |
 | Firebase Auth (Google + anonymous) | $0 | $0 | $0–300 | $0 without the Identity Platform upgrade; worst case Tier 1 after 50K MAU (ADR-02) |
 | LLM extraction (Claude Opus 5.5) | $30 | $40 | $80 | ~$0.5–1.5/notice incl. re-extracts; translation drafts add ~$10–40 once non-launch locales are enabled |
 | Domain, misc | $2 | $2 | $5 | |
 | Ads SDK (Google Mobile Ads / AdMob) | $0 | $0 | $0 | revenue share is taken out of eCPM, so no infra cost; backend only serves the flags |
-| **Total** | **≈ $50–60** (≈ ₹4.5–5.5K) | **≈ $115** (≈ ₹10K) | **≈ $290–725** (≈ ₹0.26–0.64 L) | was ≈ $55–90 / $290 / $1,450 with server matching + WhatsApp/OTP |
+| **Total** | **≈ $60–70** (≈ ₹5–6K) | **≈ $125** (≈ ₹11K) | **≈ $300–735** (≈ ₹0.26–0.65 L) | incl. the Apple Developer Program; iOS adds no per-user server cost (same API, App Store JWS verified locally, notifications are a few per subscriber per year) |
 | Per install | ~₹0.5 | ~₹0.1 | ~₹0.03–0.06 | |
 | Subscription revenue, base case (1.2% pay, ~₹170/yr net) | ~₹1.7K | ~₹17K | ~₹1.7 L | cac.json base case |
 | **Ad revenue, free tier (ESTIMATE, unchanged)** | ~₹0.9–3.5K ($10–40) | ~₹9–35K ($100–400) | ~₹0.9–3.5 L ($1–4K) | ~97% of MAU free × ~22 native impressions/MAU/month (feed bottom about 12 + digest about 10) × India native eCPM **$0.15–0.60** = ₹0.3–1.2 per free MAU/month. eCPM sources are weak: a single dev report of native at $0.14 ([Kodular forum](https://community.kodular.io/t/admob-ecpm-getting-low-by-low-everyday-india-0-22/189851)); blended India AdMob $0.5–2.0 ([adpumb](https://adpumb.com/?p=10317), [cas.ai](https://cas.ai/?p=11066)). Minor-mode users (no ads) lower it slightly. Replace with AdMob actuals after 2 weeks |
@@ -333,5 +351,14 @@ pages, not an SPA.
    "collected"? Declared conservatively until confirmed.
 6. **Analytics depth:** opt-in identifier-free counters + Play Console may be too coarse for the validation gates
    (≥ 300 profiles, ≥ 100 Applied). Accept, or add an explicit opt-in "test participant" id for the closed test only?
-7. **Ads under DPDP:** S47 notice + B17 + non-personalised ads with no consent toggle — confirm with the legal review
+7. **iOS trial stacking (decision 9):** the yearly App Store product has a 14-day intro free trial; the server trial
+   is marked used after an App Store trial, but Apple may still grant its intro offer after a server trial (worst case
+   28 days). Accept, or drop the server trial on iOS / drop the App Store intro offer? (payments §5)
+8. **iOS notifications without filtering:** Android drops a server backup push the device already showed or no longer
+   needs (Applied, dedupe, quiet hours); an iOS Notification Service Extension cannot drop a notification without
+   Apple's `com.apple.developer.usernotifications.filtering` entitlement. Request it, or accept occasional duplicate
+   backups on iOS (they are unsubscribed from `p_` topics after Applied, which limits it)?
+9. **App Store season price point and GST:** confirm ₹49 is an available India price point and the GST/commission
+   treatment with the CA; enrol in the App Store Small Business Program before launch.
+10. **Ads under DPDP:** S47 notice + B17 + non-personalised ads with no consent toggle — confirm with the legal review
    that this suffices for adults in India.

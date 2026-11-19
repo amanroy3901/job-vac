@@ -1,7 +1,7 @@
-// Package push sends data-only FCM HTTP v1 messages (api/README.md §10): topic pushes (`catalog` sync,
-// `p_{post}` R3/R1/R-last backups, `n_{notice}` lifecycle) from the topic_send queue, and account pushes
-// (`account`, `family`) to one account's devices. No WhatsApp, no SMS, no text in payloads except the
-// fallback_title/body of account pushes.
+// Package push sends FCM HTTP v1 messages (api/README.md §10) — data-only on Android, plus an APNs block for iOS
+// (apns.go): topic pushes (`catalog` sync, `p_{post}` R3/R1/R-last backups, `n_{notice}` lifecycle) from the
+// topic_send queue, and account pushes (`account`, `family`) to one account's devices. No WhatsApp, no SMS, no
+// text in payloads except the fallback_title/body of account pushes (iOS uses loc-keys from the app bundle).
 package push
 
 import (
@@ -61,24 +61,7 @@ func NewFCM(ctx context.Context, projectID string) (*FCM, error) {
 
 // Send implements Sender.
 func (f *FCM) Send(ctx context.Context, m Message) (string, error) {
-	msg := map[string]any{"data": m.Data}
-	if m.Token != "" {
-		msg["token"] = m.Token
-	} else {
-		msg["topic"] = m.Topic
-	}
-	android := map[string]any{"priority": "NORMAL"}
-	if m.High {
-		android["priority"] = "HIGH"
-	}
-	if m.TTL > 0 {
-		android["ttl"] = fmt.Sprintf("%ds", int(m.TTL.Seconds()))
-	}
-	if m.Collapse != "" {
-		android["collapse_key"] = m.Collapse
-	}
-	msg["android"] = android
-	body, _ := json.Marshal(map[string]any{"message": msg})
+	body, _ := json.Marshal(BuildFCM(m, time.Now()))
 	ep := f.Endpoint
 	if ep == "" {
 		ep = "https://fcm.googleapis.com"

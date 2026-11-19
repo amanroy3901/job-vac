@@ -22,7 +22,7 @@ Sarkari Match is a Hindi-first Android and iOS app that alerts a government-job 
 **Positioning line:** "Sirf aapki naukri. Koi miss nahi." (Only your jobs. Nothing missed.)
 
 - **In scope:** eligibility profile, matching new notifications against it, persistent reminders, a complete "what you need" card in each reminder, and alerts for every later stage of an application (admit card, exam date, answer key, result, document verification).
-- **Out of scope:** test prep, form filling or submission on official portals, document storage on our servers, iOS, private-sector jobs.
+- **Out of scope:** test prep, form filling or submission on official portals, document storage on our servers, private-sector jobs.
 - **Business model:** a genuinely useful free tier, and a Pro tier at about ₹20/month (sold as ₹199/year or ₹49 per season) that makes sure critical alerts are never missed.
 - **Status:** draft. Validation scored the idea 17/100 as a subscription app; the first release is gated on a 14-day WhatsApp payment test.
 

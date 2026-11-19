@@ -1,5 +1,5 @@
 // Package auth verifies the tokens the backend accepts:
-//   - Firebase ID tokens (Google or anonymous provider) on account calls (RS256, x509 certs of
+//   - Firebase ID tokens (Google, Apple or anonymous provider) on account calls (RS256, x509 certs of
 //     securetoken@system.gserviceaccount.com, aud = project id, iss = https://securetoken.google.com/<project>);
 //   - Firebase App Check tokens (RS256, JWKS https://firebaseappcheck.googleapis.com/v1/jwks);
 //   - Google-signed OIDC tokens for Pub/Sub push (Play RTDN) and Cloud Scheduler ticks;

@@ -1,6 +1,7 @@
-// Package httpapi is the REST layer for docs/api/openapi.yaml (/v1/**), the Play RTDN hook, the Cloud Scheduler
-// ticks and the admin console mount. It uses the Go 1.22+ net/http pattern router; the AIP-style ":verb" paths
-// (`/v1/me/devices/{id}:make-primary`) are routed by splitting the last segment on ':'.
+// Package httpapi is the REST layer for docs/api/openapi.yaml (/v1/**), the Play RTDN and App Store Server
+// Notifications V2 hooks, the Cloud Scheduler ticks and the admin console mount. It uses the Go 1.22+ net/http
+// pattern router; the AIP-style ":verb" paths (`/v1/me/devices/{id}:make-primary`) are routed by splitting the last
+// segment on ':'.
 package httpapi
 
 import (
@@ -119,6 +120,7 @@ func (s *Server) Handler() http.Handler {
 	if role == "api" || role == "all" {
 		s.routesV1(mux)
 		mux.Handle("POST /hooks/play-rtdn", s.wrap(opts{maxBody: 64 << 10}, s.playRTDN))
+		mux.Handle("POST /hooks/app-store", s.wrap(opts{maxBody: 256 << 10}, s.appStoreNotification))
 	}
 	if role == "worker" || role == "all" {
 		mux.Handle("POST /internal/tick/{name}", s.wrap(opts{}, s.tick))

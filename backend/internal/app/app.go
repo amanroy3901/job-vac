@@ -9,6 +9,7 @@ import (
 
 	"github.com/amanroy3901/job-vac/backend/internal/account"
 	"github.com/amanroy3901/job-vac/backend/internal/admin"
+	"github.com/amanroy3901/job-vac/backend/internal/appstore"
 	"github.com/amanroy3901/job-vac/backend/internal/auth"
 	"github.com/amanroy3901/job-vac/backend/internal/billing"
 	"github.com/amanroy3901/job-vac/backend/internal/blob"
@@ -43,7 +44,11 @@ type Overrides struct {
 	Sender   push.Sender
 	Store    blob.Store
 	Admin    admin.Authenticator
-	Now      func() time.Time
+	// AppStore replaces the App Store verifier (tests use a TestSigner PKI); AppStoreAPI the Server API client.
+	AppStore    *appstore.Verifier
+	AppStoreAPI appstore.ServerAPI
+	Apple       auth.AppleTokens
+	Now         func() time.Time
 }
 
 // New wires everything for cfg.
@@ -114,14 +119,50 @@ func New(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, o Override
 		tickAuth = &auth.OIDCVerifier{Audience: cfg.TickAudience, Email: cfg.TickServiceAccount, Keys: keys}
 	}
 
-	accounts := &account.Service{Pool: pool, Now: now}
-	bill := &billing.Service{Pool: pool, Play: play, PackageName: cfg.PlayPackageName, Seal: sealer, Signer: signer, Now: now}
+	asv := o.AppStore
+	if asv == nil {
+		asv = &appstore.Verifier{BundleID: cfg.AppStoreBundleID, AppAppleID: cfg.AppStoreAppAppleID,
+			Environments: cfg.AppStoreEnvironments, Now: now}
+		if cfg.AppStoreMode == "fake" {
+			ts, err := appstore.NewTestSigner()
+			if err != nil {
+				return nil, err
+			}
+			asv.Roots, asv.AllowLocalTesting = ts.Roots(), true
+		}
+	}
+	asAPI := o.AppStoreAPI
+	if asAPI == nil && cfg.AppStoreAPIKeyID != "" {
+		base := appstore.ProductionURL
+		if cfg.AppStoreAPISandbox {
+			base = appstore.SandboxURL
+		}
+		c, err := appstore.NewClient(cfg.AppStoreAPIKeyPEM, cfg.AppStoreAPIKeyID, cfg.AppStoreAPIIssuerID, cfg.AppStoreBundleID, base)
+		if err != nil {
+			return nil, fmt.Errorf("app store server api: %w", err)
+		}
+		asAPI = c
+	}
+	apple := o.Apple
+	if apple == nil {
+		if cfg.AppleSignInMode == "apple" && cfg.AppleSIWAKeyPEM != "" {
+			if apple, err = auth.NewAppleIDClient(cfg.AppleTeamID, cfg.AppleSIWAKeyID, cfg.AppStoreBundleID, cfg.AppleSIWAKeyPEM); err != nil {
+				return nil, err
+			}
+		} else {
+			apple = auth.LogAppleTokens{}
+		}
+	}
+
+	accounts := &account.Service{Pool: pool, Now: now, Apple: apple, Seal: sealer}
+	bill := &billing.Service{Pool: pool, Play: play, PackageName: cfg.PlayPackageName, Seal: sealer, Signer: signer, Now: now,
+		AppStore: asv, AppStoreAPI: asAPI}
 	fam := &family.Service{Pool: pool, PublicBaseURL: cfg.PublicBaseURL, Now: now}
 	pub := &catalog.Publisher{Pool: pool, Store: store, Now: now}
 	cur := &ingest.Service{Pool: pool, Slots: push.DefaultSlots, Now: now}
 	wk := &worker.Worker{Pool: pool, Publisher: pub, Topics: &push.Dispatcher{Pool: pool, Sender: sender, Now: now},
 		Accounts: accounts, AccountTx: &push.AccountSender{Pool: pool, Sender: sender}, Billing: bill, Sender: sender,
-		Seal: sealer, Now: now}
+		Seal: sealer, Apple: apple, Now: now}
 
 	adminAuth := o.Admin
 	if adminAuth == nil {

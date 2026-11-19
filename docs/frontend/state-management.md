@@ -1,6 +1,9 @@
 # State management
 
-Pattern: **MVVM with unidirectional data flow (UDF)**.
+Pattern: **MVVM with unidirectional data flow (UDF)**, written once in `commonMain` and run on Android and iOS. The
+building blocks are multiplatform: AndroidX Lifecycle `ViewModel` + `viewModelScope` + `SavedStateHandle`
+(`org.jetbrains.androidx.lifecycle` on iOS), `collectAsStateWithLifecycle()` (lifecycle-runtime-compose, KMP),
+kotlinx.coroutines and `kotlinx.collections.immutable`.
 
 ```
 Room Flow ─┐
@@ -23,15 +26,16 @@ Rules (from the Compose stack guidelines we adopted):
 | Event-based navigation | `Channel<UiEffect>(Channel.BUFFERED).receiveAsFlow()`; collected in `LaunchedEffect(Unit)` with `withContext(Dispatchers.Main.immediate)` so no effect is lost during config change |
 | `LaunchedEffect` keys | keyed by ids, never `Unit` for data loads |
 | Pure composables | `XRoute(vm)` collects + wires; `XScreen(state, onAction)` is stateless, previewable, screenshot-testable |
-| DI | `@HiltViewModel` + `hiltViewModel()`; no DI in composables |
+| DI | Koin: `viewModelOf(::HomeViewModel)` in the feature's Koin module, `koinViewModel<HomeViewModel>()` in the `XRoute`; constructor injection only, no `KoinComponent`/`inject()` inside ViewModels; no DI in `XScreen` composables |
+| Platform-free | No `android.*`, `platform.*` or `java.*` import in any ViewModel or UiState (enforced by being in `commonMain`); platform needs arrive through ports (platform-interop.md §2) |
 
 ## 1. Common building blocks (`:core:model` / `:core:designsystem`)
 
 ```kotlin
 /** Text that may be a resource or server-provided LocalizedText; resolved in the UI with the current locale. */
 sealed interface UiText {
-    data class Res(@StringRes val id: Int, val args: ImmutableList<Any> = persistentListOf()) : UiText
-    data class Plural(@PluralsRes val id: Int, val count: Int, val args: ImmutableList<Any> = persistentListOf()) : UiText
+    data class Res(val id: StringResource, val args: ImmutableList<Any> = persistentListOf()) : UiText            // compose resources Res.string.*
+    data class Plural(val id: PluralStringResource, val count: Int, val args: ImmutableList<Any> = persistentListOf()) : UiText
     data class Server(val text: LocalizedText) : UiText        // map over 13 languages; resolved via languages[].fallback, then en
     data class Raw(val value: String) : UiText
 }
@@ -113,8 +117,7 @@ sealed interface HomeEffect {
     data class ShowUndo(val message: UiText, val token: RecordedAction) : HomeEffect   // O04, 6 s
 }
 
-@HiltViewModel
-class HomeViewModel @Inject constructor(
+class HomeViewModel(                               // commonMain; Koin viewModelOf(::HomeViewModel)
     matches: MatchRepository,
     banners: BannerProvider,
     clock: IstClock,
@@ -151,13 +154,13 @@ class HomeViewModel @Inject constructor(
             is HomeAction.ConfirmApplied -> viewModelScope.launch {
                 sheet.value = null
                 val rec = actions.record(a.matchId, UserAction.Applied(a.feePaid), ActionSource.Feed)   // local Room write, card animates out
-                send(HomeEffect.ShowUndo(UiText.Res(R.string.applied_saved), rec))
+                send(HomeEffect.ShowUndo(UiText.Res(Res.string.applied_saved), rec))
                 paywallMoment.afterApplied()?.let { sheet.value = HomeSheet.PaywallMoment(it) }     // B02 (trial/plans), max 1/7 days
             }
             is HomeAction.ConfirmNotInterested -> viewModelScope.launch {
                 sheet.value = null
                 val rec = actions.record(a.matchId, UserAction.NotInterested(a.reasons), ActionSource.Feed)
-                send(HomeEffect.ShowUndo(UiText.Res(R.string.hidden_undo), rec))
+                send(HomeEffect.ShowUndo(UiText.Res(Res.string.hidden_undo), rec))
             }
             is HomeAction.Undo -> viewModelScope.launch { actions.undo(a.token) }
             /* … */
@@ -204,8 +207,7 @@ sealed interface JobDetailUiState {
     data class Error(val message: UiText) : JobDetailUiState   // nothing cached + offline
 }
 
-@HiltViewModel
-class JobDetailViewModel @Inject constructor(
+class JobDetailViewModel(                          // commonMain
     savedState: SavedStateHandle,
     private val matches: MatchRepository,
     private val notices: NoticeRepository,
@@ -219,7 +221,7 @@ class JobDetailViewModel @Inject constructor(
         combine(matches.observeMatch(route.matchId), matches.observeDetail(route.matchId),
                 matches.observeNoticeFor(route.matchId), connectivity.online) { m, d, n, online ->
             when {
-                m == null && !online -> JobDetailUiState.Error(UiText.Res(R.string.offline_no_cache))
+                m == null && !online -> JobDetailUiState.Error(UiText.Res(Res.string.offline_no_cache))
                 m == null -> JobDetailUiState.Loading
                 else -> mapper.content(m, d, n, online)
             }
@@ -243,25 +245,27 @@ S21 states: `Loading` (only for a shared `/p/` post missing from the local catal
 ```kotlin
 @Immutable
 data class PaywallUiState(
-    val plans: LoadState<ImmutableList<PlanUi>> = LoadState.Loading,    // prices ONLY from Play ProductDetails
+    val plans: LoadState<ImmutableList<PlanUi>> = LoadState.Loading,    // prices ONLY from the store (Play ProductDetails / StoreKit Product.displayPrice)
     val selectedPlanId: String? = null,                                 // default = highlighted (yearly)
     val entitlement: EntitlementUi,                                     // Free / Trial(endsAt) / Pro(expires) / InGrace / OnHold
     val trialAvailable: Boolean,
     val purchase: PurchaseStep = PurchaseStep.Idle,
-    val isGuest: Boolean,                                               // B16 `pro` once before the Play sheet
+    val isGuest: Boolean,                                               // B16 `pro` once before the store sheet
+    val store: Store,                                                   // PLAY | APP_STORE: trial wording (server trial vs intro offer), terms note, manage link
     val source: PaywallSource,                                          // AfterApplied | LockedRow | TrialEnding | Profile | DeepLink
-    val billingAvailable: Boolean = true,                               // false: Play missing/unsupported → "Play Store अपडेट करें" (Play Billing is the only path)
+    val billingAvailable: Boolean = true,                               // false: Play missing / StoreKit can't load products (no network, restricted via Screen Time) → explanation, no other payment path
 )
 
-@Immutable data class PlanUi(val planId: String, val title: String, val price: String /* "₹199" from Play */,
-                             val perMonth: String? /* "₹17/महीना" computed from priceAmountMicros */,
+@Immutable data class PlanUi(val planId: String, val title: String, val price: String /* "₹199" from the store */,
+                             val perMonth: String? /* "₹17/महीना" computed from priceAmountMicros / Product.price */,
+                             val introOffer: UiText? /* iOS: "14 दिन मुफ़्त, फिर ₹199/साल" when eligible */,
                              val period: UiText, val highlight: Boolean, val features: ImmutableList<String>)
 
 sealed interface PurchaseStep {
     data object Idle : PurchaseStep
-    data object LaunchingPlay : PurchaseStep          // button spinner; Play sheet O06 is on top
+    data object LaunchingStore : PurchaseStep         // button spinner; Play sheet O06 / App Store sheet is on top
     data object Verifying : PurchaseStep              // server verify (→ S31)
-    data object Pending : PurchaseStep                // Play PENDING (e.g. UPI inside Play) → S31 Pending
+    data object Pending : PurchaseStep                // Play PENDING (e.g. UPI inside Play) / StoreKit .pending (Ask to Buy) → S31 Pending
     data class Failed(val reason: UiText, val retryable: Boolean) : PurchaseStep
 }
 
@@ -269,19 +273,20 @@ sealed interface PaywallAction {
     data class SelectPlan(val planId: String) : PaywallAction
     data object Buy : PaywallAction
     data object Restore : PaywallAction               // → D08
-    data object StartTrial : PaywallAction            // B02 trial CTA or S30 "14 दिन मुफ़्त आज़माएँ"; only when trialAvailable
+    data object StartTrial : PaywallAction            // B02 trial CTA or S30 "14 दिन मुफ़्त आज़माएँ"; Android: startTrial (server); iOS: buy pro_year with its intro offer
+    data object ManageSubscription : PaywallAction    // S32: Play subscriptions page / AppStore.showManageSubscriptions
 }
 
 sealed interface PaywallEffect {
-    data class LaunchBilling(val params: BillingLaunch) : PaywallEffect   // Activity needed → handled by Route
+    data class LaunchBilling(val params: BillingLaunch) : PaywallEffect   // needs a PurchaseHost (Activity / UIViewController) → handled by Route via LocalPurchaseHost
     data class OfferSignIn(val variant: SignInVariant) : PaywallEffect    // B16 `pro` for guests
     data class GoToStatus(val ref: String) : PaywallEffect
 }
 ```
 
-The VM combines `EntitlementRepository.observe()` (Room), `BillingRepository.productDetails(products)` (Play, in-memory, re-queried on resume) and `listProducts` (plan → Play product/base-plan mapping). `Buy` emits `LaunchBilling` because `BillingClient.launchBillingFlow` needs an `Activity`; the Route calls it and the result arrives through `BillingRepository.purchaseUpdates` (a `SharedFlow` owned by the app-scoped billing client, so it survives the Paywall being recreated). See billing.md for the full flow.
+The VM combines `EntitlementRepository.observe()` (Room), `BillingClientPort.offers(products)` (store, in-memory, re-queried on resume) and `listProducts` (plan → store product mapping per platform). `Buy` emits `LaunchBilling` because both `launchBillingFlow` (Activity) and StoreKit's purchase confirmation (window scene) need a UI host; the Route supplies `LocalPurchaseHost.current` and the result arrives through `BillingClientPort.purchaseUpdates` (owned by the app-scoped port, so it survives the Paywall being recreated). See billing.md §10–§11.
 
-**B02 (paywall moment) is not a separate VM**: `PaywallMomentController` (in `:feature:pro`, injected into S20/S21 VMs through an interface in `:core:data`) decides the variant locally from the cached entitlement (`trial_available`; guests count as available), minor mode and the DataStore 7-day rule:
+**B02 (paywall moment) is not a separate VM**: `PaywallMomentController` (in `feature.pro`, injected into S20/S21 VMs through an interface in `:core:data`) decides the variant locally from the cached entitlement (`trial_available`; guests count as available), minor mode and the DataStore 7-day rule:
 
 | Situation | B02 variant |
 | --- | --- |
@@ -292,7 +297,7 @@ The VM combines `EntitlementRepository.observe()` (Room), `BillingRepository.pro
 
 ## 5. Onboarding (S04–S10): one VM across steps
 
-`OnboardingViewModel` is scoped to the `OnboardingGraph` back-stack entry (`hiltViewModel(navController.getBackStackEntry<OnboardingGraph>())`), so S04–S09 share one draft. Every field change writes the draft to Room `profile_draft` (debounced 300 ms) → kill-safe. Validation is local (DOB plausible: age 14–60; at least one exam type; OBC → NCL question). S10 saves the profile to Room and runs `MatchEngine` over the local catalog (< 50 ms); no network and no account are involved. If the first catalog snapshot has not finished downloading (first launch on 2G), S10 shows the skeleton until it lands, then the result; offline with no catalog → "इंटरनेट आने पर नतीजा दिखेगा". A DOB under 18 switches on minor mode (S10 hides the Google save button).
+`OnboardingViewModel` is scoped to the `OnboardingGraph` back-stack entry (`koinViewModel(viewModelStoreOwner = navController.getBackStackEntry<OnboardingGraph>())`), so S04–S09 share one draft. Every field change writes the draft to Room `profile_draft` (debounced 300 ms) → kill-safe. Validation is local (DOB plausible: age 14–60; at least one exam type; OBC → NCL question). S10 saves the profile to Room and runs `MatchEngine` over the local catalog (< 50 ms); no network and no account are involved. If the first catalog snapshot has not finished downloading (first launch on 2G), S10 shows the skeleton until it lands, then the result; offline with no catalog → "इंटरनेट आने पर नतीजा दिखेगा". A DOB under 18 switches on minor mode (S10 hides the Google save button).
 
 ## 6. Cross-screen state
 
@@ -300,7 +305,7 @@ The VM combines `EntitlementRepository.observe()` (Room), `BillingRepository.pro
 | --- | --- | --- |
 | Pro entitlement | `EntitlementRepository` (Room + signed token) | `Flow<Entitlement>`; `isPro` + feature flags used by S22 lock rows, S23, S34–S37 |
 | Account / minor mode | `SessionRepository`, `ProfileRepository.observeIsMinor()` | `Flow<AccountState>` (Guest / Anonymous / Google), `Flow<Boolean>`; gate sign-in, purchase, ads, backup, family, counters |
-| App language | `LanguageController` (AppCompatDelegate + DataStore mirror) | `Flow<LanguageCode>` (13 codes; layout direction follows) |
-| Connectivity | `ConnectivityObserver` (`ConnectivityManager.registerDefaultNetworkCallback`) | `StateFlow<Boolean>` |
+| App language | `LanguageController` (Android AppCompatDelegate / iOS `AppleLanguages` + `LocalAppLocale`, DataStore mirror) | `Flow<LanguageCode>` (13 codes; layout direction follows) |
+| Connectivity | `ConnectivityObserver` port (Android `ConnectivityManager.registerDefaultNetworkCallback`; iOS `nw_path_monitor` via `platform.Network`) | `StateFlow<Boolean>` |
 | Remote flags / force update / maintenance | `ConfigRepository` | `StateFlow<AppConfig>` |
-| Global events (force update, signed out, outage) | `AppEvents` (`SharedFlow`, app-scoped) | collected by `MainActivity` → navigation |
+| Global events (force update, signed out, outage) | `AppEvents` (`SharedFlow`, app-scoped) | collected by the shared `App()` root → navigation (same on both platforms) |

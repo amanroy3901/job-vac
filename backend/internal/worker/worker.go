@@ -2,7 +2,7 @@
 // in prod; locally (ROLE=all|worker, APP_ENV=local) Run drives the same ticks on a timer.
 //
 // Ticks: topics (topic_send → FCM), jobs (the durable job table: catalog builds, account pushes, delayed
-// self-tests, Play re-acknowledgement, republish), housekeep (hard deletes, entitlement expiry, idempotency and
+// self-tests, Play re-acknowledgement, Sign in with Apple token revocation, republish), housekeep (hard deletes, entitlement expiry, idempotency and
 // self-test cleanup, stale tokens, nightly snapshot).
 package worker
 
@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/amanroy3901/job-vac/backend/internal/account"
+	"github.com/amanroy3901/job-vac/backend/internal/auth"
 	"github.com/amanroy3901/job-vac/backend/internal/billing"
 	"github.com/amanroy3901/job-vac/backend/internal/catalog"
 	"github.com/amanroy3901/job-vac/backend/internal/db"
@@ -39,6 +40,7 @@ type Worker struct {
 	Billing   *billing.Service
 	Sender    push.Sender
 	Seal      *seal.Sealer
+	Apple     auth.AppleTokens // Sign in with Apple revocation (account deletion)
 	Now       func() time.Time
 }
 
@@ -227,6 +229,27 @@ func (w *Worker) execute(ctx context.Context, j job) error {
 		}
 		_, err = w.Pool.Exec(ctx, `UPDATE purchase SET acknowledged_at = now() WHERE token_hash = $1`, hash)
 		return err
+	case "apple_revoke":
+		// Account deletion → revoke the Sign in with Apple refresh token (App Store guideline 5.1.1(v)). Retried
+		// with backoff; after MaxAttempts the job is dead and alerts (ops revokes by hand, backend/README.md).
+		var p struct {
+			TokenEnc string `json:"token_enc"`
+		}
+		if err := json.Unmarshal(j.Payload, &p); err != nil {
+			return err
+		}
+		enc, err := base64.StdEncoding.DecodeString(p.TokenEnc)
+		if err != nil {
+			return err
+		}
+		tok, err := w.Seal.Open(enc)
+		if err != nil {
+			return err
+		}
+		if w.Apple == nil {
+			return fmt.Errorf("apple_revoke: sign in with apple is not configured")
+		}
+		return w.Apple.Revoke(ctx, string(tok))
 	case "noop":
 		return nil
 	}

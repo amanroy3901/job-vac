@@ -58,6 +58,7 @@ func (s *Server) routesV1(mux *http.ServeMux) {
 	mux.Handle("POST /v1/me/trial", s.wrap(acctIdem, s.startTrial))
 	mux.Handle("GET /v1/me/purchases", s.wrap(acct, s.listPurchases))
 	mux.Handle("POST /v1/me/purchases/google-play", s.wrap(acctIdem, s.verifyPlayPurchase))
+	mux.Handle("POST /v1/me/purchases/app-store", s.wrap(acctIdem, s.verifyAppStorePurchase))
 
 	// referral
 	mux.Handle("GET /v1/me/referral", s.wrap(acct, s.getReferral))

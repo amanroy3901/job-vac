@@ -2,25 +2,30 @@ openapi: 3.1.0
 info:
   title: Sarkari Match App API
   version: 1.0.0
-  summary: Contract between the Sarkari Match Android app and the backend.
+  summary: Contract between the Sarkari Match Android and iOS apps (Kotlin Multiplatform) and the backend.
   description: |
-    Mobile-facing API. Admin/curation, the Play RTDN hook and scheduler ticks are NOT part of this contract
-    (see docs/backend/README.md).
+    Mobile-facing API, shared by the Android and iOS apps (one Kotlin Multiplatform codebase; founder decision 9).
+    Admin/curation, the Play RTDN hook, the App Store Server Notifications hook and scheduler ticks are NOT part of
+    this contract (see docs/backend/README.md).
 
     Founder decisions 2026-11-19 (docs/PRD.md) shape this version:
     - **Privacy-first (ADR-11):** the eligibility profile, matching, matches, reminders, actions, applications and
       inbox live ON THE DEVICE. The server publishes a public, CDN-cached **catalog** (`/v1/catalog/**`) that the
       app evaluates locally. No endpoint accepts a profile.
-    - **Login:** Google Sign-In (Credential Manager → Firebase Auth Google provider) or guest. Guests have no
-      server account until a server feature needs one (trial, purchase, family); then Firebase anonymous auth, which
-      can later be linked to Google with the same uid. No phone numbers, no OTP.
-    - **Payments:** Google Play Billing only. **No WhatsApp, no SMS.** Delivery = FCM (topics + account pushes) +
-      on-device reminders.
+    - **Login:** Google Sign-In (Firebase Auth Google provider), **Sign in with Apple on iOS** (Firebase Auth
+      `apple.com` provider; required by App Store guideline 4.8 when a third-party login is offered) or guest.
+      Guests have no server account until a server feature needs one (trial, purchase, family); then Firebase
+      anonymous auth, which can later be linked to Google or Apple with the same uid. ID tokens whose
+      `firebase.sign_in_provider` is not `anonymous`, `google.com` or `apple.com` are refused. No phone, no OTP.
+    - **Payments:** Google Play Billing on Android, StoreKit 2 / App Store in-app purchase on iOS. One server
+      entitlement per account across both stores (a user moving between platforms keeps Pro).
+      **No WhatsApp, no SMS.** Delivery = FCM (topics + account pushes; APNs via FCM on iOS) + on-device reminders.
     - **Languages:** content is `LocalizedText` over 13 Indian languages; hi + en are enabled at launch.
 
     Conventions (details in docs/api/README.md):
     - Auth: `Authorization: Bearer <Firebase ID token>` on `/v1/me/**`, `/v1/session`, `/v1/family/**` and family
-      accept, plus `X-Firebase-AppCheck: <App Check token>` (Play Integrity provider) on every non-public call.
+      accept, plus `X-Firebase-AppCheck: <App Check token>` (Play Integrity on Android, App Attest on iOS) on every
+      non-public call.
       Catalog, config, reference and health are public CDN files (no auth).
     - Every API request sends `X-App-Version` (versionCode) and `Accept-Language` (one of the 13 codes, e.g.
       `hi`, `ta`, `ur`; it selects `Problem.message`). `X-Installation-Id` is sent only on account calls.
@@ -215,10 +220,12 @@ paths:
     post:
       tags: [session]
       operationId: startSession
-      summary: Bootstrap an account after Firebase sign-in (Google, or anonymous when a guest first needs a server feature). Creates the account on first call.
+      summary: Bootstrap an account after Firebase sign-in (Google, Apple on iOS, or anonymous when a guest first needs a server feature). Creates the account on first call.
       description: |
         Guests who use only free matching and reminders never call this: they have no server account (ADR-11).
-        Call after a fresh Firebase sign-in, after `linkWithCredential` (guest → Google, same uid), and at most once
+        After Sign in with Apple, send `apple_authorization_code` once so the server can revoke the Apple tokens when
+        the account is deleted (App Store guideline 5.1.1(v)).
+        Call after a fresh Firebase sign-in, after `linkWithCredential` (guest → Google/Apple, same uid), and at most once
         per app start for accounts. Idempotent per Firebase UID. Signing in with a Google account that already has
         an account returns that account (`is_new_user=false`, `has_backup` tells the app whether to offer restore /
         the D10 profile-conflict choice). Never called in minor mode.
@@ -255,8 +262,13 @@ paths:
       summary: Request account deletion (DPDP Act right to erasure). The app wipes local data separately.
       description: |
         Ends family links, removes devices and the backup, and hard-deletes the account within 7 days (grace period
-        during which `POST /v1/me/deletion:cancel` restores it). Play subscriptions are NOT cancelled by this call;
-        the client must show the Play subscription management deep link if `Entitlement.source` is a Play product.
+        during which `POST /v1/me/deletion:cancel` restores it). Play and App Store subscriptions are NOT cancelled
+        by this call; the client must show `Entitlement.manage_url` (Play subscriptions, or the App Store's
+        subscription sheet when `Entitlement.platform=ios`) if the entitlement comes from a store.
+        **Sign in with Apple (guideline 5.1.1(v)):** the server revokes the user's Apple refresh token (stored from
+        `SessionRequest.apple_authorization_code`, or exchanged from `apple_authorization_code` sent here).
+        `DeletionStatus.apple_revocation=token_missing` means the server has neither: run Sign in with Apple again
+        and repeat the call with the new code.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -270,6 +282,7 @@ paths:
                   type: string
                   enum: [too_many_alerts, wrong_matches, got_job, privacy, other]
                 comment: { type: string, maxLength: 500 }
+                apple_authorization_code: { type: string, description: 'iOS: a fresh ASAuthorizationAppleIDCredential.authorizationCode (valid 5 min) when the server holds no Apple token (apple_revocation=token_missing)' }
       responses:
         '202':
           description: Deletion scheduled
@@ -560,7 +573,7 @@ paths:
     get:
       tags: [entitlements]
       operationId: listProducts
-      summary: Plan catalogue (ids map to Play product/base plan ids). Prices MUST be shown from Play Billing ProductDetails, not from here.
+      summary: Plan catalogue (ids map to Play product/base plan ids and App Store product ids). Prices MUST be shown from Play Billing ProductDetails / StoreKit Product.displayPrice, not from here.
       security: []
       responses:
         '200':
@@ -646,6 +659,38 @@ paths:
         content:
           application/json:
             schema: { $ref: '#/components/schemas/PlayPurchaseInput' }
+      responses:
+        '200':
+          description: Verified (or already verified)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Entitlement' }
+        '402': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/purchases/app-store:
+    post:
+      tags: [entitlements]
+      operationId: verifyAppStorePurchase
+      summary: Verify a StoreKit 2 transaction (iOS) server-side and grant the entitlement.
+      description: |
+        Call after `Product.purchase()` returns `.success(.verified)`, for every transaction from
+        `Transaction.updates` and, on app start / "restore", for every `Transaction.currentEntitlements` entry
+        (send `VerificationResult.jwsRepresentation`). Call `transaction.finish()` only after a 200 (or a 402
+        `purchase_invalid`, which will never succeed). Purchase with `.appAccountToken(UUID(User.billing_account_ref))`.
+        The server verifies the JWS x5c chain to Apple Root CA - G3, the bundle id and environment (Sandbox is
+        accepted and flagged as a test purchase: App Review buys in Sandbox). 409 `purchase_owned_by_other_account`
+        when the subscription is linked to a different active account. Products: `pro_year` = auto-renewable (14-day
+        introductory free trial set in App Store Connect), `pro_season` = non-renewing subscription (4 months from
+        purchase, stacked after any remaining season time).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AppStorePurchaseInput' }
       responses:
         '200':
           description: Verified (or already verified)
@@ -880,12 +925,12 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Firebase Auth ID token (Google or anonymous provider). Refresh via Firebase SDK; on 401 `token_expired` refresh once and retry.
+      description: Firebase Auth ID token (provider google.com, apple.com or anonymous; others → 401). Refresh via Firebase SDK; on 401 `token_expired` refresh once and retry.
     appCheck:
       type: apiKey
       in: header
       name: X-Firebase-AppCheck
-      description: Firebase App Check token (Play Integrity provider; debug provider in debug builds).
+      description: Firebase App Check token (Play Integrity provider on Android, App Attest provider with DeviceCheck fallback on iOS; debug provider in debug builds).
 
   parameters:
     IdempotencyKey:
@@ -903,7 +948,7 @@ components:
       name: X-App-Version
       in: header
       required: false
-      description: Android versionCode. Sent on every request (listed here where it changes the response).
+      description: App build number (Android versionCode; on iOS the same integer as CFBundleVersion — both platforms share one build-number sequence so AppConfig.min_supported_version applies to both). Sent on every request (listed here where it changes the response).
       schema: { type: integer }
     NoticeId:
       name: notice_id
@@ -976,7 +1021,8 @@ components:
           type: string
           description: |
             Stable machine code. Known values: unauthenticated, token_expired, app_check_failed,
-            upgrade_required, forbidden, pro_required, google_link_required, not_found, validation_failed,
+            upgrade_required, forbidden, pro_required, google_link_required (= Google or Apple sign-in required),
+            not_found, validation_failed,
             idempotency_key_reused, rate_limited, backup_conflict, trial_already_used, purchase_invalid,
             purchase_pending, purchase_owned_by_other_account, family_limit_reached, invite_expired,
             account_pending_deletion, maintenance, internal. Unknown codes: treat by HTTP status.
@@ -1150,6 +1196,7 @@ components:
         referral_code: { type: [string, 'null'] }
         merge_anonymous_id_token: { type: [string, 'null'], description: 'Google sign-in collided with an existing account (FirebaseAuthUserCollisionException) while this phone had an anonymous account: send that account''s last ID token; the server moves its entitlement grants, purchases and family links to the signed-in account and deletes it.' }
         device: { $ref: '#/components/schemas/DeviceInput' }
+        apple_authorization_code: { type: [string, 'null'], description: 'iOS, right after Sign in with Apple: ASAuthorizationAppleIDCredential.authorizationCode (single use, 5 min). Exchanged for a refresh token that is revoked when the account is deleted (App Store guideline 5.1.1(v)). A failed exchange never fails the session.' }
 
     SessionResponse:
       type: object
@@ -1170,9 +1217,9 @@ components:
         id: { type: string, examples: ['u_01JD3X5ZQ7'] }
         created_at: { type: string, format: date-time }
         locale: { $ref: '#/components/schemas/LanguageCode' }
-        auth_provider: { type: string, enum: [anonymous, google], description: 'anonymous = guest who bought/joined without signing in; nudge B16 to link Google' }
+        auth_provider: { type: string, enum: [anonymous, google, apple], description: 'anonymous = guest who bought/joined without signing in; nudge B16 to link Google (or Apple on iOS). The first linked provider is kept.' }
         google_email: { type: [string, 'null'], description: 'Shown in S26/S38 from the Firebase token; not stored in our database' }
-        billing_account_ref: { type: string, description: 'Opaque value for BillingFlowParams.setObfuscatedAccountId' }
+        billing_account_ref: { type: string, format: uuid, description: 'Opaque UUID: Play BillingFlowParams.setObfuscatedAccountId on Android, StoreKit Product.PurchaseOption.appAccountToken on iOS' }
         devices_count: { type: integer }
         backup: { type: [object, 'null'], properties: { version: { type: integer }, updated_at: { type: string, format: date-time }, size_bytes: { type: integer } } }
         family_links_count: { type: integer }
@@ -1185,6 +1232,7 @@ components:
       properties:
         state: { type: string, enum: [none, pending, deleted] }
         hard_delete_at: { type: [string, 'null'], format: date-time }
+        apple_revocation: { type: string, enum: [queued, token_missing], description: 'DELETE /v1/me only, for accounts that used Sign in with Apple: queued = Apple token revocation is running; token_missing = send a fresh apple_authorization_code' }
 
     Consent:
       type: object
@@ -1450,7 +1498,8 @@ components:
       required: [fcm_token, app_version, locale]
       description: 'Accounts only. Guests never register a device; they receive topic pushes only.'
       properties:
-        fcm_token: { type: string }
+        platform: { type: string, enum: [android, ios], default: android, description: 'Omitted by Android builds older than the iOS release (= android)' }
+        fcm_token: { type: string, description: 'FCM registration token (on iOS, the FCM token mapped to the APNs device token by the Firebase SDK)' }
         app_version: { type: integer }
         locale: { $ref: '#/components/schemas/LanguageCode' }
         device_label: { type: [string, 'null'], description: 'e.g. "Redmi 12" for N-47 / S38; user-visible only to the account owner' }
@@ -1473,6 +1522,8 @@ components:
         kind: { type: string, enum: [prepaid_season, auto_renew_year, auto_renew_month] }
         play_product_id: { type: string, examples: ['pro'] }
         play_base_plan_id: { type: string, examples: ['season-4m-prepaid', 'yearly-autorenew'] }
+        appstore_product_id: { type: [string, 'null'], examples: ['in.sarkarimatch.pro.season4m', 'in.sarkarimatch.pro.yearly'], description: 'StoreKit product id (null = not sold on iOS)' }
+        appstore_type: { type: [string, 'null'], enum: [auto_renewable, non_renewing, null], description: 'App Store product type' }
         duration_days: { type: integer }
         billing_period: { type: string, examples: ['P4M', 'P1Y'], description: 'ISO 8601 period of the Play base plan' }
         renews: { type: boolean, description: 'false for the prepaid season (S30 copy: "अपने-आप रिन्यू नहीं होगा")' }
@@ -1486,7 +1537,8 @@ components:
       properties:
         plan: { type: string, enum: [free, pro] }
         status: { type: string, enum: [active, in_grace, on_hold, expired, none] }
-        source: { type: [string, 'null'], enum: [trial, play_season, play_year, play_month, referral, promo, null] }
+        source: { type: [string, 'null'], enum: [trial, play_season, play_year, play_month, appstore_season, appstore_year, referral, promo, null] }
+        platform: { type: [string, 'null'], enum: [android, ios, null], description: 'Store behind `source` (android = Google Play, ios = App Store); null for trial/referral/promo. Pro itself is account-wide on both platforms.' }
         starts_at: { type: [string, 'null'], format: date-time }
         expires_at: { type: [string, 'null'], format: date-time }
         auto_renewing: { type: boolean }
@@ -1505,7 +1557,8 @@ components:
         token:
           type: string
           description: 'Signed entitlement (JWT, ES256; claims plan, ads_enabled, features, exp ≤ min(expires_at, now + 7 d)). Verified on the device with AppConfig.entitlement_token_jwks; gates lifecycle-topic subscription and ad-free while offline.'
-        manage_url: { type: [string, 'null'], format: uri, description: 'Play subscription deep link' }
+        manage_url: { type: [string, 'null'], format: uri, description: 'Play subscription deep link (platform=android) or https://apps.apple.com/account/subscriptions (platform=ios; in-app prefer StoreKit showManageSubscriptions). On the other platform show it as text ("manage in Google Play" / "manage in the App Store").' }
+        duplicate_store_subscription: { type: boolean, description: 'Paid Pro is active from both Google Play and the App Store; suggest cancelling one in its store.' }
 
     PlayPurchaseInput:
       type: object
@@ -1516,12 +1569,19 @@ components:
         purchase_token: { type: string }
         order_id: { type: [string, 'null'] }
 
+    AppStorePurchaseInput:
+      type: object
+      required: [signed_transaction]
+      properties:
+        signed_transaction: { type: string, description: 'StoreKit 2 VerificationResult<Transaction>.jwsRepresentation (JWS, ES256, x5c chain)' }
+        signed_renewal_info: { type: [string, 'null'], description: 'Optional (auto-renewable): Product.SubscriptionInfo.Status.renewalInfo.jwsRepresentation — gives auto-renew, billing-retry and grace state without a server-side App Store Server API call' }
+
     PurchaseRecord:
       type: object
       required: [id, provider, product_id, state, created_at]
       properties:
         id: { type: string }
-        provider: { type: string, enum: [play] }
+        provider: { type: string, enum: [play, app_store] }
         product_id: { type: string }
         state: { type: string, enum: [pending, active, in_grace, on_hold, paused, canceled, expired, revoked, refunded] }
         order_id: { type: [string, 'null'] }
@@ -1556,6 +1616,13 @@ components:
         extension/corrigendum/cancelled/clash/certificate → job_updates (newly eligible after a corrigendum, N-11c →
         new_match) · lifecycle → critical when `critical=1`, else job_updates · digest → digest · account → account ·
         family alerts (on a member's phone) → family · self_test → critical · sync → no notification.
+        **iOS (APNs via FCM):** the same data map arrives as custom keys of the APNs payload. sync, account
+        `entitlement` and family `sync` are background pushes (content-available); every other server push is an
+        alert push with `title-loc-key`/`loc-key` = `push.<type>[.<kind>].title|body` (resolved from the app's
+        Localizable.strings — still no server text, except account/family fallback text), `mutable-content: 1` (the
+        Notification Service Extension rewrites it from the local catalog), category `MATCH_REMINDER` (actions
+        `APPLIED`, `LATER`) for reminder/deadline, `LIFECYCLE`, `SELF_TEST`, and `interruption-level:
+        time-sensitive` for `deadline`/`last_day`. Channels are Android-only; iOS maps channel → category/thread.
       required: [type, msg_id]
       properties:
         type:

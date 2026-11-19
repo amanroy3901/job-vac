@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/amanroy3901/job-vac/backend/internal/appstore"
 	"github.com/amanroy3901/job-vac/backend/internal/db"
 	"github.com/amanroy3901/job-vac/backend/internal/ids"
 	"github.com/amanroy3901/job-vac/backend/internal/problem"
@@ -30,6 +31,10 @@ type Service struct {
 	Seal        *seal.Sealer
 	Signer      *Signer
 	Now         func() time.Time
+	// AppStore verifies StoreKit 2 JWS (iOS). nil = App Store purchases disabled (503).
+	AppStore *appstore.Verifier
+	// AppStoreAPI (optional) fetches the authoritative latest transaction + renewal info for a subscription.
+	AppStoreAPI appstore.ServerAPI
 }
 
 func (s *Service) now() time.Time {
@@ -44,6 +49,7 @@ type Entitlement struct {
 	Plan           string          `json:"plan"`
 	Status         string          `json:"status"`
 	Source         *string         `json:"source"`
+	Platform       *string         `json:"platform"`
 	StartsAt       *time.Time      `json:"starts_at"`
 	ExpiresAt      *time.Time      `json:"expires_at"`
 	AutoRenewing   bool            `json:"auto_renewing"`
@@ -52,7 +58,13 @@ type Entitlement struct {
 	Features       map[string]bool `json:"features"`
 	Token          string          `json:"token,omitempty"`
 	ManageURL      *string         `json:"manage_url"`
+	// DuplicateStoreSubscription: paid Pro is active from both Google Play and the App Store at once.
+	DuplicateStoreSubscription bool `json:"duplicate_store_subscription"`
 }
+
+// AppStoreManageURL opens the App Store subscription management sheet (StoreKit's showManageSubscriptions is the
+// in-app equivalent).
+const AppStoreManageURL = "https://apps.apple.com/account/subscriptions"
 
 // Recompute derives user_entitlement from grants and the latest Play purchase, persists it and, when it changed,
 // enqueues a silent `account` push (template `entitlement`) so the app refetches.
@@ -70,8 +82,8 @@ func (s *Service) Recompute(ctx context.Context, q db.Querier, userID string) (S
 	}
 	var latest *PlayState
 	var ps PlayState
-	err = q.QueryRow(ctx, `SELECT state, COALESCE(auto_renewing,false), expiry_at FROM purchase WHERE user_id = $1
-		ORDER BY updated_at DESC LIMIT 1`, userID).Scan(&ps.State, &ps.AutoRenewing, &ps.ExpiryAt)
+	err = q.QueryRow(ctx, `SELECT provider, state, COALESCE(auto_renewing,false), expiry_at FROM purchase WHERE user_id = $1
+		ORDER BY updated_at DESC LIMIT 1`, userID).Scan(&ps.Provider, &ps.State, &ps.AutoRenewing, &ps.ExpiryAt)
 	if err == nil {
 		latest = &ps
 	} else if !db.IsNoRows(err) {
@@ -84,12 +96,12 @@ func (s *Service) Recompute(ctx context.Context, q db.Querier, userID string) (S
 	}
 	perr := q.QueryRow(ctx, `SELECT plan, status, expires_at FROM user_entitlement WHERE user_id = $1`, userID).
 		Scan(&prev.plan, &prev.status, &prev.exp)
-	_, err = q.Exec(ctx, `INSERT INTO user_entitlement (user_id, plan, status, source, starts_at, expires_at, auto_renewing, trial_used, updated_at)
-		VALUES ($1,$2,$3,$4::ent_source_t,$5,$6,$7,$8,now())
+	_, err = q.Exec(ctx, `INSERT INTO user_entitlement (user_id, plan, status, source, platform, starts_at, expires_at, auto_renewing, trial_used, updated_at)
+		VALUES ($1,$2,$3,$4::ent_source_t,$9,$5,$6,$7,$8,now())
 		ON CONFLICT (user_id) DO UPDATE SET plan=EXCLUDED.plan, status=EXCLUDED.status, source=EXCLUDED.source,
-		  starts_at=EXCLUDED.starts_at, expires_at=EXCLUDED.expires_at, auto_renewing=EXCLUDED.auto_renewing,
-		  trial_used=EXCLUDED.trial_used, updated_at=now()`,
-		userID, st.Plan, st.Status, st.Source, st.StartsAt, st.ExpiresAt, st.AutoRenewing, st.TrialUsed)
+		  platform=EXCLUDED.platform, starts_at=EXCLUDED.starts_at, expires_at=EXCLUDED.expires_at,
+		  auto_renewing=EXCLUDED.auto_renewing, trial_used=EXCLUDED.trial_used, updated_at=now()`,
+		userID, st.Plan, st.Status, st.Source, st.StartsAt, st.ExpiresAt, st.AutoRenewing, st.TrialUsed, st.Platform)
 	if err != nil {
 		return State{}, err
 	}
@@ -119,10 +131,14 @@ func (s *Service) Get(ctx context.Context, userID string) (*Entitlement, error) 
 
 func (s *Service) view(userID string, st State) (*Entitlement, error) {
 	pro := st.Plan == "pro"
-	e := &Entitlement{Plan: st.Plan, Status: st.Status, Source: st.Source, StartsAt: st.StartsAt, ExpiresAt: st.ExpiresAt,
-		AutoRenewing: st.AutoRenewing, TrialAvailable: !st.TrialUsed && !pro, AdsEnabled: !pro, Features: Features(pro)}
-	if st.Source != nil && isPlay(*st.Source) || st.Status == "on_hold" {
+	e := &Entitlement{Plan: st.Plan, Status: st.Status, Source: st.Source, Platform: st.Platform, StartsAt: st.StartsAt,
+		ExpiresAt: st.ExpiresAt, AutoRenewing: st.AutoRenewing, TrialAvailable: !st.TrialUsed && !pro, AdsEnabled: !pro,
+		Features: Features(pro), DuplicateStoreSubscription: st.DuplicateStore}
+	if st.Platform != nil {
 		u := "https://play.google.com/store/account/subscriptions?package=" + s.PackageName + "&sku=pro"
+		if *st.Platform == "ios" {
+			u = AppStoreManageURL
+		}
 		e.ManageURL = &u
 	}
 	tok, err := s.Signer.Sign(userID, st, e.AdsEnabled, s.now())
@@ -514,16 +530,18 @@ func (s *Service) ListPurchases(ctx context.Context, userID string) ([]PurchaseR
 
 // Product is the API Product.
 type Product struct {
-	ID             string `json:"id"`
-	Kind           string `json:"kind"`
-	PlayProductID  string `json:"play_product_id"`
-	PlayBasePlanID string `json:"play_base_plan_id"`
-	DurationDays   int    `json:"duration_days"`
-	BillingPeriod  string `json:"billing_period"`
-	Renews         bool   `json:"renews"`
-	Highlight      bool   `json:"highlight"`
-	Title          any    `json:"title"`
-	Features       []any  `json:"features"`
+	ID             string  `json:"id"`
+	Kind           string  `json:"kind"`
+	PlayProductID  string  `json:"play_product_id"`
+	PlayBasePlanID string  `json:"play_base_plan_id"`
+	AppStoreID     *string `json:"appstore_product_id"`
+	AppStoreType   *string `json:"appstore_type"`
+	DurationDays   int     `json:"duration_days"`
+	BillingPeriod  string  `json:"billing_period"`
+	Renews         bool    `json:"renews"`
+	Highlight      bool    `json:"highlight"`
+	Title          any     `json:"title"`
+	Features       []any   `json:"features"`
 }
 
 var productText = map[string]struct {
@@ -543,14 +561,18 @@ var proFeatures = []any{
 
 // Products lists active products (prices come from Play ProductDetails on the device).
 func (s *Service) Products(ctx context.Context) ([]Product, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT id, kind, play_product_id, play_base_plan_id, duration_days FROM product WHERE active ORDER BY duration_days`)
+	rows, err := s.Pool.Query(ctx, `SELECT id, kind, play_product_id, play_base_plan_id, appstore_product_id, duration_days FROM product WHERE active ORDER BY duration_days`)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Product, error) {
 		var p Product
-		if err := r.Scan(&p.ID, &p.Kind, &p.PlayProductID, &p.PlayBasePlanID, &p.DurationDays); err != nil {
+		if err := r.Scan(&p.ID, &p.Kind, &p.PlayProductID, &p.PlayBasePlanID, &p.AppStoreID, &p.DurationDays); err != nil {
 			return p, err
+		}
+		if p.AppStoreID != nil {
+			t := appStoreTypeOf(p.Kind)
+			p.AppStoreType = &t
 		}
 		t := productText[p.Kind]
 		p.BillingPeriod, p.Title, p.Features = t.period, t.title, proFeatures

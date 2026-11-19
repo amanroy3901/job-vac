@@ -1,7 +1,8 @@
-# Sarkari Match API — conventions for the Android team
+# Sarkari Match API — conventions for the app team (Android + iOS, Kotlin Multiplatform)
 
 Contract: [`openapi.yaml`](./openapi.yaml) (OpenAPI 3.1, validated with `openapi-spec-validator`).
-Generate a Retrofit/Ktor client from it or hand-write DTOs with kotlinx.serialization; either way,
+The API is shared by Android and iOS (founder decision 9: one KMP codebase, Compose Multiplatform UI). Generate a
+Ktor client in the shared module from it or hand-write DTOs with kotlinx.serialization; either way,
 **ignore unknown JSON keys** (`Json { ignoreUnknownKeys = true; coerceInputValues = true }`) and map unknown
 enum values to the fallback each schema documents.
 
@@ -12,8 +13,9 @@ Backend design: [`../backend/README.md`](../backend/README.md).
 | Decision | Effect on the contract |
 |---|---|
 | Data minimisation (ADR-11) | The eligibility profile, matching, matches, reminders, actions, applications and inbox live **on the device**. The API has **no profile, match, sync, action, application, inbox, prefs or receipt endpoints**. The app reads a public **catalog** (§6) and evaluates it locally with `:matching-core`. |
-| Login | Google Sign-In (Credential Manager → Firebase Auth Google provider) or guest. Guests have **no account** until a server feature needs one. No OTP, no phone. |
-| Payments | Play Billing only (no UPI link endpoints). |
+| Login | Google Sign-In (Firebase Auth Google provider), **Sign in with Apple on iOS** (decision 9), or guest. Guests have **no account** until a server feature needs one. No OTP, no phone. |
+| Payments | Play Billing on Android, **StoreKit 2 / App Store on iOS** (decision 9); one entitlement per account across both (no UPI link endpoints). |
+| Platforms | Devices and entitlements carry `platform` (`android`\|`ios`); pushes carry an APNs block for iOS (§10). |
 | No WhatsApp / SMS | No WhatsApp endpoints, consents or templates. Delivery = FCM + on-device reminders. |
 | Languages | `LocalizedText` covers 13 Indian languages; hi + en enabled at launch; `?locales=` on catalog files. |
 
@@ -63,8 +65,8 @@ The `/f/` web page must keep the `#k=` fragment client-side (never log or forwar
 | Header | Value |
 |---|---|
 | `Authorization` | `Bearer <Firebase ID token>` on `/v1/session`, `/v1/me/**`, `/v1/family/**`, family accept. Never on catalog/config/reference/health |
-| `X-Firebase-AppCheck` | App Check token (Play Integrity) on every non-public call; **limited-use** tokens on `/v1/reports`, `/v1/telemetry`, `/v1/push-tests`, `/v1/me/trial`, purchases, referral redeem, family accept |
-| `X-App-Version` | `BuildConfig.VERSION_CODE` |
+| `X-Firebase-AppCheck` | App Check token (Play Integrity on Android, App Attest with DeviceCheck fallback on iOS) on every non-public call; **limited-use** tokens on `/v1/reports`, `/v1/telemetry`, `/v1/push-tests`, `/v1/me/trial`, purchases, referral redeem, family accept |
+| `X-App-Version` | build number: Android `VERSION_CODE`; iOS `CFBundleVersion` as the same integer sequence (shared KMP version), so `min_supported_version` applies to both |
 | `X-Installation-Id` | Firebase Installations ID — **account calls only** (never on reports/telemetry/push-tests, which must stay unlinkable) |
 | `Accept-Language` | the app language (one of the 13 codes); selects `Problem.message` and the default `locales` of catalog files |
 | `Idempotency-Key` | UUIDv4 on every POST/PUT/PATCH/DELETE (see §5) |
@@ -83,6 +85,17 @@ The `/f/` web page must keep the `#k=` fragment client-side (never log or forwar
      `POST /v1/session {merge_anonymous_id_token}` — the server moves its grants, purchases and family links over.
    - `SessionResponse.has_backup=true` and this phone has a local profile → **D10** (keep the saved profile =
      restore the backup; keep this phone's = overwrite the backup). No server-side merge, no 409.
+2a. **Sign in with Apple (iOS only):** `ASAuthorizationAppleIDProvider` with a SHA-256 nonce →
+   `OAuthProvider.appleCredential(withIDToken:rawNonce:fullName:)` → `signIn` (or `link` for a guest) →
+   `POST /v1/session {…, apple_authorization_code}` with `ASAuthorizationAppleIDCredential.authorizationCode`
+   (single use, 5 min). The server keeps only a sealed Apple refresh token to **revoke it when the account is
+   deleted** (App Store guideline 5.1.1(v)). If `DELETE /v1/me` answers `apple_revocation: token_missing`, run Sign in
+   with Apple again and repeat the DELETE with `apple_authorization_code`. Offered next to Google on every sign-in
+   surface (guideline 4.8). The server refuses ID tokens from any provider other than `anonymous`, `google.com`,
+   `apple.com`. Collisions use the same `merge_anonymous_id_token` path as Google.
+   **Moving between platforms:** sign in with the same account (Google on both, or Apple and Google linked to one
+   Firebase user) and Pro follows; Sign in with Apple on Android is not offered in v1, so an Apple-only user moving to
+   Android should first link Google on the iPhone (S38).
 3. **Anonymous account** only when a guest uses a server feature without signing in: trial, purchase, family
    accept. `FirebaseAuth.signInAnonymously()` → `POST /v1/session`. B16 offers Google first ("so you keep Pro on a
    new phone").
@@ -167,8 +180,29 @@ user's opt-in they are counted in the usage counters. B05 "wrong match" → `POS
 
 ## 10. Push (FCM) payload contract
 
-All pushes are **data-only** and carry **no text**: the app renders templates in its language and can add action
-buttons. Full schema: `components.schemas.PushData`.
+All pushes carry **no text**: the app renders templates in its language and can add action buttons. On Android they
+are **data-only** (unchanged). Full schema: `components.schemas.PushData`.
+
+**iOS (APNs via FCM).** Every FCM message also has an `apns` block (backend `push.BuildFCM`); the data map arrives as
+custom keys of the APNs payload:
+
+| `type` | APNs push | Headers | `aps` |
+|---|---|---|---|
+| `sync`, `account` + `template=entitlement`, `family` + `family_event=sync` | background | `apns-push-type: background`, `apns-priority: 5` | `content-available: 1` |
+| `reminder` (`d_minus_3`), `deadline` (`d_minus_1`) | alert | `alert`, priority 5 (normal) / 10 (high), `apns-expiration`, `apns-collapse-id` = post | `alert.title-loc-key/loc-key = push.<type>.<kind>.title/body`, `sound`, `mutable-content: 1`, `category: MATCH_REMINDER`, `thread-id` = post id, `interruption-level: active` |
+| `deadline` (`last_day`) | alert | priority 10 | as above + **`interruption-level: time-sensitive`**, `relevance-score: 1` |
+| `lifecycle` | alert | priority by `critical` | `category: LIFECYCLE`, `thread-id` = notice id |
+| `self_test` | alert | priority 10 | `category: SELF_TEST` |
+| `account` (N-31, N-33, N-47), `family` (accepted/removed) | alert | priority 5 | `alert.title/body` = `fallback_title/body` (server text in the account's locale), `thread-id: account\|family` |
+
+The iOS app must: ship every `push.*.title/body` key in `Localizable.strings` for all enabled languages (generated
+from the shared string resources); register categories `MATCH_REMINDER` with actions **`APPLIED`** ("भर दिया" /
+Applied, background, no unlock) and **`LATER`** ("बाद में" / Later = snooze, background), `LIFECYCLE` and `SELF_TEST`
+(no actions); enable the **Time Sensitive Notifications** capability; and add a **Notification Service Extension**
+that rewrites title/body from the local catalog (job name, last date, `{name}` for family) and clears the category
+on a family member's phone (a parent cannot mark Applied). An NSE cannot drop a notification (without Apple's
+filtering entitlement), so the iOS app unsubscribes `p_{post_id}` promptly after Applied and the on-device backup
+reminder is cancelled when the push arrives (same `reminder_id`) — backend open question 8.
 
 | Sent by the server | Target | `type` | Priority | Notes |
 |---|---|---|---|---|
@@ -196,7 +230,7 @@ who received what.
   calls `POST /v1/push-tests/{id}:received`; `GET /v1/push-tests/{id}` gives `received` or `timeout` (120 s; UI shows
   "अभी भी इंतज़ार…" at 60 s). Advice (autostart, battery, channel, Play services) is computed on the device.
 
-## 12. Payments (Play Billing only)
+## 12. Payments (Play Billing on Android, App Store on iOS)
 
 - Show prices from Play `ProductDetails`, never hard-coded. `GET /v1/products` maps our plan ids to Play
   product/base-plan ids, `billing_period` (`P4M`, `P1Y`) and `renews`.
@@ -212,6 +246,26 @@ who received what.
   `POST /v1/me/trial`.
 - Restore (S32/D08): `queryPurchasesAsync` → verify each → `getEntitlement`. A different active account owns it →
   `409 purchase_owned_by_other_account` ("sign in with the Google account you used then").
+
+**iOS (StoreKit 2):**
+
+- Products from `GET /v1/products` → `appstore_product_id` (`in.sarkarimatch.pro.yearly` auto-renewable with a 14-day
+  intro free trial; `in.sarkarimatch.pro.season4m` non-renewing, 4 months, "does not auto-renew"). Prices from
+  `Product.displayPrice`; show the intro offer only when `isEligibleForIntroOffer`.
+- Needs an account first (Google/Apple, or anonymous). Purchase with
+  `.appAccountToken(UUID(uuidString: user.billing_account_ref))`.
+- After `.success(.verified(tx))`, for every `Transaction.updates` item and on app start/restore for every
+  `Transaction.currentEntitlements` item: `POST /v1/me/purchases/app-store {signed_transaction: result.jwsRepresentation,
+  signed_renewal_info: status.renewalInfo.jwsRepresentation (auto-renewable, optional)}`; then `tx.finish()` (after 200,
+  or after 402 `purchase_invalid`). `.pending` (Ask to Buy / SCA) → wait for `Transaction.updates`.
+- Same `409 purchase_owned_by_other_account` rule ("sign in with the account you used then").
+- Gate Pro on the entitlement as on Android. `Entitlement.platform` tells which store bills the user:
+  `manage_url` is the Play link for `android` and `https://apps.apple.com/account/subscriptions` for `ios` (in-app,
+  prefer StoreKit `showManageSubscriptions`). On the other platform show "manage in Google Play / the App Store" as
+  text — a store cannot manage the other store's subscription. `duplicate_store_subscription=true` → S32 suggests
+  cancelling one.
+- The server trial (`POST /v1/me/trial`) works on iOS too; after an App Store intro free trial `trial_available` is
+  false (one free trial per account).
 
 ## 13. Reports, usage counters, backup, family
 
@@ -239,8 +293,8 @@ working from its local catalog during an outage; check health after 3 consecutiv
 
 ## 16. Not in this contract / removed
 
-`/admin/**` (curation console), `/hooks/play-rtdn` (Pub/Sub push) and `/internal/**` (scheduler ticks) are
-server-only. **Removed on 2026-11-19:** `/v1/auth/otp:*`, `/v1/me/profile`, `/v1/eligibility/check`,
+`/admin/**` (curation console), `/hooks/play-rtdn` (Pub/Sub push), `/hooks/app-store` (App Store Server
+Notifications V2) and `/internal/**` (scheduler ticks) are server-only. **Removed on 2026-11-19:** `/v1/auth/otp:*`, `/v1/me/profile`, `/v1/eligibility/check`,
 `/v1/me/sync`, `/v1/me/matches/**`, `/v1/me/actions:batch`, `/v1/notices` (list), `/v1/me/posts/{id}/eligibility`,
 `/v1/me/applications/**`, `/v1/me/clashes`, `/v1/me/notification-prefs`, `/v1/me/notifications`,
 `/v1/me/delivery-receipts`, `/v1/me/devices/{id}/self-tests/**` (→ `/v1/push-tests`), `/v1/me/exports/**` (→ local
@@ -254,7 +308,7 @@ catalog).
 ## 17. Server implementation notes (Go backend, 2026-11-19)
 
 The contract is implemented in [`backend/`](../../backend/) (Go + PostgreSQL, backend ADR-13). Contract tests validate
-live responses against this file's component schemas and fail if any of the 36 paths is not routed.
+live responses against this file's component schemas and fail if any of the 37 paths is not routed.
 
 | Topic | Behaviour the app can rely on |
 |---|---|
@@ -265,4 +319,7 @@ live responses against this file's component schemas and fail if any of the 36 p
 | Catalog `?locales=` | Normalised (sorted, `en` added). Each language's chain is pre-rendered and listed in `CatalogHead.sha256`; other sets are rendered on demand (not listed in `sha256`, verify with the response `ETag`) |
 | `ETag`s | Catalog files: the body's sha256 (quoted); backup and family watch-list: the version number (quoted) |
 | Family invite | `FamilyInviteView.state=declined` after `:decline`; tokens are 128-bit, single use, 7 days |
+| App Store verify | `signed_transaction` must verify to Apple Root CA G3 with our bundle id; Sandbox accepted (App Review/TestFlight) and flagged as test purchases; replays are idempotent; an expired old JWS → `402` unless renewal info / the Server API shows renewal or grace |
+| App Store notifications | `/hooks/app-store` (server-only, not in this contract): state is re-derived from Apple's signed data; the app refreshes on the `account`/`entitlement` push as for Play |
+| `DeviceInput.platform` | Optional; missing = `android` (older Android builds); unknown value → `422` |
 | Open question | Topic names: the spec says `p_{post_id}` / `n_{notice_id}` while ids already carry `p_` / `n_` prefixes, so the server currently sends to `p_p_…` / `n_n_…`. Decide (keep literal, or use the id itself as the topic) before the app ships topic subscriptions |

@@ -6,7 +6,9 @@ package account
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strconv"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/amanroy3901/job-vac/backend/internal/problem"
 	"github.com/amanroy3901/job-vac/backend/internal/push"
 	"github.com/amanroy3901/job-vac/backend/internal/rules"
+	"github.com/amanroy3901/job-vac/backend/internal/seal"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -28,7 +31,7 @@ const DeletionGrace = 7 * 24 * time.Hour
 type User struct {
 	ID                string
 	FirebaseUID       string
-	AuthKind          string // anonymous | google
+	AuthKind          string // anonymous | google | apple
 	State             string // active | pending_deletion | deleted
 	Locale            string
 	BillingAccountRef string
@@ -43,7 +46,14 @@ type Service struct {
 	Now  func() time.Time
 	// FirebaseAdmin disables/deletes Firebase users on deletion (nil = log only).
 	FirebaseAdmin FirebaseAdmin
+	// Apple exchanges Sign in with Apple authorization codes for refresh tokens (revoked on deletion, guideline
+	// 5.1.1(v)). nil = codes are ignored.
+	Apple auth.AppleTokens
+	Seal  *seal.Sealer
 }
+
+// Linked reports a Google- or Apple-linked account (backup and cross-device restore need one).
+func (u *User) Linked() bool { return u.AuthKind == "google" || u.AuthKind == "apple" }
 
 // FirebaseAdmin is the Admin SDK surface used for erasure.
 // TODO: REST implementation (identitytoolkit accounts:update disableUser / accounts:delete) with ADC.
@@ -86,6 +96,7 @@ func (s *Service) Touch(ctx context.Context, userID string) {
 
 // DeviceInput is the API DeviceInput.
 type DeviceInput struct {
+	Platform    string  `json:"platform"` // android | ios ("" = android, for app versions before iOS)
 	FCMToken    string  `json:"fcm_token"`
 	AppVersion  int     `json:"app_version"`
 	Locale      string  `json:"locale"`
@@ -95,6 +106,9 @@ type DeviceInput struct {
 // Validate checks a DeviceInput.
 func (d DeviceInput) Validate(prefix string) error {
 	var fe []problem.FieldError
+	if d.Platform != "" && d.Platform != "android" && d.Platform != "ios" {
+		fe = append(fe, problem.FieldError{Field: prefix + "platform", Code: "unknown_code"})
+	}
 	if d.FCMToken == "" || len(d.FCMToken) > 4096 {
 		fe = append(fe, problem.FieldError{Field: prefix + "fcm_token", Code: "required"})
 	}
@@ -121,6 +135,9 @@ type SessionRequest struct {
 	ReferralCode          *string      `json:"referral_code"`
 	MergeAnonymousIDToken *string      `json:"merge_anonymous_id_token"`
 	Device                *DeviceInput `json:"device"`
+	// AppleAuthorizationCode is ASAuthorizationAppleIDCredential.authorizationCode (iOS, after Sign in with Apple);
+	// exchanged for a refresh token that is revoked when the account is deleted.
+	AppleAuthorizationCode *string `json:"apple_authorization_code"`
 }
 
 // SessionResult is what startSession needs to render (the entitlement is added by the caller).
@@ -147,9 +164,9 @@ func (s *Service) StartSession(ctx context.Context, id *auth.Identity, req Sessi
 			return nil, err
 		}
 	}
-	kind := "anonymous"
-	if !id.IsAnonymous() {
-		kind = "google"
+	kind := id.Kind()
+	if kind == "" {
+		return nil, problem.New(401, problem.Unauthenticated, "sign-in provider not accepted")
 	}
 	res := &SessionResult{}
 	err := db.InTx(ctx, s.Pool, func(tx pgx.Tx) error {
@@ -168,11 +185,11 @@ func (s *Service) StartSession(ctx context.Context, id *auth.Identity, req Sessi
 		case err != nil:
 			return err
 		default:
-			if u.AuthKind == "anonymous" && kind == "google" { // linkWithCredential keeps the uid
-				if _, err := tx.Exec(ctx, `UPDATE app_user SET auth_kind = 'google' WHERE id = $1`, u.ID); err != nil {
+			if u.AuthKind == "anonymous" && kind != "anonymous" { // linkWithCredential keeps the uid (Google or Apple)
+				if _, err := tx.Exec(ctx, `UPDATE app_user SET auth_kind = $2::auth_kind_t WHERE id = $1`, u.ID, kind); err != nil {
 					return err
 				}
-				u.AuthKind = "google"
+				u.AuthKind = kind
 			}
 			if _, err := tx.Exec(ctx, `UPDATE app_user SET locale = $2, last_seen_at = now() WHERE id = $1`, u.ID, req.Locale); err != nil {
 				return err
@@ -206,7 +223,28 @@ func (s *Service) StartSession(ctx context.Context, id *auth.Identity, req Sessi
 		return nil, err
 	}
 	res.HasBackup = res.BackupUpdated != nil
+	if req.AppleAuthorizationCode != nil && *req.AppleAuthorizationCode != "" && kind != "anonymous" {
+		// Best effort: a failed exchange never fails sign-in; DELETE /v1/me accepts a fresh code instead.
+		if err := s.StoreAppleCode(ctx, res.User.ID, *req.AppleAuthorizationCode); err != nil {
+			slog.WarnContext(ctx, "sign in with apple code exchange failed", "err", err)
+		}
+	}
 	return res, nil
+}
+
+// StoreAppleCode exchanges a Sign in with Apple authorization code and stores the sealed refresh token.
+func (s *Service) StoreAppleCode(ctx context.Context, userID, code string) error {
+	if s.Apple == nil || s.Seal == nil {
+		return errors.New("sign in with apple is not configured")
+	}
+	rt, err := s.Apple.Exchange(ctx, code)
+	if err != nil {
+		return err
+	}
+	_, err = s.Pool.Exec(ctx, `INSERT INTO apple_credential (user_id, refresh_token_enc) VALUES ($1,$2)
+		ON CONFLICT (user_id) DO UPDATE SET refresh_token_enc = EXCLUDED.refresh_token_enc, updated_at = now()`,
+		userID, s.Seal.Seal([]byte(rt)))
+	return err
 }
 
 // mergeAnonymous moves grants, purchases and family links of the anonymous account (firebase uid anonUID) to
@@ -250,6 +288,7 @@ func recordConsentOnce(ctx context.Context, q db.Querier, userID, purpose, versi
 // Device is the API Device.
 type Device struct {
 	InstallationID string    `json:"installation_id"`
+	Platform       string    `json:"platform"`
 	FCMToken       string    `json:"fcm_token"`
 	AppVersion     int       `json:"app_version"`
 	Locale         string    `json:"locale"`
@@ -258,23 +297,28 @@ type Device struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
-const deviceCols = `installation_id, fcm_token, app_version, locale, device_label, is_primary, updated_at`
+const deviceCols = `installation_id, platform, fcm_token, app_version, locale, device_label, is_primary, updated_at`
 
 func scanDevice(r pgx.Row) (Device, error) {
 	var d Device
-	err := r.Scan(&d.InstallationID, &d.FCMToken, &d.AppVersion, &d.Locale, &d.DeviceLabel, &d.Primary, &d.UpdatedAt)
+	err := r.Scan(&d.InstallationID, &d.Platform, &d.FCMToken, &d.AppVersion, &d.Locale, &d.DeviceLabel, &d.Primary, &d.UpdatedAt)
 	return d, err
 }
 
 func upsertDevice(ctx context.Context, q db.Querier, userID, instID string, in DeviceInput) (Device, error) {
 	// An installation id moves to the latest account that registers it (sign-out → sign-in as someone else).
-	return scanDevice(q.QueryRow(ctx, `INSERT INTO device (installation_id, user_id, fcm_token, locale, app_version, device_label, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,now())
+	platform := in.Platform
+	if platform == "" {
+		platform = "android"
+	}
+	return scanDevice(q.QueryRow(ctx, `INSERT INTO device (installation_id, user_id, fcm_token, locale, app_version, device_label, platform, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,now())
 		ON CONFLICT (installation_id) DO UPDATE SET user_id = EXCLUDED.user_id, fcm_token = EXCLUDED.fcm_token,
+		  platform = EXCLUDED.platform,
 		  locale = EXCLUDED.locale, app_version = EXCLUDED.app_version, device_label = EXCLUDED.device_label,
 		  token_invalid_at = NULL, updated_at = now(),
 		  is_primary = CASE WHEN device.user_id = EXCLUDED.user_id THEN device.is_primary ELSE false END
-		RETURNING `+deviceCols, instID, userID, in.FCMToken, in.Locale, in.AppVersion, in.DeviceLabel))
+		RETURNING `+deviceCols, instID, userID, in.FCMToken, in.Locale, in.AppVersion, in.DeviceLabel, platform))
 }
 
 // UpsertDevice registers/refreshes an install. The first device of an account becomes primary.
@@ -428,7 +472,7 @@ type BackupInput struct {
 // GetBackup returns the blob or 404. format_version is stored as the first byte-free prefix in key_id
 // (schema has no column): key_id is "<format_version>:<key id>".
 func (s *Service) GetBackup(ctx context.Context, u *User) (*Backup, error) {
-	if u.AuthKind != "google" {
+	if !u.Linked() { // code name kept for compatibility: "Google or Apple sign-in required"
 		return nil, problem.New(403, problem.GoogleLinkRequired, "")
 	}
 	var b Backup
@@ -462,7 +506,7 @@ func splitKeyID(s string) (int, string) {
 // PutBackup stores the blob with compare-and-swap on version (If-Match). ifMatch < 0 means "no If-Match"
 // (allowed only for the first write).
 func (s *Service) PutBackup(ctx context.Context, u *User, in BackupInput, ifMatch int64) (*Backup, error) {
-	if u.AuthKind != "google" {
+	if !u.Linked() { // code name kept for compatibility: "Google or Apple sign-in required"
 		return nil, problem.New(403, problem.GoogleLinkRequired, "")
 	}
 	ct, err := base64.StdEncoding.DecodeString(in.Ciphertext)
@@ -512,6 +556,10 @@ func (s *Service) DeleteBackup(ctx context.Context, u *User) error {
 type DeletionStatus struct {
 	State        string     `json:"state"`
 	HardDeleteAt *time.Time `json:"hard_delete_at"`
+	// AppleRevocation (DELETE /v1/me only): queued = the Sign in with Apple refresh token is being revoked;
+	// token_missing = Apple-linked but the server holds no token and no apple_authorization_code was sent (the
+	// app should run Sign in with Apple again and repeat DELETE with the code); omitted otherwise.
+	AppleRevocation string `json:"apple_revocation,omitempty"`
 }
 
 // Status returns the deletion status of u.
@@ -525,11 +573,49 @@ func Status(u *User) DeletionStatus {
 	return DeletionStatus{State: "none"}
 }
 
+// DeletionInput carries the optional Sign in with Apple code for token revocation.
+type DeletionInput struct {
+	Reason                 string
+	AppleAuthorizationCode string
+	// AppleIdentity: the caller's current token is a Sign in with Apple token (sign_in_provider apple.com).
+	AppleIdentity bool
+}
+
 // RequestDeletion: pending_deletion + hard_delete_at = now + 7 d, family links removed (the other side is told),
-// devices and backup removed, Firebase user disabled. Play subscriptions are not cancelled here.
-func (s *Service) RequestDeletion(ctx context.Context, u *User, reason string) (DeletionStatus, error) {
+// devices and backup removed, Firebase user disabled, Sign in with Apple tokens revoked (job apple_revoke, App
+// Store guideline 5.1.1(v)). Play and App Store subscriptions are not cancelled here (only the user can, in the
+// store).
+func (s *Service) RequestDeletion(ctx context.Context, u *User, in DeletionInput) (DeletionStatus, error) {
 	at := s.now().Add(DeletionGrace)
+	revocation := ""
+	var fresh []byte // sealed refresh token from a code sent with this request
+	if in.AppleAuthorizationCode != "" && s.Apple != nil && s.Seal != nil {
+		rt, err := s.Apple.Exchange(ctx, in.AppleAuthorizationCode)
+		if err != nil {
+			slog.WarnContext(ctx, "sign in with apple code exchange at deletion failed", "err", err)
+		} else {
+			fresh = s.Seal.Seal([]byte(rt))
+		}
+	}
 	err := db.InTx(ctx, s.Pool, func(tx pgx.Tx) error {
+		var stored []byte
+		err := tx.QueryRow(ctx, `DELETE FROM apple_credential WHERE user_id = $1 RETURNING refresh_token_enc`, u.ID).Scan(&stored)
+		if err != nil && !db.IsNoRows(err) {
+			return err
+		}
+		for i, enc := range [][]byte{stored, fresh} {
+			if enc == nil {
+				continue
+			}
+			revocation = "queued"
+			if err := db.EnqueueJob(ctx, tx, "apple_revoke", map[string]string{"token_enc": base64.StdEncoding.EncodeToString(enc)},
+				fmt.Sprintf("apple_revoke:%s:%d:%d", u.ID, s.now().UnixNano(), i), time.Time{}); err != nil {
+				return err
+			}
+		}
+		if revocation == "" && (u.AuthKind == "apple" || in.AppleIdentity) {
+			revocation = "token_missing"
+		}
 		if u.State == "pending_deletion" {
 			at = *u.HardDeleteAt
 			return nil
@@ -570,7 +656,8 @@ func (s *Service) RequestDeletion(ctx context.Context, u *User, reason string) (
 				return err
 			}
 		}
-		return db.Audit(ctx, tx, u.ID, "delete_account_requested", "app_user", u.ID, nil, map[string]any{"reason": reason, "hard_delete_at": at})
+		return db.Audit(ctx, tx, u.ID, "delete_account_requested", "app_user", u.ID, nil,
+			map[string]any{"reason": in.Reason, "hard_delete_at": at, "apple_revocation": revocation})
 	})
 	if err != nil {
 		return DeletionStatus{}, err
@@ -580,7 +667,7 @@ func (s *Service) RequestDeletion(ctx context.Context, u *User, reason string) (
 			return DeletionStatus{}, err
 		}
 	}
-	return DeletionStatus{State: "pending", HardDeleteAt: &at}, nil
+	return DeletionStatus{State: "pending", HardDeleteAt: &at, AppleRevocation: revocation}, nil
 }
 
 // CancelDeletion restores a pending account.

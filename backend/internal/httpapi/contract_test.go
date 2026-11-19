@@ -91,11 +91,11 @@ func specOperations(t *testing.T) []string {
 
 func TestSpecLoadsAndSchemasCompile(t *testing.T) {
 	loadSpec(t)
-	if n := len(specDoc["paths"].(map[string]any)); n != 36 {
-		t.Errorf("expected 36 paths in openapi.yaml, got %d (update the route table and this test together)", n)
+	if n := len(specDoc["paths"].(map[string]any)); n != 37 {
+		t.Errorf("expected 37 paths in openapi.yaml, got %d (update the route table and this test together)", n)
 	}
 	for _, name := range []string{"AppConfig", "CatalogHead", "CatalogBatch", "CatalogSnapshot", "Notice", "SessionResponse",
-		"User", "Entitlement", "Device", "Problem", "FamilyLink", "ReferenceBundle"} {
+		"User", "Entitlement", "Device", "Problem", "FamilyLink", "ReferenceBundle", "AppStorePurchaseInput", "Product"} {
 		if _, err := specComp.Compile(specURL + "#/components/schemas/" + name); err != nil {
 			t.Errorf("%s: %v", name, err)
 		}

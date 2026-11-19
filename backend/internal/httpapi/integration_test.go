@@ -16,6 +16,7 @@ import (
 
 	"github.com/amanroy3901/job-vac/backend/internal/admin"
 	"github.com/amanroy3901/job-vac/backend/internal/app"
+	"github.com/amanroy3901/job-vac/backend/internal/appstore"
 	"github.com/amanroy3901/job-vac/backend/internal/auth"
 	"github.com/amanroy3901/job-vac/backend/internal/billing"
 	"github.com/amanroy3901/job-vac/backend/internal/blob"
@@ -26,12 +27,15 @@ import (
 )
 
 type env struct {
-	t    *testing.T
-	srv  *httptest.Server
-	app  *app.App
-	pool *pgxpool.Pool
-	play *billing.FakePlay
-	sent *push.Recorder
+	t     *testing.T
+	srv   *httptest.Server
+	app   *app.App
+	pool  *pgxpool.Pool
+	play  *billing.FakePlay
+	sent  *push.Recorder
+	apple *auth.FakeAppleTokens
+	asign *appstore.TestSigner
+	asapi *fakeServerAPI
 }
 
 func newEnv(t *testing.T) *env {
@@ -39,9 +43,16 @@ func newEnv(t *testing.T) *env {
 	cfg := &config.Config{Env: "test", Role: "all", AuthMode: "dev", AppCheckMode: "enforce", AdminAuthMode: "dev",
 		PushAuthMode: "off", PlayPackageName: "in.sarkarimatch.app", PlayMode: "fake", FCMMode: "log", BlobMode: "local",
 		PublicBaseURL: "https://sarkarimatch.in", APIBaseURL: "https://api.sarkarimatch.in", EntitlementKeyID: "k1"}
-	e := &env{t: t, pool: pool, play: billing.NewFakePlay(), sent: &push.Recorder{}}
+	signer, err := appstore.NewTestSigner()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := &env{t: t, pool: pool, play: billing.NewFakePlay(), sent: &push.Recorder{}, apple: &auth.FakeAppleTokens{}, asign: signer,
+		asapi: &fakeServerAPI{statuses: map[string][]appstore.LastTransaction{}}}
 	a, err := app.New(context.Background(), cfg, pool, app.Overrides{IDTokens: auth.DevVerifier{}, AppCheck: auth.AllowAppCheck{},
-		Play: e.play, Sender: e.sent, Store: blob.Local{Dir: t.TempDir()}, Admin: &admin.DevAuth{Pool: pool}})
+		Play: e.play, Sender: e.sent, Store: blob.Local{Dir: t.TempDir()}, Admin: &admin.DevAuth{Pool: pool}, Apple: e.apple,
+		AppStoreAPI: e.asapi, AppStore: &appstore.Verifier{Roots: signer.Roots(), BundleID: testBundle, AppAppleID: testAppAppleID,
+			Environments: []string{appstore.EnvProduction, appstore.EnvSandbox}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,6 +142,9 @@ func session(uid, provider, inst string) (string, map[string]any) {
 	tok := "dev:" + uid
 	if provider == "google" {
 		tok += ":google:" + uid + "@example.com"
+	}
+	if provider == "apple" {
+		tok += ":apple"
 	}
 	return tok, map[string]any{"installation_id": inst, "locale": "hi", "privacy_notice_version": "2026-11-19",
 		"device": map[string]any{"fcm_token": "fcm-" + inst, "app_version": 10, "locale": "hi", "device_label": "Phone " + inst}}

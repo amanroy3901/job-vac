@@ -21,13 +21,20 @@ var (
 // Identity is a verified Firebase user.
 type Identity struct {
 	UID      string
-	Provider string // "anonymous" | "google.com" | ...
-	Email    string // Google sign-in only; never stored in our DB (User.google_email is echoed from the token)
+	Provider string // Firebase sign_in_provider: "anonymous" | "google.com" | "apple.com"
+	Email    string // Google sign-in only is echoed (User.google_email); never stored in our DB
 	AuthTime time.Time
 }
 
 // IsAnonymous reports a Firebase anonymous account.
 func (i Identity) IsAnonymous() bool { return i.Provider == "anonymous" }
+
+// providerKinds maps the accepted Firebase sign_in_provider values to app_user.auth_kind (founder decision 9:
+// Google Sign-In, Sign in with Apple on iOS, or guest). Every other provider (password, phone, custom, …) is refused.
+var providerKinds = map[string]string{"anonymous": "anonymous", "google.com": "google", "apple.com": "apple"}
+
+// Kind returns the auth_kind for the identity's provider ("" when the provider is not accepted).
+func (i Identity) Kind() string { return providerKinds[i.Provider] }
 
 // IDTokenVerifier verifies Firebase ID tokens.
 type IDTokenVerifier interface {
@@ -67,6 +74,9 @@ func (v *FirebaseVerifier) VerifyIDToken(ctx context.Context, raw string) (*Iden
 	if c.AuthTime == 0 || time.Unix(c.AuthTime, 0).After(v.now().Add(v.leeway())) {
 		return nil, fmt.Errorf("%w: bad auth_time", ErrInvalid)
 	}
+	if providerKinds[c.Firebase.SignInProvider] == "" {
+		return nil, fmt.Errorf("%w: sign_in_provider %q not accepted", ErrInvalid, c.Firebase.SignInProvider)
+	}
 	return &Identity{UID: c.Subject, Provider: c.Firebase.SignInProvider, Email: c.Email,
 		AuthTime: time.Unix(c.AuthTime, 0)}, nil
 }
@@ -85,8 +95,8 @@ func (v *FirebaseVerifier) leeway() time.Duration {
 	return v.Leeway
 }
 
-// DevVerifier accepts "dev:<uid>" or "dev:<uid>:google[:email]" (local development and tests only; config refuses
-// it in prod).
+// DevVerifier accepts "dev:<uid>", "dev:<uid>:google[:email]" or "dev:<uid>:apple" (local development and tests
+// only; config refuses it in prod).
 type DevVerifier struct{}
 
 // VerifyIDToken implements IDTokenVerifier.
@@ -104,6 +114,9 @@ func (DevVerifier) VerifyIDToken(_ context.Context, raw string) (*Identity, erro
 		if len(parts) >= 4 {
 			id.Email = parts[3]
 		}
+	}
+	if len(parts) >= 3 && parts[2] == "apple" {
+		id.Provider = "apple.com"
 	}
 	return id, nil
 }

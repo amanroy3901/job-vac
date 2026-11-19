@@ -63,11 +63,23 @@ func TestFirebaseVerifier(t *testing.T) {
 		t.Fatalf("identity = %+v", id)
 	}
 
+	for prov, kind := range map[string]string{"apple.com": "apple", "anonymous": "anonymous", "google.com": "google"} {
+		c := base()
+		c["firebase"] = map[string]any{"sign_in_provider": prov}
+		id, err := v.VerifyIDToken(context.Background(), signRS(t, key, "k1", c))
+		if err != nil || id.Kind() != kind {
+			t.Errorf("%s: %+v %v", prov, id, err)
+		}
+	}
+
 	cases := map[string]func(jwt.MapClaims){
-		"wrong aud":        func(c jwt.MapClaims) { c["aud"] = "other" },
-		"wrong iss":        func(c jwt.MapClaims) { c["iss"] = "https://securetoken.google.com/other" },
-		"no sub":           func(c jwt.MapClaims) { c["sub"] = "" },
-		"future auth_time": func(c jwt.MapClaims) { c["auth_time"] = now.Add(time.Hour).Unix() },
+		"wrong aud":         func(c jwt.MapClaims) { c["aud"] = "other" },
+		"wrong iss":         func(c jwt.MapClaims) { c["iss"] = "https://securetoken.google.com/other" },
+		"no sub":            func(c jwt.MapClaims) { c["sub"] = "" },
+		"future auth_time":  func(c jwt.MapClaims) { c["auth_time"] = now.Add(time.Hour).Unix() },
+		"password provider": func(c jwt.MapClaims) { c["firebase"] = map[string]any{"sign_in_provider": "password"} },
+		"phone provider":    func(c jwt.MapClaims) { c["firebase"] = map[string]any{"sign_in_provider": "phone"} },
+		"no provider":       func(c jwt.MapClaims) { delete(c, "firebase") },
 	}
 	for name, mut := range cases {
 		c := base()

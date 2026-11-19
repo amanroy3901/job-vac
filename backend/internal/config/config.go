@@ -25,7 +25,7 @@ type Config struct {
 	// Firebase / Google
 	FirebaseProjectID     string // aud/iss of Firebase ID tokens
 	FirebaseProjectNumber string // App Check aud/iss
-	AuthMode              string // firebase | dev (dev accepts "Bearer dev:<uid>[:google]"; refused in prod)
+	AuthMode              string // firebase | dev (dev accepts "Bearer dev:<uid>[:google|:apple]"; refused in prod)
 	AppCheckMode          string // enforce | monitor | off
 	AppCheckAppIDs        []string
 
@@ -43,6 +43,22 @@ type Config struct {
 	// Play
 	PlayPackageName string
 	PlayMode        string // google | fake
+
+	// App Store (iOS, founder decision 9)
+	AppStoreMode         string   // apple | fake (fake: trusts a per-process test PKI + Xcode/LocalTesting payloads; never prod)
+	AppStoreBundleID     string   // iOS bundle id: JWS bundleId check, Server API `bid`, Sign in with Apple client_id
+	AppStoreAppAppleID   int64    // App Store Connect Apple ID of the app (Production notifications)
+	AppStoreEnvironments []string // accepted environments (default Production,Sandbox — App Review buys in Sandbox)
+	AppStoreAPIKeyID     string   // optional App Store Server API (In-App Purchase key)
+	AppStoreAPIIssuerID  string
+	AppStoreAPIKeyPEM    string
+	AppStoreAPISandbox   bool // use api.storekit-sandbox.apple.com (staging)
+
+	// Sign in with Apple token revocation
+	AppleSignInMode string // apple | log
+	AppleTeamID     string
+	AppleSIWAKeyID  string
+	AppleSIWAKeyPEM string
 
 	// FCM
 	FCMMode string // fcm | log
@@ -88,6 +104,18 @@ func Load() (*Config, error) {
 		TickServiceAccount:    os.Getenv("TICK_SERVICE_ACCOUNT"),
 		PlayPackageName:       get("PLAY_PACKAGE_NAME", "in.sarkarimatch.app"),
 		PlayMode:              get("PLAY_MODE", "google"),
+		AppStoreMode:          get("APPSTORE_MODE", "apple"),
+		AppStoreBundleID:      get("APPSTORE_BUNDLE_ID", "in.sarkarimatch.app"),
+		AppStoreAppAppleID:    int64(getInt("APPSTORE_APP_APPLE_ID", 0)),
+		AppStoreEnvironments:  getListDef("APPSTORE_ENVIRONMENTS", []string{"Production", "Sandbox"}),
+		AppStoreAPIKeyID:      os.Getenv("APPSTORE_API_KEY_ID"),
+		AppStoreAPIIssuerID:   os.Getenv("APPSTORE_API_ISSUER_ID"),
+		AppStoreAPIKeyPEM:     os.Getenv("APPSTORE_API_KEY_PEM"),
+		AppStoreAPISandbox:    getBool("APPSTORE_API_SANDBOX", false),
+		AppleSignInMode:       get("APPLE_SIGNIN_MODE", "apple"),
+		AppleTeamID:           os.Getenv("APPLE_TEAM_ID"),
+		AppleSIWAKeyID:        os.Getenv("APPLE_SIWA_KEY_ID"),
+		AppleSIWAKeyPEM:       os.Getenv("APPLE_SIWA_KEY_PEM"),
 		FCMMode:               get("FCM_MODE", "fcm"),
 		BlobMode:              get("BLOB_MODE", "local"),
 		BlobDir:               get("BLOB_DIR", "./var/blob"),
@@ -135,6 +163,12 @@ func (c *Config) validate() error {
 		if c.Role == "all" {
 			errs = append(errs, errors.New("ROLE=all is for local development only"))
 		}
+		if c.AppStoreMode != "apple" || c.AppStoreAppAppleID == 0 {
+			errs = append(errs, errors.New("APPSTORE_MODE=apple and APPSTORE_APP_APPLE_ID are required in prod"))
+		}
+		if c.AppleSignInMode != "apple" || c.AppleTeamID == "" || c.AppleSIWAKeyID == "" || c.AppleSIWAKeyPEM == "" {
+			errs = append(errs, errors.New("APPLE_SIGNIN_MODE=apple with APPLE_TEAM_ID, APPLE_SIWA_KEY_ID and APPLE_SIWA_KEY_PEM are required in prod (token revocation on deletion)"))
+		}
 	}
 	return errors.Join(errs...)
 }
@@ -169,6 +203,13 @@ func getDur(k string, def time.Duration) time.Duration {
 		if d, err := time.ParseDuration(v); err == nil {
 			return d
 		}
+	}
+	return def
+}
+
+func getListDef(k string, def []string) []string {
+	if l := getList(k); len(l) > 0 {
+		return l
 	}
 	return def
 }

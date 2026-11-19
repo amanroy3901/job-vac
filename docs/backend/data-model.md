@@ -4,7 +4,11 @@ The DDL is in [`schema.sql`](./schema.sql) (PostgreSQL 16; it loads cleanly into
 2026-11-19). The Go backend applies it verbatim as migration `00001_baseline.sql`; its additions (app_config table,
 family `relation`/`declined`, catalog file digests, nullable `review_task.source_document_id`, purchase base plan,
 seeds) are in `backend/migrations/00002_go_backend.sql` and listed in `backend/README.md`; fold them in here at the
-next design pass. This document explains the shape, the personal-data inventory and the retention rules.
+next design pass. The **iOS additions (founder decision 9)** are already folded into `schema.sql` and also ship as
+the idempotent migration `00003_ios.sql` for databases created before them: `auth_kind_t` + `apple`,
+`ent_source_t` + `appstore_season`/`appstore_year`, `device.platform`, `apple_credential`, `product.appstore_product_id`,
+`purchase.provider ∈ {play, app_store}` + `original_transaction_id`/`environment`/`last_event_at`,
+`app_store_notification`, `user_entitlement.platform`. This document explains the shape, the personal-data inventory and the retention rules.
 
 **Privacy model (founder decisions 2026-11-19, ADR-11).** The eligibility profile, matches, reminder schedule,
 actions, applications and inbox exist **only on the user's phone** (Room, [frontend data-layer.md](../frontend/data-layer.md)).
@@ -36,7 +40,8 @@ erDiagram
   app_user ||--o{ family_link : "owner"
   family_link }o--o| app_user : "member"
   family_link ||--o| family_watchlist : "E2E-encrypted"
-  app_user ||--o{ purchase : buys
+  app_user ||--o| apple_credential : "Sign in with Apple (revoke on delete)"
+  app_user ||--o{ purchase : "buys (Play or App Store)"
   purchase ||--o{ entitlement_grant : grants
   app_user ||--o{ entitlement_grant : holds
   app_user ||--|| user_entitlement : "materialized"
@@ -65,6 +70,8 @@ Removed in this revision (they held per-user eligibility data or served WhatsApp
 | `notification_text(template, locale)` | Only for the few pushes the server composes for one account (N-31 trial ending, Pro expiry, payment hold, family link changes). Match/reminder/lifecycle pushes are composed on the device from app string resources. |
 | `app_user.auth_kind` (`anonymous`/`google`) | A guest gets a Firebase anonymous account only when a server feature first needs one; linking Google keeps the same uid. No email, name or phone is copied into our database. |
 | `device` only for accounts | Needed for account pushes, family relay and the primary alert install (`is_primary`, B15/N-47); guests receive topic pushes only, which need no registration with us. |
+| `purchase.provider` = `play` \| `app_store`; one `user_entitlement` | Both stores write grants for the same account; the entitlement is computed over all of them (payments §4), so moving between Android and iOS keeps Pro. App Store rows are keyed by `originalTransactionId`; `user_entitlement.platform` is the store behind the chosen source (manage link). |
+| `apple_credential` | Only the sealed Sign in with Apple refresh token, kept solely to revoke it at account deletion (App Store guideline 5.1.1(v)); no Apple email or name is stored. |
 | `backup_blob` | One opaque ciphertext ≤ 64 KB per account, compare-and-swap by `version`. Key in Google Block Store on the device; we hold only `key_id`. |
 | `family_link` + `family_watchlist` | Link ids, states and one encrypted watch-list; the key is in the invite URL fragment, so the server cannot read who or what is being followed. |
 | `topic_send` with deterministic ids (`r:{post}:{kind}:{date}`, `l:{event}`, `sync:{seq}`) | Idempotent scheduling of the backup topic pushes; the same `reminder_id` the device uses for its local alarm. |
@@ -93,7 +100,8 @@ What the **server** holds:
 | Data | Where | Why (purpose) | Protection | Retention |
 |---|---|---|---|---|
 | Firebase UID; Google account identity (email, Google id) | app_user (uid only); Firebase Auth (Google identity) | sign-in, restore purchases/backup on a new phone | — | account life |
-| Installation id, FCM token, app locale, app version | device | account pushes, family relay | — | until device removed; tokens invalid > 60 d purged |
+| Sign in with Apple refresh token (iOS) | apple_credential | revoke the app's Apple authorization at account deletion | AES-GCM sealed | until deletion is requested (revoked then deleted) |
+| Installation id, platform (android/ios), FCM token, app locale, app version | device | account pushes, family relay | — | until device removed; tokens invalid > 60 d purged |
 | Encrypted backup | backup_blob | restore the on-device profile/state on a new phone (opt-in) | end-to-end encrypted; key never sent to us | until disabled/erasure |
 | Family link (two account ids) + encrypted watch-list | family_link, family_watchlist | family alerts (P1, opt-in by both people) | watch-list end-to-end encrypted | until either side ends it/erasure |
 | Consent records | consent_log | proof of consent for account features (DPDP s.6) | append-only | account life + **3 years** after erasure, pseudonymous (*legal check*) |
@@ -125,7 +133,11 @@ deletes the FCM token. With no account this is the whole erasure.
 
 1. In one transaction: `app_user.state = pending_deletion`, `hard_delete_at = now() + 7 d`, family links `removed`
    (family members get one `family_removed` push), devices removed, an audit row.
-2. The Firebase user is disabled (Admin SDK).
+2. The Firebase user is disabled (Admin SDK). **Sign in with Apple:** the sealed Apple refresh token (from
+   `SessionRequest.apple_authorization_code`, or exchanged from `apple_authorization_code` sent with the DELETE) is
+   removed from `apple_credential` and revoked at `appleid.apple.com/auth/revoke` by a retried `apple_revoke` job
+   (response `apple_revocation: queued | token_missing`), as App Store guideline 5.1.1(v) and Apple's
+   account-deletion guidance require.
 3. After 7 days a `job(kind=hard_delete)` deletes `app_user` (cascades device, backup_blob, family links and
    watch-lists, entitlement rows), sets `purchase.user_id = NULL`, deletes the Firebase user and writes a
    `consent_log` row with purpose `account_deleted`.

@@ -18,9 +18,10 @@ CREATE SEQUENCE catalog_seq;                                 -- one value per pu
 
 -- ---------------------------------------------------------------- enums
 CREATE TYPE user_state      AS ENUM ('active','pending_deletion','deleted');
-CREATE TYPE auth_kind_t     AS ENUM ('anonymous','google');
+CREATE TYPE auth_kind_t     AS ENUM ('anonymous','google','apple');
 CREATE TYPE notice_status_t AS ENUM ('draft','upcoming','open','closed','cancelled');
-CREATE TYPE ent_source_t    AS ENUM ('trial','play_season','play_year','play_month','referral','promo');
+CREATE TYPE ent_source_t    AS ENUM ('trial','play_season','play_year','play_month','referral','promo',
+                                     'appstore_season','appstore_year');   -- iOS (decision 9)
 
 -- ---------------------------------------------------------------- locales (all major Indian languages; launch hi + en)
 CREATE TABLE locale (
@@ -84,10 +85,10 @@ CREATE TABLE notification_text (
 CREATE TABLE app_user (
   id                   text PRIMARY KEY,                    -- u_...
   firebase_uid         text NOT NULL UNIQUE,
-  auth_kind            auth_kind_t NOT NULL,                -- anonymous (guest who bought/joined) | google (linked)
+  auth_kind            auth_kind_t NOT NULL,                -- anonymous (guest who bought/joined) | google | apple (linked)
   state                user_state NOT NULL DEFAULT 'active',
   locale               text NOT NULL DEFAULT 'hi' REFERENCES locale(code),   -- for server-composed pushes + Problem.message
-  billing_account_ref  uuid NOT NULL DEFAULT gen_random_uuid(),  -- Play obfuscatedAccountId (no PII)
+  billing_account_ref  uuid NOT NULL DEFAULT gen_random_uuid(),  -- Play obfuscatedAccountId = StoreKit appAccountToken (no PII)
   referral_code        text NOT NULL UNIQUE,
   created_at           timestamptz NOT NULL DEFAULT now(),
   last_seen_at         timestamptz,
@@ -100,7 +101,8 @@ CREATE INDEX app_user_hard_delete ON app_user (hard_delete_at) WHERE state = 'pe
 CREATE TABLE device (                                       -- installs of an account (not of guests without an account)
   installation_id      text PRIMARY KEY,                    -- Firebase Installations ID
   user_id              text NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
-  fcm_token            text NOT NULL,
+  platform             text NOT NULL DEFAULT 'android' CHECK (platform IN ('android','ios')),
+  fcm_token            text NOT NULL,                       -- FCM registration token (on iOS FCM maps it to the APNs token)
   locale               text NOT NULL REFERENCES locale(code),
   app_version          int NOT NULL,
   device_label         text,                                -- "Redmi 12", for N-47 / S38 (owner-visible only)
@@ -110,6 +112,12 @@ CREATE TABLE device (                                       -- installs of an ac
 );
 CREATE INDEX device_user ON device (user_id);
 CREATE UNIQUE INDEX device_one_primary ON device (user_id) WHERE is_primary;
+
+CREATE TABLE apple_credential (                             -- Sign in with Apple refresh token, only to revoke it on deletion
+  user_id           text PRIMARY KEY REFERENCES app_user(id) ON DELETE CASCADE,  -- (App Store guideline 5.1.1(v))
+  refresh_token_enc bytea NOT NULL,                         -- AES-GCM sealed; never logged, never returned
+  updated_at        timestamptz NOT NULL DEFAULT now()
+);
 
 CREATE TABLE consent_log (                                  -- append-only, minimal (DPDP s.6 proof for account features)
   id          bigserial PRIMARY KEY,
@@ -365,6 +373,7 @@ CREATE TABLE product (
   kind            text NOT NULL,
   play_product_id text NOT NULL,
   play_base_plan_id text NOT NULL,
+  appstore_product_id text UNIQUE,                          -- StoreKit product id (iOS); NULL = not sold on iOS
   duration_days   int NOT NULL,
   active          boolean NOT NULL DEFAULT true
 );
@@ -372,9 +381,9 @@ CREATE TABLE product (
 CREATE TABLE purchase (
   id                  text PRIMARY KEY,
   user_id             text REFERENCES app_user(id) ON DELETE SET NULL,  -- kept (financial record) after deletion, unlinked
-  provider            text NOT NULL DEFAULT 'play' CHECK (provider = 'play'),
+  provider            text NOT NULL DEFAULT 'play' CHECK (provider IN ('play','app_store')),
   product_id          text NOT NULL REFERENCES product(id),
-  token_hash          bytea NOT NULL UNIQUE,                -- sha256(purchaseToken)
+  token_hash          bytea NOT NULL UNIQUE,                -- sha256(purchaseToken) | sha256('appstore:'||originalTransactionId)
   token_enc           bytea,
   linked_token_hash   bytea,                                -- Play linkedPurchaseToken (upgrade/resubscribe)
   order_id            text,
@@ -385,8 +394,19 @@ CREATE TABLE purchase (
   acknowledged_at     timestamptz,
   last_verified_at    timestamptz,
   raw                 jsonb,                                -- last provider response (no PII)
+  original_transaction_id text,                             -- App Store: one row per originalTransactionId
+  environment         text,                                 -- App Store: Production | Sandbox
+  last_event_at       timestamptz,                          -- App Store signedDate of the newest applied JWS (ordering)
   created_at          timestamptz NOT NULL DEFAULT now(),
   updated_at          timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX purchase_appstore_otid ON purchase (original_transaction_id) WHERE provider = 'app_store';
+
+CREATE TABLE app_store_notification (                       -- App Store Server Notifications V2 dedupe (notificationUUID)
+  notification_uuid text PRIMARY KEY,
+  notification_type text NOT NULL,
+  subtype           text,
+  received_at       timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE entitlement_grant (
@@ -408,6 +428,7 @@ CREATE TABLE user_entitlement (                             -- materialized from
   plan          text NOT NULL,                              -- free|pro
   status        text NOT NULL,                              -- active|in_grace|on_hold|expired|none
   source        ent_source_t,
+  platform      text CHECK (platform IN ('android','ios')),  -- store behind `source` (manage link); NULL for trial/referral/promo
   starts_at     timestamptz,
   expires_at    timestamptz,
   auto_renewing boolean NOT NULL DEFAULT false,
@@ -491,6 +512,8 @@ CREATE TABLE audit_log (                                    -- append-only; admi
 CREATE INDEX audit_entity ON audit_log (entity, entity_id);
 
 -- +goose Down
+DROP TABLE IF EXISTS app_store_notification CASCADE;
+DROP TABLE IF EXISTS apple_credential CASCADE;
 DROP TABLE IF EXISTS audit_log CASCADE;
 DROP TABLE IF EXISTS admin_user CASCADE;
 DROP TABLE IF EXISTS job CASCADE;

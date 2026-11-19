@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="tab_jobs">नौकरियाँ</string>
-    <string name="tab_forms">मेरे फ़ॉर्म</string>
-    <string name="tab_profile">प्रोफ़ाइल</string>
-    <string name="force_update">ऐप अपडेट करें</string>
-    <string name="outage">सेवा थोड़ी देर के लिए बंद है</string>
-</resources>
