@@ -1,0 +1,88 @@
+{
+  "wtp_range": {
+    "low": 8,
+    "target": 16,
+    "aspirational": 28,
+    "currency": "INR",
+    "period": "monthly",
+    "usd_equivalent_monthly": { "low": 0.09, "target": 0.18, "aspirational": 0.32 },
+    "annualized_inr": { "low": 99, "target": 199, "aspirational": 349 },
+    "note": "Expressed per month for comparability; in practice this audience buys annual/exam-cycle passes, not monthly subscriptions. FX ~INR 88/USD (estimate)."
+  },
+  "van_westendorp": {
+    "too_cheap": 0,
+    "cheap_but_acceptable": 8,
+    "getting_expensive": 16,
+    "too_expensive": 41,
+    "currency": "INR/month",
+    "derivation": "too_cheap = 0: every direct competitor gives alerts free (Testbook, Adda247, FreeJobAlert, Sarkari Result sites, Telegram), so there is no quality floor. cheap_but_acceptable = INR 8/mo (INR 99/yr): the 'impulse annual' price point common in Indian edtech promos (PW MTS practice batch INR 399; coupon-site Testbook Pass offers INR 299-349/yr). getting_expensive = modal alert price is INR 0, so anchored instead to ~20% of the nearest paid substitute (Testbook unified Pass ~INR 749/yr = ~INR 62/mo -> INR 12.5/mo) x desire multiplier 1.32 = ~INR 16/mo (~INR 199/yr). too_expensive = capped at the pain threshold: an alerts product cannot cost more than ~2/3 of a full mock-test pass that includes alerts for free -> INR 499/yr = ~INR 41/mo."
+  },
+  "desire_premium_multiplier": 1.32,
+  "desire_premium_rationale": "Primary driver = control (1.2-1.5x band); desire_strength_label = 'moderate' so the low end 1.2x is used, not the midpoint. Secondary driver = survival scores 4 (>=3, different from primary) -> +10% bonus => 1.2 x 1.1 = 1.32. Applied to a near-zero base, the premium is almost irrelevant in absolute terms (+INR 4/mo).",
+  "recommended_pricing_model": "Freemium (ad-supported free tier) + low-priced annual 'exam-season' Pro pass, with a transactional add-on to test: paid application-assist per form. Subscription-only is NOT viable against free alternatives.",
+  "pricing_models_considered": [
+    {
+      "model": "Freemium -> subscription (monthly/annual)",
+      "fit_rationale": "Prep-reminder layer is daily; alert layer is event-driven. Annual pass mirrors Testbook/PW norms.",
+      "risk": "Core value (alerts) must be free to compete, so the paid tier must sell something else (ad-free, WhatsApp delivery, deeper eligibility, prep plans). India/SEA download-to-paid median ~0.7-1.4% (RevenueCat-cited)."
+    },
+    {
+      "model": "Ads only",
+      "fit_rationale": "How every alert aggregator (sarkariresult.com, FreeJobAlert) monetizes.",
+      "risk": "Head keyword CPC ~$0.01 shows advertisers value this intent near zero; Indian eCPMs are low; requires millions of MAU to matter. Ads also undermine the trust/quiet positioning."
+    },
+    {
+      "model": "Consumables / per-transaction (assisted application, document kit, photo/signature resize + checklist)",
+      "fit_rationale": "Only non-prep WTP signal found: cyber cafes/CSCs charge INR 30-150 per form (commercial pages; NIOS CSC table ~INR 33).",
+      "risk": "Operationally heavy; accuracy/liability if a form is rejected; Aadhaar/face-verification flows (mySSC) limit third-party assistance; trust barrier for a new brand."
+    },
+    {
+      "model": "Subscription only (hard paywall)",
+      "fit_rationale": "RevenueCat global data shows hard paywalls convert ~10.7% vs ~2.1% freemium.",
+      "risk": "Users will not pay for something Testbook/Adda247/Telegram give free; would kill installs."
+    },
+    {
+      "model": "One-time purchase",
+      "fit_rationale": "Simple utility.",
+      "risk": "Low price ceiling (~INR 49-99); no recurring revenue; Indian Play Store paid-app conversion is poor."
+    }
+  ],
+  "recommended_price": {
+    "monthly": 29,
+    "annual": 199,
+    "annual_discount_pct": 43,
+    "one_time": 0,
+    "transactional_test": "INR 29-49 per assisted application (undercuts cyber cafe INR 30-150)",
+    "launch_tactic": "Founding-member lifetime at INR 499 (approx 2.5x annual) only as a launch cash/review tactic, capped at first 500 buyers",
+    "currency": "INR"
+  },
+  "freemium_conversion_estimate": 0.008,
+  "freemium_conversion_rationale": "Category 'utility' typical is 1-4% globally; India/SEA download-to-paid medians are ~0.7-1.4% (RevenueCat via secondary sources) and India revenue per download ~$0.03 (TechCrunch/Sensor Tower). The free tier must contain the core value (alerts), so value gating is weak (the 'pain of free' is just ads). Desire is moderate, not strong. -> 0.8%, at the low end. Flag: unvalidated.",
+  "competitive_pricing_range": {
+    "min": 0,
+    "max": 62,
+    "modal": 0,
+    "currency": "INR/month",
+    "notes": "Alerts: INR 0 everywhere (modal). Max = nearest paid substitute that bundles alerts: Testbook unified Pass ~INR 674-749/yr (~INR 56-62/mo). PW govt batches INR 399-1,999 per batch. Different-model competitor: offline cyber cafe/CSC at INR 30-150 per form (transactional)."
+  },
+  "category_benchmark_range": {
+    "min": 1,
+    "max": 4,
+    "currency": "USD/month (framework 'Utility' benchmark, Western-calibrated)",
+    "india_adjusted_note": "Framework benchmarks are US-calibrated. Indian revenue per download is ~1/7 of SEA/LatAm (~$0.03 vs >$0.20). Our target of ~$0.18/mo sits far BELOW the framework's utility minimum ($1/mo) — per the skill's rule this means 'the app may struggle to sustain development'."
+  },
+  "b2b2c_potential": {
+    "exists": true,
+    "b2b_price_estimate": 2000,
+    "rationale": "Speculative: coaching institutes, Telegram channel admins, or small edtechs could license a verified, structured notification + eligibility feed/API (INR ~2,000-10,000/mo per institute, estimate, no evidence found). Flag as future expansion only; do not lead with it as a solo indie dev."
+  },
+  "market_insights_pricing_signals": [
+    "monetization_evidence (apps): Testbook unified Pass ~INR 674-749/yr; Testbook FY24 revenue INR 136.7 Cr with INR 84.9 Cr loss",
+    "monetization_evidence (apps): PW govt-exam batches INR 399-1,999",
+    "monetization_evidence (apps/web): cyber cafes/CSCs charge INR 30-150 per job application form",
+    "web-search: 'sarkari result' CPC ~$0.01 despite 79-124M monthly searches — near-zero commercial value of the alert intent",
+    "apps: Adda247 FY25 revenue flat ~INR 217 Cr, loss ~INR 103.6 Cr — even the scaled paid layer is not profitable",
+    "trend_velocity = stable (no premium-pricing tailwind)"
+  ],
+  "pricing_rationale": "Monetization evidence exists in the category, but NOT for alerts — it exists for prep (Testbook/PW) and for assisted form filling (cyber cafes). For the idea as stated, effective WTP for alerts is ~INR 0 for most users; a Pro tier at ~INR 199/yr is the realistic target and is UNVALIDATED. The skill's rule applies: when competing with strong free alternatives, the paid tier must deliver something free alternatives structurally can't — here the only candidate with an observed price is 'do the application for me / make me application-ready' (INR 29-49 per form). input user_extraction.json does not exist, so pain intensity was inferred from market evidence; proceeded without it."
+}

@@ -1,0 +1,76 @@
+{
+  "dimension_scores": {
+    "demand": 52,
+    "competition": 22,
+    "monetization": 15,
+    "distribution": 30,
+    "retention": 42,
+    "founder_market_fit": 50
+  },
+  "dimension_score_rationale": {
+    "demand": "Band 40-59 (desire_strength_label 'moderate' + signal validation): base 42 +10 cross-platform resonance (Google 'sarkari result' 79-124M searches/mo, 10-50M-install incumbents, 20M-sub YouTube creators, RRB 2025 >2.3 crore applications). No +5 (monetization_validated not set in idea.md). trend_velocity 'stable', not rising.",
+    "competition": "market_saturation 'high' (15/15). Differentiation opportunities exist (trust/quiet, single-state vernacular, assisted application) but the headline differentiator — eligibility-personalized alerts — already exists free (Sarkari Scan, India Govt Job Finder, TrueJobs) and is a sprint for Testbook/Adda247; official mySSC app absorbs SSC workflow. Scored just below the 25-49 band floor: 22. No FAANG penalty.",
+    "monetization": "cac.json viability 'not-viable'; best executable channel LTV:CAC 1.13:1; LTV ~INR 4.5 (~$0.05); WTP target ~INR 16/mo (~$0.18) — far below $1/mo. Band 10-34 -> 15. No +10 (freemium conversion 0.8% < 5%). market_size.json not run.",
+    "distribution": "distribution_verdict 'weak' (k ~0.12, ASO medium 10/15, creator fit low, paid not viable, no founder audience). Free organic channels exist (ASO long-tail, Telegram seeding), so not strictly paid-only -> upper-middle of 15-39 band: 30. No founder-audience bonus.",
+    "retention": "retention_verdict 'moderate', D30 8% (estimate) -> band 40-59 -> 42. No +5 (not daily). No -10 (strong external trigger exists).",
+    "founder_market_fit": "memory/user_profile.md missing -> default 50 (neutral), flagged. Known only: solo Android builder; no evidence of domain expertise, vernacular content ability, or aspirant-community presence — the true score is likely below 50."
+  },
+  "weights_applied": {
+    "demand": 0.20,
+    "competition": 0.10,
+    "monetization": 0.20,
+    "distribution": 0.20,
+    "retention": 0.15,
+    "founder_market_fit": 0.15
+  },
+  "floor_penalty": 0.528,
+  "floor_penalty_calc": "competition 22 < 25 -> x(22/25)=0.88; monetization 15 < 25 -> x(15/25)=0.60; 0.88 x 0.60 = 0.528",
+  "base_score": 35.4,
+  "base_score_calc": "52x0.20 + 22x0.10 + 15x0.20 + 30x0.20 + 42x0.15 + 50x0.15 = 10.4 + 2.2 + 3.0 + 6.0 + 6.3 + 7.5 = 35.4",
+  "missing_discount": 0.714,
+  "missing_discount_calc": "5 of 7 source dimensions available (missing: user_profile.md -> founder fit defaulted; market_size.json -> tam-sam-som-builder not part of this workflow run). 5/7 = 0.714",
+  "final_score": 13,
+  "final_score_calc": "35.4 x 0.528 x 0.714 = 13.35 -> 13",
+  "sensitivity": "Without the missing-input discount: 18.7 (still drop). Even if competition and monetization were each lifted to 25 (removing both floor penalties) and no discount applied, base = 36.0 -> 'pivot' at best. No plausible input change reaches 'test' (55) for the idea as stated.",
+  "verdict": "drop",
+  "score_confidence": "medium",
+  "missing_inputs": [
+    "memory/user_profile.md (founder-market fit defaulted to 50; budget tier assumed Bootstrap)",
+    "memory/ideas/govt-exam-reminders/market_size.json (tam-sam-som-builder not run)",
+    "memory/ideas/govt-exam-reminders/weighted_signals.json (not produced by this workflow)",
+    "memory/ideas/govt-exam-reminders/user_extraction.json (pain intensity / usage frequency inferred instead)",
+    "Direct Play Store review mining (1/3/5-star) — store pages not reachable from this environment"
+  ],
+  "top_strengths": [
+    { "dimension": "demand", "score": 52, "reason": "Enormous, durable, high-stakes audience: RRB NTPC 2025 ~1.22 crore + Group D ~1.08 crore applications; 'sarkari result' ~79-124M searches/mo; ~80% of job aspirants pursue govt jobs (CMIE)." },
+    { "dimension": "founder_market_fit", "score": 50, "reason": "Neutral default only — Android-first build is within a builder's skill set; no evidence of domain or distribution edge." }
+  ],
+  "top_weaknesses": [
+    { "dimension": "monetization", "score": 15, "reason": "LTV ~INR 4.5/user vs India EdTech CPI ~INR 68 and median ~INR 20; core value must be free; 'sarkari result' CPC ~$0.01." },
+    { "dimension": "competition", "score": 22, "reason": "15/15 saturation: Testbook (50M+ installs, ~879K ratings), Adda247, FreeJobAlert, Sarkari Result clones, Telegram, YouTube and the official mySSC app all deliver alerts free; eligibility filters already exist." }
+  ],
+  "killer_dimensions": ["monetization (15)", "competition (22)"],
+  "riskiest_assumption_test": {
+    "assumption": "Indian govt-exam aspirants will PAY (INR 199/yr for verified, eligibility-filtered, quiet alerts — or INR 39 per application for 'application-ready' help) for something they currently get free from Telegram, Testbook/Adda247 and Sarkari Result sites.",
+    "category": "monetization",
+    "criticality": 5,
+    "uncertainty": 5,
+    "rat_score": 25,
+    "experiment": {
+      "type": "WTP fake-door with real UPI payment (behavioral), seeded through aspirant communities",
+      "description": "Build in 2-3 days a Hindi+English mobile landing page with a working eligibility checker (DOB, qualification, category, state -> list of currently open/upcoming central + one state's exams with official links; data hand-curated for the next 60 days). After the result screen, show two offers: (A) 'Pro alerts on WhatsApp — only exams you're eligible for, every alert linked to the official PDF, no ads, no sales calls — INR 199/year' and (B) 'Application-ready kit for <current big exam, e.g., RRB/SSC> — document checklist, photo/signature resized to spec, fee & last-date reminders — INR 39'. Both buttons go to a real UPI/Razorpay payment page (refund promised if not delivered; deliver B manually as a concierge). Traffic: post the free checker in 20-30 Hindi-belt aspirant Telegram/WhatsApp groups (with admin permission) + up to INR 4,000 Meta ads to 18-30-year-olds in 2-3 Hindi-belt states. Track: checker completions, WhatsApp opt-ins, pay-click rate, actual payments.",
+      "duration": "14 days",
+      "estimated_cost": "~INR 5,000-8,000 (~$60-90): INR 4,000 ads, ~INR 1,000 domain/hosting/payment fees, rest buffer. Founder time ~25 hours.",
+      "pass_threshold": "From >= 300 completed eligibility checks within 14 days: >= 3% click a paid offer AND >= 10 completed UPI payments in total (A+B), AND >= 25% of completers opt in to free WhatsApp alerts. All three must hold.",
+      "fail_action": "drop"
+    },
+    "all_assumptions_ranked": [
+      { "assumption": "Users will pay for anything beyond free alerts (INR 199/yr Pro or INR 39/application)", "criticality": 5, "uncertainty": 5, "rat_score": 25 },
+      { "assumption": "Eligibility-filtered, trust-first alerts are preferred enough over Telegram/Testbook/Adda247 to install and keep", "criticality": 5, "uncertainty": 4, "rat_score": 20 },
+      { "assumption": "A no-audience solo builder can acquire aspirants via Telegram seeding + long-tail ASO at <= INR 5/install", "criticality": 4, "uncertainty": 4, "rat_score": 16 },
+      { "assumption": "Users keep notifications enabled and open >= 3x/month between exam events", "criticality": 4, "uncertainty": 3, "rat_score": 12 },
+      { "assumption": "Solo founder can keep a multi-board (central + state) notification and eligibility-rules database accurate and timely, in Hindi", "criticality": 4, "uncertainty": 3, "rat_score": 12 },
+      { "assumption": "Aspirants genuinely miss deadlines / feel the pain of noisy alerts", "criticality": 4, "uncertainty": 2, "rat_score": 8 }
+    ]
+  }
+}

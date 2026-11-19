@@ -1,0 +1,32 @@
+{
+  "natural_usage_frequency": "weekly",
+  "natural_usage_frequency_rationale": "Two layers with different rhythms. ALERT layer: event-driven. For a user tracking ~3-6 target exams, meaningful events (notification, form window, admit card, exam, answer key, result) cluster into a few days per month, then go silent for weeks — the app is passively 'kept' but rarely opened. PREP-REMINDER layer: could be daily, but daily prep already happens inside Testbook/Adda247/PW/YouTube, so the reminder layer nudges the user to OTHER apps. Net realistic active frequency: weekly, spiking around events.",
+  "external_trigger": "The push notification itself (exam calendar events are real-world, external, high-stakes triggers). Strong when it fires, absent between events. Delivery risk: aggressive battery optimization on popular Indian Android OEMs (Xiaomi, Vivo, Oppo, Realme) can delay/suppress pushes — a missed alert destroys trust in the core promise (developer-community knowledge; not quantified in this run).",
+  "habit_formation_factors": {
+    "usage_frequency": 2,
+    "external_trigger": 4,
+    "progress_reward_loop": 2,
+    "network_effects": 1,
+    "data_lock_in": 2,
+    "habit_stack": 3
+  },
+  "habit_formation_score": 2,
+  "habit_formation_score_rationale": "Mean of six factors = 2.3 -> rounded to 2/5. Only external trigger is strong. Progress loop (streaks/revision) exists only if prep-reminders are used, where incumbents' in-app streaks already compete. Data lock-in is small (profile + target exams re-enterable in 2 minutes). No network component.",
+  "churn_risk_factors": [
+    "Commodity substitution: the same alerts arrive free via Telegram/WhatsApp channels, Testbook/Adda247 notifications, YouTube — one missed or late alert and the user reverts",
+    "Event sparsity: long silent periods between relevant events make the app feel 'dead'; users uninstall to free storage on low-end phones",
+    "Notification permission revoked / OEM battery killers silently suppress pushes (Android 13+ requires runtime POST_NOTIFICATIONS permission)",
+    "Life-cycle churn: aspirant gets selected, ages out (age-limit cut-offs), or quits after a failed cycle — prep spans 3-6 years but individual attention fluctuates sharply after results",
+    "Noise fatigue if personalization is imprecise (wrong-eligibility alerts) — the opposite failure: too quiet if overly filtered",
+    "Prep reminders redirect usage to incumbents' apps where the actual studying happens"
+  ],
+  "estimated_retention": {
+    "d1": 0.28,
+    "d7": 0.14,
+    "d30": 0.08,
+    "basis": "Estimates, not measured. Framework category median for Education D30 is 6-12%; Productivity/tools 8-15%. Alert apps typically have decent 'installed' retention but low 'opened' retention. D30 here = active opens. 'Installed-and-push-enabled' D30 is plausibly 2-3x higher (estimate), which matters for push reach but not for ad/subscription revenue."
+  },
+  "churn_risk": "high",
+  "retention_verdict": "moderate",
+  "retention_verdict_rationale": "Not 'disposable' because high-stakes external triggers recur for years and users keep alert apps installed; not 'sticky' because opens are sparse and the value is fully substitutable. desire_scores.json (control 4, survival 4, moderate overall) supports reasonable install-retention but weak open-retention. user_extraction.json does not exist — usage frequency inferred from exam-calendar structure; proceeded without it."
+}

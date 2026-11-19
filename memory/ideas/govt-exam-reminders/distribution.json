@@ -1,0 +1,50 @@
+{
+  "organic_reach_potential": "medium",
+  "viral_loop_exists": true,
+  "viral_loop_type": "word-of-mouth",
+  "viral_loop_description": "Aspirants already forward every notification into WhatsApp/Telegram groups. If each in-app alert had a share card ('RRB NTPC 2026 — you're eligible; last date 12 Mar; apply link') that deep-links to the app for the recipient's own eligibility check, the forwarding habit could carry the brand. Today they forward the official PDF or a Sarkari Result link, not an app — so the loop is weak word-of-mouth plus a light content-as-distribution assist.",
+  "k_factor_estimate": 0.12,
+  "k_factor_calculation": "i (shares per user over lifetime) ~= 2.0 (shares of 1-2 high-stakes alerts per exam cycle) x c (recipient installs per share) ~= 0.06 (the recipient can read the info without installing; the info is available free everywhere) => k ~= 0.12. Directional; unvalidated.",
+  "k_factor_classification": "marginal",
+  "paid_feasibility": "not-viable",
+  "minimum_paid_budget_monthly": 15000,
+  "paid_feasibility_rationale": "India median CPI ~INR 20 across categories and ~INR 68 for EdTech (Linkrunner 2026 India report, 58-app vendor sample); Meta education CPI India benchmarks are elevated vs other Indian categories (SuperAds). Modelled LTV is ~INR 5 per install (see cac.json) — paid is cash burn at any budget. Minimum meaningful test budget ~INR 15,000/mo (~$170) only to learn CPI, not to grow. Builder tier: paid > $500/mo flagged risky; here it's not viable at all.",
+  "platform_advantage": {
+    "aso_opportunity": "medium",
+    "aso_score_breakdown": {
+      "category_competition": 1,
+      "keyword_opportunity": 2,
+      "search_intent_match": 3,
+      "review_velocity_potential": 2,
+      "visual_differentiation": 2,
+      "total": 10
+    },
+    "aso_rationale": "category_competition 1: education/exam category dominated by Testbook (50M+ installs, ~879K ratings), Adda247, PW, Unacademy. keyword_opportunity 2: head terms ('sarkari result', 'job alert', 'govt exam') owned by incumbents and keyword-stuffed clones, but long-tail state/vernacular terms ('<state> police bharti alert', 'patwari vacancy', TET) show low-quality apps with small installs (e.g., Sarkari Job Alerts Rajasthan ~113K). search_intent_match 3: users actively search Play for exactly this ('sarkari result app', 'govt job alert'). review_velocity 2: natural ask moment after a useful 'you're eligible' alert or after result day, but sparse. visual_differentiation 2: a clean, ad-light, trust-forward design can stand out from cluttered clones, but not against Testbook's polish.",
+    "featured_potential": false,
+    "featured_criteria_met": ["Serves an underrepresented audience (vernacular/state aspirants) — 1 of 5; Google Play India editorial featuring of a utility alert app is unlikely"]
+  },
+  "creator_economy_fit": "low",
+  "creator_fit_rationale": "Audience alignment is HIGH — govt-exam YouTube is huge (Rojgar with Ankit ~20M subs; Recruitment Hub ~1.1M; Rojgar Samachar India ~573K) — but these creators run their own apps/batches (Rojgar with Ankit sells batches via its own app) and are themselves the alert channel; promoting a third-party alert app cannibalizes them. Nothing visual to show, and a free/₹199 product supports no meaningful affiliate commission. Note: TikTok is banned in India; short-video = YouTube Shorts / Instagram Reels.",
+  "creator_fit_breakdown": {
+    "content_generation": "low",
+    "audience_alignment": "high",
+    "demo_ability": "medium",
+    "authenticity": "medium",
+    "affiliate_fit": "low"
+  },
+  "user_distribution_advantage": "None identified. memory/user_profile.md does not exist; per instructions the founder is treated as a solo indie Android developer, 'builder' tier, with NO existing audience, community presence, or regional/vernacular content operation. This is a major handicap in a category where incumbents own YouTube, Telegram and SEO.",
+  "user_advantage_type": "none",
+  "recommended_first_channel": "ASO on long-tail state/vernacular keywords (Hindi listing + one target state's recruitment terms), assisted by manual seeding in aspirant Telegram/WhatsApp groups via shareable eligibility cards",
+  "recommended_first_channel_rationale": "It is the only channel a solo Android builder with no audience can execute immediately at ~zero cash cost: Play listing experiments (custom store listings, Hindi localization) are within a developer's skill set; long-tail state terms have weak incumbents. Telegram/WhatsApp seeding is free but founder-time heavy and risks being treated as spam by admins; it validates the share-card loop. YouTube creator partnerships are aspirational (low fit, creators are competitors).",
+  "channels_ranked": [
+    { "channel": "ASO (long-tail state/vernacular)", "viability": "medium", "time_to_first_100_users": "3-6 weeks" },
+    { "channel": "Telegram/WhatsApp aspirant-group seeding with share cards", "viability": "medium", "time_to_first_100_users": "1-2 weeks" },
+    { "channel": "SEO long-tail eligibility pages (web companion)", "viability": "low", "time_to_first_100_users": "3-6 months" },
+    { "channel": "YouTube Shorts / Instagram Reels (founder-made)", "viability": "low", "time_to_first_100_users": "1-3 months, uncertain" },
+    { "channel": "Micro-creator / coaching-institute partnerships", "viability": "low", "time_to_first_100_users": "1-2 months if any partner agrees" },
+    { "channel": "Paid (Meta / Google App Campaigns)", "viability": "low", "time_to_first_100_users": "days, but at INR 20-68+ per install vs ~INR 5 LTV" }
+  ],
+  "distribution_verdict": "weak",
+  "tier_adjustment_applied": "builder (assumed, no user_profile.md): no adjustment per rubric. Raw verdict = weak because k-factor (0.12) < 0.2, creator fit low, paid not viable, no founder audience; ASO is the only medium dimension. Note it is NOT paid-only — there are free organic channels, they are just slow and contested.",
+  "distribution_verdict_rationale": "Huge audience, but every free path to it (Google SEO, Play head keywords, YouTube, Telegram) is owned by incumbents who give the same alerts away. With no founder audience, distribution depends on winning a long-tail niche via ASO and community seeding. Competitor distribution evidence (Testbook/Adda247 grew via SEO notification pages + YouTube + Telegram + funding) is not replicable by a solo builder."
+}
