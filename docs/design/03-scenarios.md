@@ -1,8 +1,10 @@
 # 03 — Scenario Catalogue (user flows)
 
-Every scenario lists **trigger → steps (screen IDs from 01) → end state**, the copy that matters, and edge cases. Screen-level copy and states are in 04-screens.md; push/WhatsApp templates (`N-xx`, `W-xx`) are in 05-notifications.md.
+Every scenario lists **trigger → steps (screen IDs from 01) → end state**, the copy that matters, and edge cases. Screen-level copy and states are in 04-screens.md; push templates (`N-xx`) are in 05-notifications.md.
 
-Notation: `S21` screen · `B04` sheet · `D01` dialog · `O01` banner · `N-01` push template · `W-01` WhatsApp template · `ev:` analytics event.
+**2026-11-19 founder decisions applied:** sign-in is Google (Credential Manager) or guest, no phone/OTP (SC-03, SC-44–SC-46); Play Billing only (SC-25 retired); no WhatsApp or SMS at all (SC-31 retired; delivery = FCM push + on-device backup reminders); family alerts are pushes to the member's own app, linked by a shared link/QR (SC-32); privacy notice, notification pre-prompt and ads notice (SC-47, SC-48); multilingual (SC-04, SC-49). Retired scenario numbers are kept as headings so links stay valid.
+
+Notation: `S21` screen · `B04` sheet · `D01` dialog · `O01` banner · `N-01` push template · `ev:` analytics event.
 
 ## 0. Core models the flows depend on
 
@@ -37,21 +39,22 @@ Rules: reminders fire only in `New/Reminding`. `Applied` and `NotInterested` are
 
 ### 0.2 Reminder scheduler (server, per user-job)
 
-| Slot | When (IST) | Free | Pro adds | Priority rank for daily cap |
-| --- | --- | --- | --- | --- |
-| R0 New match | at publish (≤ 6 h after review) | N-01 | W-01 | 4 |
-| Rp Periodic | every 3 days after R0 at user's reminder time (default 19:00) while ≥ 4 days left | N-02 | — | 6 |
-| R3 3 days before | L−3 at reminder time | N-03 | W-02 | 5 |
-| R1 1 day before | L−1 at reminder time, high priority | N-04 | W-02 + family F-01 | 2 |
-| R-last Last day | L−0 at 08:00, high priority | N-05 | W-03 + family F-01 | 1 |
-| Lifecycle critical (DV, medical, admit card, reschedule) | at publish | N-20.. | W-10.. | 3 |
-| Corrigendum / extension / cancelled | at publish | N-10..N-13 | W-04 | 4 |
+| Slot | When (IST) | Free | Pro adds | On-device backup (all users) | Priority rank for daily cap |
+| --- | --- | --- | --- | --- | --- |
+| R0 New match | at publish (≤ 6 h after review) | N-01 | — | — | 4 |
+| Rp Periodic | every 3 days after R0 at user's reminder time (default 19:00) while ≥ 4 days left | N-02 | — | — | 6 |
+| R3 3 days before | L−3 at reminder time | N-03 | — | — | 5 |
+| R1 1 day before | L−1 at reminder time, high priority | N-04 | family N-50 (P1) | local mirror at slot + 30 min if push not received | 2 |
+| R-last Last day | L−0 at 08:00, high priority | N-05 | family N-51 (P1) | local mirror at 08:15 if push not received | 1 |
+| Lifecycle critical (DV, medical, admit card, reschedule) | at publish | — | N-20.., family N-52/N-53 (P1) | — | 3 |
+| Corrigendum / extension / cancelled | at publish | N-10..N-13 | — | — | 4 |
 
 - **Daily cap = 3 pushes per user per IST day** (across all jobs). If more are due, the lowest-ranked are deferred: P0 → to the next day's first slot; P1 → folded into the **digest** (N-30, default 19:00, does not count toward the cap). Ranks 1–3 are never deferred (they can exceed the cap; observed max ≈ 5).
 - **Quiet hours** 22:00–07:00 (user-editable in S28): due pushes wait until quiet hours end, except ranks 1–3 whose deadline/slot is within the next 24 h.
 - **Snooze** (B04) suppresses Rp/R3 for that job until the chosen time; **R1 and R-last are never suppressed** (a snooze option can't go past them).
 - **Collapse**: one job never gets two pushes on the same day; if R3 and Rp coincide, send R3. Updates replace the previous notification for the same job (tag = `match_id`, the push `collapse` value).
-- **WhatsApp (Pro)**: sent for R0, R3, R1, R-last and lifecycle critical. Before sending, the server checks the push receipt: if the push was **opened** before the escalation check (R0/R3 60 min, R1 30 min, R-last 15 min; backend reminders-and-delivery §2), WhatsApp is skipped (saves cost; cap 30/season).
+- **No second channel.** There is no WhatsApp or SMS escalation (removed 2026-11-19). The fallback when push fails is the **on-device backup reminder**: the app keeps a local mirror of R1 and R-last (same reminder ids) in WorkManager/AlarmManager and fires it only if the matching push was not received (S14, S28). It works without internet, for free and Pro users alike.
+- **Family (Pro, P1)**: R1, R-last, admit card and DV/medical also go as push to each linked family member's own app (N-50…N-53). They do not count toward the member's own daily cap.
 - Each slot is cancelled server-side the moment the user-job leaves `New/Reminding/Snoozed`.
 
 ### 0.3 Match verdicts
@@ -70,16 +73,17 @@ Rules: reminders fire only in `New/Reminding`. `Applied` and `NotInterested` are
 
 ```mermaid
 flowchart LR
-  A[Install from Play / group link] --> S01 --> S02[S02 हिंदी selected] --> S03 --> S04[Exams] --> S05[Qualification] --> S06[DOB] --> S07[Category] --> S08[State] --> S09[More] --> S10[You match 7 jobs]
+  A[Install from Play / group link] --> S01 --> S02[S02 हिंदी selected] --> S03 --> S47[S47 Privacy notice] --> S04[Exams] --> S05[Qualification] --> S06[DOB] --> S07[Category] --> S08[State] --> S09[More] --> S10[You match 7 jobs]
   S10 -->|मुझे सूचना भेजें| S13 -->|Allow| S15 --> S16 --> S20[Home with 7 cards]
-  S10 -->|प्रोफ़ाइल सेव करें| S11 --> S12 --> S13
+  S10 -->|Google से सेव करें| O11[O11 Google sheet] --> S13
 ```
 
 | Step | Screen | What happens | Key copy (HI / EN) |
 | --- | --- | --- | --- |
-| 1 | S01 | Splash ≤ 1 s; anonymous Firebase UID created silently (needed for FCM token + server match) | — |
-| 2 | S02 | Hindi pre-selected if device locale ≠ en-*; tap "आगे बढ़ें" | "अपनी भाषा चुनें / Choose your language" |
+| 1 | S01 | Splash ≤ 1 s; anonymous Firebase UID created silently (guest; needed for FCM token + server match) | — |
+| 2 | S02 | Hindi pre-selected unless the device locale is an enabled language; tap "आगे बढ़ें" | "अपनी भाषा चुनें / Choose your language" |
 | 3 | S03 | Value + disclaimer | "सिर्फ़ आपकी नौकरियाँ। कोई मौका न छूटे।" |
+| 3a | S47 | Privacy notice (SC-47), one button | "आपकी जानकारी, सीधी बात" |
 | 4–9 | S04–S09 | One question per screen, progress "1/6"…; auto-advance on single-choice screens after 250 ms; back keeps answers; answers autosaved on device after each step (Room `profile_draft`, frontend state-management §5; `form-autosave`) | see 04 |
 | 10 | S10 | Profile POSTed; server returns verdict counts; skeleton ≤ 3 s; if > 8 s show "नतीजे थोड़ी देर में आएँगे — हम सूचना भेज देंगे" and continue | "आप अभी **7** नौकरियों के योग्य हैं" |
 | 11 | S13 | Pre-prompt → system prompt | "आखिरी तारीख से पहले याद दिलाने के लिए सूचना की इजाज़त दें" |
@@ -97,36 +101,57 @@ Edge: process death mid-onboarding → resume at last incomplete step. Rotation/
 - Home S20 shows inline card "2 जानकारी बाकी — इससे और सही मैच मिलेंगे" until filled or dismissed twice.
 - ev: `onb_skip{field}`, `onb_abandon{step}`.
 
-### SC-03 Phone / OTP login (and when it's required)
+### SC-03 Google sign-in (optional) and guest mode
 
-Login is **optional for free alerts** (anonymous UID), **required for**: Pro purchase restore across devices, WhatsApp backup, family alerts, data export, multi-device.
+Founder decision: login is **free and optional**. Two states only:
+
+| State | How | What works |
+| --- | --- | --- |
+| **Guest** (default) | Firebase anonymous UID created on first launch, no screen | Everything: matching, reminders, Applied, trial, Pro purchase, ads, family invite (accept side) |
+| **Signed in with Google** | Credential Manager "Sign in with Google" (O11) → Google ID token → Firebase Auth Google provider, **linked** to the same UID (`linkWithCredential`) | Same, plus: profile, forms and Pro follow the account to a new phone (SC-46); data export by email address shown; account switching |
+
+We read only the Google account's name, email and photo URL (standard `openid email profile` scopes), never contacts,
+Drive or phone number. There is no password, phone number or OTP anywhere.
+
+**Where sign-in is offered** (never blocking, never more than one offer per session):
+
+| Moment | Surface | Copy (HI) |
+| --- | --- | --- |
+| After the first matches | S10 secondary button | "Google से सेव करें (ज़रूरी नहीं)" |
+| Returning user on a new phone | S03 text link | "पहले इस्तेमाल किया है? Google से साइन इन करें" |
+| Before a Pro purchase (guest, once) | B16 `pro` | "Pro को अपने Google अकाउंट से जोड़ें?" |
+| After the trial starts (guest) | B08 | "Google से सेव करें — फ़ोन बदलने पर भी साथ रहेगा" |
+| Has ≥ 1 Applied, still guest | S22 inline card → B16 `sync` (dismiss = 30 days) | "अपने फ़ॉर्म Google अकाउंट में सेव करें" |
+| Pro guest opens family | B16 `family` | "परिवार का लिंक नए फ़ोन पर भी रहे" |
+| Any time | S26 header, S38 | `GoogleSignInButton` |
 
 ```mermaid
 flowchart TD
-  E[Entry: S10 save / S26 login / S30 buy / S33 WhatsApp] --> S11
-  S11 -->|Phone Number Hint picked or typed 10 digits| V{valid?}
-  V -->|no| S11e[Inline error: 'पूरे 10 अंक डालें']
-  V -->|yes| SEND[POST /otp] -->|ok| S12
-  SEND -->|rate limited| S11r[Error: 'बहुत बार कोशिश हुई। 10 मिनट बाद फिर करें']
-  SEND -->|offline| S11o[O01 + button disabled 'इंटरनेट चाहिए']
-  S12 -->|SMS Retriever auto-fills| VER[verify]
-  S12 -->|manual 6 digits| VER
-  VER -->|ok, new number| LINK[link anonymous UID → phone] --> BACK[return to entry]
-  VER -->|ok, number has existing account| MERGE{local profile differs?}
-  MERGE -->|yes| B[Dialog: 'इस नंबर पर पहले से प्रोफ़ाइल है। कौन-सी रखें?' — पुरानी (server) / इस फ़ोन वाली]
-  MERGE -->|no| BACK
-  VER -->|wrong code| E1['OTP गलत है। फिर से डालें' (3 tries) ]
-  VER -->|expired| E2['OTP की समय सीमा ख़त्म। नया OTP भेजें']
-  S12 -->|30 s| R[Resend enabled 'OTP फिर भेजें' / 'कॉल पर OTP' after 2nd]
+  E[Entry: S10 / S03 / B16 / B08 / S26 / S38] --> CM[O11 Credential Manager: GetSignInWithGoogleOption]
+  CM -->|user cancels / no Google account on phone| BACK[Back to entry, still guest; snackbar only if they tapped from S26/S38: 'साइन इन नहीं हुआ']
+  CM -->|ID token| LINK[Firebase linkWithCredential: guest UID → Google]
+  LINK -->|ok, new Google account| DONE[Snackbar 'Google अकाउंट से जुड़ गया ✓'; account header shows email]
+  LINK -->|account already exists| SW[signInWithCredential to that account]
+  SW --> C{both sides have a profile?}
+  C -->|only the account has one| R[Restore: account profile + forms + Pro load; local guest data merged: Applied/not-interested states kept, latest wins]
+  C -->|only this phone has one| U[Upload this phone's profile to the account]
+  C -->|both, and they differ| D10[D10 'कौन-सी प्रोफ़ाइल रखें?' — Google अकाउंट वाली (सुझाया) / इस फ़ोन वाली]
+  D10 --> R
+  CM -->|offline| OFF[Button disabled with reason 'साइन इन के लिए इंटरनेट चाहिए']
 ```
 
-Copy: S11 title "अपना मोबाइल नंबर डालें", helper "हम यह नंबर किसी को नहीं देंगे। सिर्फ़ लॉग इन और (अगर आप चाहें) WhatsApp अलर्ट के लिए।"; consent checkbox (unchecked by default): "मैं [नियम] और [प्राइवेसी नीति] से सहमत हूँ". OTP field accepts paste; `autofill(SmsOtpCode)`.
-ev: `login_start{entry}`, `otp_sent`, `otp_autofilled`, `login_success{merge}`, `login_fail{reason}`.
+- Merging (API `merge=auto` → 409 `profile_conflict` → `keep_local` / `discard_local`, unchanged contract): job
+  states merge by latest `updatedAt`; Pro entitlement is the union (an active purchase is never lost); the guest UID's
+  FCM token moves to the account; reminders are re-planned once.
+- No Google account on the phone (rare): O11 offers "Add account"; if the user backs out they stay guest. Phones
+  without Google Play services cannot install from Play, so they are out of scope.
+- ev: `signin_offer_view{surface}`, `signin_start{surface}`, `signin_result{result: linked|switched|cancelled|error, merge}`.
 
 ### SC-04 Language switch
 
-- S40 (or S02 at onboarding): tap English → `AppCompatDelegate.setApplicationLocales("en")` → activity recreates, stays on S40 with snackbar "Language changed to English".
-- Server stores `lang`; **all future pushes/WhatsApp switch language** (WhatsApp templates exist in both). Already-delivered notifications are not rewritten.
+- S40 (or S02 at onboarding): tap English → `AppCompatDelegate.setApplicationLocales("en")` → activity recreates, stays on S40 with snackbar "Language changed to English". Only enabled languages are selectable; the "जल्द आ रही हैं" list is informational (07 §6).
+- Server stores `lang`; **all future pushes switch language** (pushes are built on the device from string keys, so they follow the app language immediately; server-rendered text such as rule lines follows `lang`). Already-delivered notifications are not rewritten.
+- Choosing Urdu (once enabled) flips the layout to RTL on recreate (07 §4); the notification channel names are re-registered in the new language.
 - Job data: titles from official notices are shown as published (often English); Hindi UI wraps them ("SSC CGL 2026 — आखिरी तारीख 24 अगस्त"). Rule lines are templated in both languages.
 - ev: `language_changed{from,to,surface}`.
 
@@ -152,12 +177,12 @@ flowchart TD
 ```
 
 - Android 8–12: no runtime permission; check `NotificationManagerCompat.areNotificationsEnabled()` and per-channel importance (`IMPORTANCE_NONE` → banner "‘आखिरी तारीख’ वाली सूचनाएँ बंद हैं" → `ACTION_CHANNEL_NOTIFICATION_SETTINGS`).
-- While off: Home still works; Pro users get WhatsApp as primary (copy in S29: "सूचना बंद है, इसलिए हम WhatsApp पर भेज रहे हैं").
+- While off: Home still works, and the S20 banner stays until fixed. There is no other channel to fall back to, so S13's copy says this plainly ("सूचना बंद रही तो हम आपको याद नहीं दिला पाएँगे"). On-device backup reminders also need the notification permission.
 - Metric: users who disable notifications < 15 % — ev `notif_disabled_detected{api, channel}`.
 
-### SC-07 Exact-alarm permission (P1, optional local backup)
+### SC-07 Exact-alarm permission (on-device backup; P0 since 2026-11-19)
 
-Context: reminders are server-pushed (FCM high priority). A local backup alarm for **R-last** only (08:15 last day, cancelled if the push arrived) needs exact timing on Android 12+.
+Context: reminders are server-pushed (FCM high priority). Since WhatsApp was removed, the **on-device backup** is the only fallback and is **P0, on by default**: local alarms for **R1** (reminder time + 30 min) and **R-last** (08:15 last day), each cancelled when the matching push arrives. They need exact timing on Android 12+.
 S28 toggle "बिना इंटरनेट भी आखिरी दिन की याद" → if `!alarmManager.canScheduleExactAlarms()` → S14 explainer → `ACTION_REQUEST_SCHEDULE_EXACT_ALARM` → on return re-check → toggle on/off + snackbar. Denied → fallback `setAndAllowWhileIdle` (inexact, ±15 min) and the toggle row says "लगभग समय पर (±15 मिनट)". Android 8–11: no permission needed. We do **not** request `USE_EXACT_ALARM` (Play policy restricts it to alarm/calendar apps).
 
 ### SC-08 OEM autostart / battery guide
@@ -180,8 +205,8 @@ ev: `oem_guide_view{brand}`, `oem_step_open{brand,step,resolved}`, `oem_step_don
 
 ### SC-35 App killed + push delivery self-test
 
-- **Onboarding/S29 manual test:** S16 step 1 checks permission+channel; step 2 server sends N-41 (high-priority data+notification) → app receives `onMessageReceived` or user taps → ✓; step 3 "अब ऐप को Recent से हटा दें (swipe करें) — 1 मिनट में फिर से टेस्ट सूचना आएगी" → server sends N-41 after 60 s → if user taps it, ✓ "बंद ऐप में भी सूचना आती है". If nothing within 3 min → ✗ → S15 with brand guide + Pro upsell line "WhatsApp बैकअप से अलर्ट पक्का पहुँचेगा".
-- **Weekly silent self-check:** server sends a data-only high-priority FCM `ping` (no UI) every 7 days at 12:00; app replies via WorkManager expedited job. Missing ack for 2 consecutive pings (14 days) → next app open shows O02 "अलर्ट शायद आप तक नहीं पहुँच रहे" → S29; for Pro, WhatsApp becomes default channel for R-last/R1 regardless of push opens.
+- **Onboarding/S29 manual test:** S16 step 1 checks permission+channel; step 2 server sends N-41 (high-priority data+notification) → app receives `onMessageReceived` or user taps → ✓; step 3 "अब ऐप को Recent से हटा दें (swipe करें) — 1 मिनट में फिर से टेस्ट सूचना आएगी" → server sends N-41 after 60 s → if user taps it, ✓ "बंद ऐप में भी सूचना आती है". If nothing within 3 min → ✗ → S15 with brand guide + "फ़ोन पर बैकअप रिमाइंडर चालू रखें" (S14 if exact alarms are blocked). No paid channel is offered.
+- **Weekly silent self-check:** server sends a data-only high-priority FCM `ping` (no UI) every 7 days at 12:00; app replies via WorkManager expedited job. Missing ack for 2 consecutive pings (14 days) → next app open shows O02 "अलर्ट शायद आप तक नहीं पहुँच रहे" → S29; the app also re-arms the on-device backup reminders for every open match.
 - Delivery receipts: app posts `delivered` on receipt and `opened` on tap → shown in S24.
 
 ---
@@ -234,7 +259,7 @@ Example: SSC CGL, published 21 Jul, last date 24 Aug, user Ravi (free, reminder 
 | 24 Aug 08:00 | R-last | N-05 (high, bypasses quiet hours not needed at 08:00) | "आज आखिरी दिन: SSC CGL 2026 · रात 11 बजे तक" |
 | 25 Aug | — | none | moves to ExpiredUnanswered (SC-17) |
 
-Long windows (> 30 days): Rp frequency lowers to every 5 days after the 3rd periodic push with no open (reduces fatigue; server rule `rp_backoff`). Pro adds W-01 (21 Jul), W-02 (21 & 23 Aug), W-03 (24 Aug), family F-01 (23, 24 Aug).
+Long windows (> 30 days): Rp frequency lowers to every 5 days after the 3rd periodic push with no open (reduces fatigue; server rule `rp_backoff`). The phone also holds backup alarms for 23 Aug 19:30 and 24 Aug 08:15 (fire only if N-04/N-05 did not arrive). Pro with a linked family member (P1) adds N-50 (23 Aug) and N-51 (24 Aug) on the member's phone.
 
 ### SC-12 Snooze
 
@@ -315,45 +340,47 @@ Nightly job recomputes verdicts for users whose age on any open post's cutoff ch
 flowchart TD
   AP[User confirms B01 'हाँ, भर दिया'] --> Q{Pro or trial active?}
   Q -->|yes| T[Snackbar 'एडमिट कार्ड, रिज़ल्ट की सूचना चालू ✓'; S22 row live]
-  Q -->|no, trial never used| B02a[B02: 'इस फ़ॉर्म को आखिर तक ट्रैक करें?' 14 दिन मुफ़्त] -->|14 दिन मुफ़्त शुरू करें| TR[POST /v1/me/trial: trial starts now, no payment] --> B08 -->|WhatsApp भी चालू करें| S33
+  Q -->|no, trial never used| B02a[B02: 'इस फ़ॉर्म को आखिर तक ट्रैक करें?' 14 दिन मुफ़्त] -->|14 दिन मुफ़्त शुरू करें| TR[POST /v1/me/trial: trial starts now, no payment] --> B08 -->|guest: Google से सेव करें| O11
   B02a -->|अभी नहीं| N1[Snackbar 'मेरे फ़ॉर्म में जोड़ा'; S22 lock rows]
   Q -->|no, trial used| B02b[B02 variant: plans ₹199/साल · ₹49/सीज़न] -->|प्लान चुनें| S30
   B02b -->|अभी नहीं| N1
 ```
 
-Frequency: the first Applied always shows B02; after that B02 (either variant) at most once per 7 days; never in the same session as a failed purchase. Trial: **offered** at the first Applied (PRD), **starts** when the user taps the CTA, runs 14 days from that tap (the server never auto-starts it); trial gets all Pro P0 features incl. WhatsApp and no ads.
+Frequency: the first Applied always shows B02; after that B02 (either variant) at most once per 7 days; never in the same session as a failed purchase. Trial: **offered** at the first Applied (PRD), **starts** when the user taps the CTA, runs 14 days from that tap (the server never auto-starts it); trial gets all Pro P0 features (lifecycle alerts, no ads).
 ev: `paywall_view{surface=after_applied, variant}`, `trial_start`, `paywall_dismiss`.
 
 ### SC-23 Trial expiry
 
-Day 12: N-31 "Pro ट्रायल 2 दिन में ख़त्म — आपके 2 फ़ॉर्म की अगली सूचना: एडमिट कार्ड" + B09 on next open. 14 days after the tap: trial ends → lifecycle tracking pauses (data continues server-side so a later purchase backfills); S22 rows show lock "Pro ख़त्म — एडमिट कार्ड की सूचना नहीं मिलेगी"; WhatsApp stops without a final WhatsApp message (W-90 is not sent: marketing category, and the app does not upsell over WhatsApp); the in-app lock rows and N-31 carry the news. Applied jobs remain listed.
+Day 12: N-31 "Pro ट्रायल 2 दिन में ख़त्म — आपके 2 फ़ॉर्म की अगली सूचना: एडमिट कार्ड" + B09 on next open. 14 days after the tap: trial ends → lifecycle tracking pauses (data continues server-side so a later purchase backfills); S22 rows show lock "Pro ख़त्म — एडमिट कार्ड की सूचना नहीं मिलेगी"; ads return on the next S20 visit; family alerts pause (members see "रुका हुआ" on S49). The in-app lock rows and N-31 carry the news. Applied jobs remain listed.
 
 ### SC-24 Purchase via Play Billing (success / pending / fail / cancel)
 
 ```mermaid
 flowchart TD
-  S30 -->|plan selected + 'Pro लें ₹199'| L{logged in?}
-  L -->|no| S11 --> S30
-  L -->|yes| PB[BillingClient.launchBillingFlow]
+  S30 -->|plan selected + 'Pro लें ₹199'| L{guest and B16 pro not shown yet?}
+  L -->|yes| B16[B16 pro: 'Pro को Google अकाउंट से जोड़ें?'] -->|Google से साइन इन / अभी नहीं| PB
+  L -->|no| PB[BillingClient.launchBillingFlow with obfuscatedAccountId = our UID hash]
   PB -->|PURCHASED| VER[Server verifies token → acknowledges] -->|ok| OK[S31 success 'Pro चालू! {date} तक'] --> S22
   VER -->|verify timeout| PEND2[S31 pending 'पुष्टि हो रही है…' + auto-retry; entitlement granted provisionally for 3 days]
-  PB -->|PENDING (cash/UPI pending)| PEND[S31 pending 'भुगतान पूरा होते ही Pro चालू होगा' ] --> RTDN[Server RTDN → N-32 'Pro चालू हो गया']
+  PB -->|PENDING (e.g. UPI inside Play not yet confirmed)| PEND[S31 pending 'भुगतान पूरा होते ही Pro चालू होगा' ] --> RTDN[Server RTDN → N-32 'Pro चालू हो गया']
   PB -->|USER_CANCELED| BACK[S30 stays; snackbar 'भुगतान रद्द किया']
-  PB -->|ERROR / ITEM_UNAVAILABLE / network| FAIL[S31 failed 'भुगतान नहीं हुआ। पैसे कटे हों तो 3–5 दिन में वापस आ जाते हैं।' — 'फिर से कोशिश करें' / 'UPI से भरें' (test builds)]
+  PB -->|ERROR / ITEM_UNAVAILABLE / network| FAIL[S31 failed 'भुगतान नहीं हुआ। पैसे कटे हों तो 3–5 दिन में वापस आ जाते हैं।' — 'फिर से कोशिश करें']
   PB -->|ITEM_ALREADY_OWNED| RESTORE[Run restore SC-26]
 ```
 
-Products: `pro_year_199` (non-renewing *or* auto-renew subscription — decision for backend; design shows "हर साल अपने-आप रिन्यू · कभी भी बंद करें" only if subscription), `pro_season_49` (one-time, 4 months). Prices from `ProductDetails` (localised), never hard-coded except as fallback copy.
+Products: Play product `pro`, base plans `yearly-autorenew` (₹199) and `season-4m-prepaid` (₹49) (frontend billing.md). Prices from `ProductDetails` (localised), never hard-coded except as fallback copy. **Google Play Billing is the only payment path** (founder decision 4): UPI, cards and Play balance are offered by Play's own sheet (O06); the app never opens a UPI link or a payment gateway. Purchasing as a guest is allowed: the purchase is tied to the phone's Play account and to our UID through `obfuscatedAccountId`.
 ev: `purchase_start{plan, method}`, `purchase_result{status, code}`.
 
-### SC-25 UPI payment (WhatsApp test / `upi` flavour)
+### SC-25 UPI payment — retired 2026-11-19
 
-S30 "UPI से भरें" → B11 → `Intent(ACTION_VIEW, upi://pay?pa=…&am=199&tn=SM-{orderId})` → return → app polls server `/orders/{id}` (every 3 s, 60 s max) → success/pending/failed as in S31. Pending > 60 s: "हमें भुगतान की पुष्टि अभी नहीं मिली। 10 मिनट में अपने-आप अपडेट हो जाएगा।" + "मदद" (WhatsApp support with order id). Note: Play policy requires Play Billing for digital goods in Play-distributed apps — UPI is for the pre-launch test build only (README open question).
+No external UPI links or payment gateways. UPI is available inside Play's purchase sheet (SC-24). The validation test
+also uses Play Billing: it runs as a **Play closed-testing build** with real products and license testers for QA
+(PRD decision 8), so there is no `upi` flavour and no B11 sheet.
 
 ### SC-26 Restore purchase / multi-device
 
-S32 or S30 "पहले ख़रीदा था? वापस लाएँ" → requires login (same phone number) → `queryPurchasesAsync` + server entitlement lookup → D08: "Pro वापस आ गया ✓ {date} तक" / "इस नंबर/Google अकाउंट पर कोई Pro नहीं मिला" + "मदद".
-Multi-device: entitlement is per account (phone). Alerts go to **one primary device** (latest login). Old device on next open: B15 "आपके अलर्ट अब {model} पर आ रहे हैं" — "इसी फ़ोन पर पाएँ" (switch primary) / "ठीक है". Both devices can browse.
+S32 or S30 "पहले ख़रीदा था? वापस लाएँ" → `queryPurchasesAsync` (the phone's Play account) + server entitlement lookup for the signed-in Google account → D08: "Pro वापस आ गया ✓ {date} तक" / "इस Google अकाउंट पर कोई Pro नहीं मिला" + "मदद". Works for guests too when the phone's Play account made the purchase (server re-binds it to the current UID). No phone number involved.
+Multi-device: entitlement is per account (Google; or per guest UID until sign-in). Alerts go to **one primary device** (latest sign-in). Old device on next open: B15 "आपके अलर्ट अब {model} पर आ रहे हैं" — "इसी फ़ोन पर पाएँ" (switch primary) / "ठीक है"; the old device also gets N-47 once. Both devices can browse.
 
 ### SC-27 Season pass expiry
 
@@ -385,16 +412,16 @@ stateDiagram-v2
   Final --> [*]
 ```
 
-| Stage | Push (Pro) | WhatsApp | S23 "क्या करें" copy |
+| Stage | Push (Pro) | Family push (Pro, P1) | S23 "क्या करें" copy |
 | --- | --- | --- | --- |
-| City slip | N-20 "SSC CGL: परीक्षा शहर की सूचना आ गई" | W-10 | "अपना शहर देखें और यात्रा की योजना बनाएँ" |
-| Admit card | N-21 (high) "एडमिट कार्ड आ गया — परीक्षा {date}" | W-11 | "डाउनलोड करें, 2 प्रिंट रखें, फ़ोटो ID साथ ले जाएँ" |
-| Reschedule | N-22 (high) "परीक्षा की तारीख बदली: {old} → {new}" | W-12 | "नया एडमिट कार्ड आएगा, हम बताएँगे" |
+| City slip | N-20 "SSC CGL: परीक्षा शहर की सूचना आ गई" | — | "अपना शहर देखें और यात्रा की योजना बनाएँ" |
+| Admit card | N-21 (high) "एडमिट कार्ड आ गया — परीक्षा {date}" | N-52 | "डाउनलोड करें, 2 प्रिंट रखें, फ़ोटो ID साथ ले जाएँ" |
+| Reschedule | N-22 (high) "परीक्षा की तारीख बदली: {old} → {new}" | — | "नया एडमिट कार्ड आएगा, हम बताएँगे" |
 | Exam day −1 | N-23 "कल परीक्षा: {time}, रिपोर्टिंग {time}" | — | — |
-| Answer key | N-24 "आंसर की आई — आपत्ति {date} तक (₹{fee}/प्रश्न)" | W-13 | "अपने जवाब मिलाएँ; आपत्ति की आखिरी तारीख {date}" + countdown |
-| Result | N-25 "रिज़ल्ट आ गया" | W-14 | "PDF में अपना रोल नंबर खोजें" + buttons "मेरा नाम है" / "नाम नहीं है" |
+| Answer key | N-24 "आंसर की आई — आपत्ति {date} तक (₹{fee}/प्रश्न)" | — | "अपने जवाब मिलाएँ; आपत्ति की आखिरी तारीख {date}" + countdown |
+| Result | N-25 "रिज़ल्ट आ गया" | — | "PDF में अपना रोल नंबर खोजें" + buttons "मेरा नाम है" / "नाम नहीं है" |
 | Cut-off | N-26 "कट-ऑफ़ आया: OBC {marks}" | — | shows the user's category row first |
-| DV / medical slot | N-27 (high, bypasses quiet hours if < 24 h) "DV की तारीख: {date} — न जाने पर दोबारा मौका नहीं मिलेगा" | W-15 + family | "ये दस्तावेज़ साथ लाएँ: …" (from notice) |
+| DV / medical slot | N-27 (high, bypasses quiet hours if < 24 h) "DV की तारीख: {date} — न जाने पर दोबारा मौका नहीं मिलेगा" | N-53 | "ये दस्तावेज़ साथ लाएँ: …" (from notice) |
 
 Free user Applied: S22 row shows the *name* of the next stage with lock ("अगला चरण: एडमिट कार्ड · Pro में सूचना") → S30. We still record stages server-side so purchase backfills.
 "मेरा नाम है/नहीं" is user-reported; we never claim to know their result.
@@ -407,30 +434,50 @@ Server detects two Applied exams with exam dates within the same day (clash) or 
 
 S36 stores certificate month/year only (no documents, per PRD). Rule examples: OBC-NCL must be issued for FY in notice ("1 अप्रैल 2026 के बाद का"); EWS for FY 2025-26. When a new match's rule conflicts: rule line on S21 "⚠ आपका OBC सर्टिफ़िकेट (मार्च 2025) इस नोटिस के लिए पुराना हो सकता है — नया बनवाएँ" (warning, does **not** change verdict to ✗; verdict becomes `checkYourself`) + N-29 once per certificate per season.
 
-### SC-31 WhatsApp opt-in / opt-out
+### SC-31 WhatsApp opt-in / opt-out — retired 2026-11-19
+
+No WhatsApp messaging at all (founder decision 7): no opt-in screen (S33 retired), no templates, no STOP handling, no
+consent row. Pro's "never miss" promise is now kept by push + on-device backup reminders (SC-07) + delivery health
+(S29) + family pushes (SC-32).
+
+### SC-32 Family member invite / accept / remove (P1, Pro)
+
+Family = a parent or sibling gets the aspirant's **critical** dates as push on **their own phone**, in their own copy
+of the app. No phone numbers, no WhatsApp, no SMS: the link travels however the aspirant chooses (any app in the
+Android sharesheet, or a QR shown face to face).
 
 ```mermaid
-flowchart TD
-  E[S33 entry: trial sheet B08 / S26 / S29] --> L{logged in?}
-  L -->|no| S11
-  L -->|yes| P[S33: preview bubble + number '98xxxxxx21' + checkbox consent]
-  P -->|'WhatsApp अलर्ट चालू करें'| API[Server: store consent (time, text version), send W-00 welcome]
-  API --> OK['WhatsApp पर एक टेस्ट मैसेज भेजा है — मिला?' हाँ / नहीं]
-  OK -->|नहीं| H['यह नंबर WhatsApp पर नहीं है? दूसरा नंबर इस्तेमाल करें']
-  H --> WAME
-  P -->|different number| WAME[Open WhatsApp with prefilled 'START code' (wa.me link from API); user sends it from that number → server binds it; S33 polls until active, max 2 min]
-  ON[S33 active] -->|toggle off| D05[D05 'WhatsApp अलर्ट बंद करें? ज़रूरी तारीख़ें छूट सकती हैं'] -->|बंद करें| OFF[stop; W-91 confirmation]
-  WA[User replies STOP on WhatsApp] --> OFF2[server opt-out; app S33 shows 'आपने WhatsApp पर STOP भेजा था']
+sequenceDiagram
+  participant A as Aspirant (Pro)
+  participant App as Aspirant's app
+  participant Srv as Server
+  participant F as Family member's phone
+  A->>App: S34 "सदस्य जोड़ें" → B12 relation (पिता) + optional nickname
+  App->>Srv: create invite (relation, nickname) → token, expires in 7 days
+  App->>A: S48 link + QR, "शेयर करें"
+  A->>F: sends link through any app (sharesheet O08) or shows QR
+  F->>F: taps link / scans QR with camera → App Link
+  alt app installed
+    F->>F: S35 "Ravi ने आपको परिवार अलर्ट के लिए जोड़ा है"
+  else not installed
+    F->>F: Play Store (install referrer keeps token) → first open goes straight to S02 language → S35
+  end
+  F->>Srv: accept (guest UID + FCM token; no profile, no sign-in)
+  Srv->>App: N-44 "पापा ने परिवार अलर्ट स्वीकार किया"; S48/S34 status "जुड़ गए"
+  F->>F: S13 notification primer (family variant) → S49 "मुझे किसके अलर्ट आते हैं"
 ```
 
-Pro lapses → WhatsApp stops automatically (no W-90 message). Consent text logged (DPDP).
-
-### SC-32 Family member invite / accept / remove (P1)
-
-S34 "सदस्य जोड़ें" → B12 (name, relation: पिता/माँ/भाई/बहन/पति/पत्नी/दूसरा, mobile) → consent line → "निमंत्रण भेजें" → server sends W-20 / SMS with link `https://sarkarimatch.in/f/{token}` → member status "निमंत्रण भेजा".
-Invitee: taps link → (if app installed) S35 / (else) web page (out of scope) + Play link → OTP → "हाँ, अलर्ट पाऊँगा/पाऊँगी" → status active; aspirant gets N-44 "पापा ने परिवार अलर्ट स्वीकार किया". Invitee decline → status "मना किया".
-Family receives only: R1, R-last, admit card, DV/medical (F-01..F-03) — never profile details beyond first name + job title.
-Remove: S34 row overflow → D06 → removed; member gets F-09 "अब आपको {name} के अलर्ट नहीं आएँगे". Max 2 members. Pro lapse → paused.
+- **Member receives only** R1, R-last, admit card, DV/medical (N-50…N-53), with first name + job short title, never
+  profile details (DOB, category, state). Channel `family` on the member's phone.
+- **Limits:** 2 members per aspirant; one token per invite, single use, 7-day expiry; "निमंत्रण रद्द करें" on S48.
+- **Member stops:** S49 → D12 → link removed; aspirant sees "हटा दिया" on S34 (no push to the aspirant).
+- **Aspirant removes:** S34 row overflow → D06 → removed; member gets N-54 "अब आपको {name} के अलर्ट नहीं आएँगे".
+- **Pro lapse:** links pause (S49 shows "रुका हुआ"); resume on renewal; no push about the pause to the member.
+- **New phone (member):** a guest member who reinstalls loses the link unless they signed in with Google (S49 offers
+  B16 `family` once). The aspirant can always send a new invite.
+- **Privacy:** the member's app never sees the aspirant's email or UID; the server maps member UID → aspirant UID.
+  Members can also have their own profile (sibling who is also an aspirant): S49 is then a row in S26.
+- ev: `family_invite_create{relation}`, `family_invite_share{method: sharesheet|qr}`, `family_accept`, `family_decline`, `family_remove{by}`.
 
 ---
 
@@ -442,12 +489,12 @@ Remove: S34 row overflow → D06 → removed; member gets F-09 "अब आपक
 - Actions (Applied, Not interested, snooze, report, profile edit) are optimistic → queued (WorkManager unique work, `NetworkType.CONNECTED`, exponential backoff) → snackbar "सेव हो गया — इंटरनेट आते ही भेज देंगे".
 - Opening official PDF/apply site offline → snackbar "यह खोलने के लिए इंटरनेट चाहिए" (no Custom Tab).
 - Slow network (> 3 s): skeletons; requests time out at 15 s → inline error "जानकारी नहीं आ पाई" + "फिर कोशिश करें". Images: none in lists. Payload budgets: home ≤ 30 KB gzipped.
-- Purchase/OTP buttons disabled offline with reason text (not hidden).
+- Purchase and sign-in buttons disabled offline with reason text (not hidden).
 
-### SC-34 Deep links from push / WhatsApp
+### SC-34 Deep links from push and shared links
 
 - Push tap → `PendingIntent` to MainActivity with route; back-stack synthesised per 01 table; `src=push`, notification id cleared.
-- WhatsApp link (`https://sarkarimatch.in/j/{id}?src=wa`) → App Link → S21. App not installed → web fallback page (minimal, mobile web: job summary + Play Store button) — **out of scope for app design**, noted for backend.
+- Shared links (`/p/{postId}?src=share`, family `/f/{token}`) → App Link → S21 / S35. App not installed → web fallback page (minimal, mobile web: job summary or invite explainer + Play Store button) — **out of scope for app design**, noted for backend.
 - Job unavailable (deleted/merged) → S21 error state "यह नौकरी अब उपलब्ध नहीं है" + "मेरी नौकरियाँ देखें".
 - Link to another account's job (shared) → S21 shows the job with *the viewer's* verdict (re-computed) or "अपनी पात्रता देखने के लिए प्रोफ़ाइल बनाएँ" if no profile.
 
@@ -466,21 +513,21 @@ S01 reads Remote Config `min_version_code`. Below → S41 blocking ("ज़र�
 ```mermaid
 flowchart TD
   S38 -->|'मेरा डेटा डाउनलोड करें'| EX[POST /export] --> D04[D04 'आपकी फ़ाइल तैयार है' → saves JSON to Downloads via SAF CreateDocument 'sarkari-match-data.json'] 
-  S38 -->|'अकाउंट हटाएँ'| W[Screen section explains: profile, alerts history, family links, WhatsApp consent deleted in 7 days; Pro not refunded automatically; Play subscription must be cancelled in Play]
-  W --> D03[D03 step 1 'क्या आप पक्का अकाउंट हटाना चाहते हैं?' → step 2 OTP to phone (or type 'हटाएँ' if anonymous)]
+  S38 -->|'अकाउंट हटाएँ'| W[Screen section explains: profile, forms, alerts history, family links and the Google sign-in link deleted in 7 days; Pro not refunded automatically; Play subscription must be cancelled in Play]
+  W --> D03[D03 step 1 'क्या आप पक्का अकाउंट हटाना चाहते हैं?' → step 2 type 'हटाएँ' (guest) / re-confirm with Google via O11 (signed in)]
   D03 -->|confirmed| DEL[Server soft-delete → hard-delete ≤ 7 days; FCM token removed; local Room + DataStore cleared] --> S02[App returns to S02 with snackbar 'आपका अकाउंट हटा दिया गया']
   D03 -->|active subscription| SUB[Extra line: 'Play Store में सब्सक्रिप्शन बंद करें' button first]
 ```
 
-Also: "सहमति वापस लें" rows (WhatsApp, family) in S38. Anonymous users can delete too (local + server UID).
+Also: family links can be removed in S34/S49. Guests can delete too (local + server UID). The privacy notice (S47) says where this is.
 
-### SC-39 Logout
+### SC-39 Sign out
 
-S38 "लॉग आउट" → D02 "लॉग आउट करने पर इस फ़ोन पर अलर्ट बंद हो जाएँगे।" → "लॉग आउट" (destructive) → FCM token unbound, local data cleared (language preference kept) → S03 with "पहले से अकाउंट है? लॉग इन" link. Server keeps the account; pending reminders for this device are cancelled. If the user had no phone login (anonymous), "लॉग आउट" is replaced by "अकाउंट हटाएँ" only (logging out would orphan the profile).
+S38 "साइन आउट" (signed-in users only) → D02 "साइन आउट करने पर इस फ़ोन पर अलर्ट बंद हो जाएँगे। आपकी प्रोफ़ाइल आपके Google अकाउंट में सुरक्षित रहेगी।" → "साइन आउट" (destructive) → Credential Manager `clearCredentialState()`, Firebase sign-out, FCM token unbound, local data and on-device backup alarms cleared (language preference kept) → S03 with "Google से साइन इन करें" link. Server keeps the account; pending reminders for this device are cancelled. Guests have no sign-out (it would orphan the profile): S38 shows only "Google से साइन इन करें" and "अकाउंट हटाएँ".
 
 ### SC-40 Multi-device
 
-See SC-26. Additionally the profile edits sync (server is source of truth, last-write-wins with `updatedAt`); Applied/NotInterested from either device apply to both.
+See SC-26 and SC-46. Additionally the profile edits sync (server is source of truth, last-write-wins with `updatedAt`); Applied/NotInterested from either device apply to both.
 
 ### SC-41 Invite a friend (P1)
 
@@ -497,22 +544,77 @@ S10/S20 overflow → S46 renders card "मैं 7 सरकारी नौक�
 - Free user scrolls S20 to the end → `NativeAdSlot` (O10) requested when within 2 items of the end → shows labelled "विज्ञापन · Ad" or collapses on no-fill/offline. Same at the end of S44 digest.
 - Tap "विज्ञापन हटाएँ" → S30 (`surface=ad_slot`), benefit "कोई विज्ञापन नहीं" highlighted.
 - Trial starts or Pro bought → ad slot disappears immediately (entitlement flow emits; no restart). Pro lapses → slot returns on next S20 visit.
-- Hard rules: no ads in S21, any sheet, S22/S23, onboarding, permission screens, paywall, push/WhatsApp/SMS; no interstitial/app-open/video; blocked categories per 06 §J1. Ad loading must never delay the feed (slot is last and lazy).
+- Hard rules: no ads in S21, any sheet, S22/S23, onboarding, permission screens, paywall, family screens (S34/S35/S48/S49), push; no interstitial/app-open/video; blocked categories per 06 §J1. Ad loading must never delay the feed (slot is last and lazy).
 - ev: `ad_slot_view`, `ad_no_fill`, `ad_click`, `ad_remove_tap`.
+
+### SC-44 Guest → Google upgrade (keeps everything)
+
+Trigger: any sign-in offer (SC-03 table) while guest. Steps: O11 → `linkWithCredential` on the **same** Firebase UID,
+so nothing moves: profile, matches, Applied forms, snoozes, trial/Pro, notification prefs, family links and the
+on-device backup alarms stay as they are. Only `account.google_email` is added. Snackbar "Google अकाउंट से जुड़ गया ✓
+अब फ़ोन बदलने पर भी सब साथ रहेगा". If the Google account already belongs to another UID → SC-03 merge path (D10).
+Edge: guest bought Pro, then signs in to an account that also has Pro → entitlement = later expiry; S32 shows both
+receipts.
+
+### SC-45 Switch Google account
+
+S38 "अकाउंट बदलें" → D11 "इस फ़ोन पर {email} की जगह दूसरा अकाउंट?" → current data is already on the server (sync
+first; if offline the button is disabled with reason) → sign out locally (SC-39 without leaving the screen) → O11 with
+the account chooser → sign in to the other account → its profile loads (or onboarding S04 if it has none). The
+previous account keeps its data; its alerts stop on this phone (it can be signed in elsewhere). Analytics never logs
+the email.
+
+### SC-46 New phone / reinstall
+
+| Situation | What the user does | Result |
+| --- | --- | --- |
+| Signed in before | S02 language → S03 "पहले इस्तेमाल किया है? Google से साइन इन करें" → O11 | Profile, forms, Pro and family links restored; skips S47 if already acknowledged on the account, and S04–S10; goes to S13 → S15 → S16 → S20. Old phone gets N-47 / B15 |
+| Guest before, same Play account | Onboards again as a new guest | Pro restorable via S32 "वापस लाएँ" (Play purchase history). Profile and forms are **not** recoverable (nothing identifies the old guest); S47 says this ("साइन इन नहीं किया तो फ़ोन बदलने पर प्रोफ़ाइल दोबारा बनानी होगी") |
+| Family member (guest) | Reinstalls | Link lost; aspirant sends a new invite (S48). Members who signed in keep it |
+
+Android Auto Backup is **off** for the auth/database files (avoids restoring a stale guest UID onto a second phone);
+only language and theme preferences are backed up.
+
+### SC-47 Privacy notice in onboarding
+
+S03 "शुरू करें" → S47 (before the first profile question). Five plain items, each icon + one line + one
+"क्यों" line (04 §S47): what we ask, what we never ask, where it goes (our server in India, encrypted; not sold;
+not shared with advertisers), ads, how to delete. One primary "समझ गया, आगे बढ़ें" and a link "पूरी प्राइवेसी नीति"
+(Custom Tab). No checkboxes: nothing here needs special consent (no phone, Aadhaar, documents, location, contacts),
+and continuing is the notice being shown, recorded as `privacy_notice_ack{version}` with the timestamp. When the
+notice text changes materially, S47 is shown once more on next open (`notice_version` from Remote Config).
+Always reachable: S38 "प्राइवेसी नोटिस", S39.
+
+### SC-48 Notification pre-prompt and ads notice
+
+- **Notification pre-prompt (S13)**: shown before the system dialog with a sample notification and three facts
+  ("कब: नई नौकरी, हर 3 दिन, आखिरी 3 दिन और आखिरी दिन सुबह", "दिन में 3 से ज़्यादा नहीं, रात 10–सुबह 7 चुप",
+  "सिर्फ़ इसी ऐप में — कोई SMS या WhatsApp नहीं"). Denial path unchanged (SC-06).
+- **Ads notice**: S47 item 4 states ads up front. The ad slot's label row has "क्यों?" → B17: why there is an ad,
+  what the ad network gets (non-personalised request, no advertising ID, no profile fields), where ads never appear,
+  report a bad ad, "Pro में कोई विज्ञापन नहीं" → S30. ev `ads_notice_view{surface}`.
+
+### SC-49 Using the app in another language (future languages)
+
+When a language is enabled (07 §9): S40 shows it as selectable; choosing it recreates the activity, downloads that
+script's font in the background (Mukta/system font until then, no blank text), re-registers channel names, and the
+server switches `lang` for rule lines. Urdu flips the layout to RTL (07 §4). Exam names, fees and dates keep their
+Western digits and official spellings. Planned languages appear in S02/S40 under "जल्द आ रही हैं" and cannot be
+selected.
 
 ## 7. Coverage matrix (scenario → screens)
 
 | Scenario | Screens / sheets | Notifications |
 | --- | --- | --- |
-| SC-01 onboarding | S01–S10, S13, S15, S16, S20 | N-41 |
+| SC-01 onboarding | S01–S10, S47, S13, S15, S16, S20 | N-41 |
 | SC-02 partial profile | S09, S10, S20, S27 | N-40 |
-| SC-03 login | S11, S12 | SMS OTP |
-| SC-04 language | S02, S40 | all |
+| SC-03 sign-in | O11, B16, D10, S10, S03, S26, S38 | — |
+| SC-04 language | S02, S40 | all (built on device in app language) |
 | SC-05/06 notif perm | S13, D01, O02, S29 | — |
-| SC-07 exact alarm | S28, S14 | local |
+| SC-07 on-device backup | S28, S14, S29 | local mirror of N-04/N-05 |
 | SC-08 OEM | S15, S29 | — |
 | SC-09 no matches | S10, S20 empty | — |
-| SC-10/11 core loop | S20, S21, B01, B03, B04 | N-01–N-05, W-01–W-03, F-01 |
+| SC-10/11 core loop | S20, S21, B01, B03, B04 | N-01–N-05, N-50/N-51 (family) |
 | SC-12 snooze | B04 | N-02 |
 | SC-13 cap/digest | S28, S44 | N-30 |
 | SC-14 check yourself | S21, B06, S27 | N-01 |
@@ -523,23 +625,29 @@ S10/S20 overflow → S46 renders card "मैं 7 सरकारी नौक�
 | SC-19 corrigendum | S21, B07, S23 | N-11a/b/c |
 | SC-20 profile re-match | S26, S27, B10, D07 | — |
 | SC-21 age | B14, S43 | N-43 |
-| SC-22 paywall/trial | B01, B02, B08, S30, S33 | — |
+| SC-22 paywall/trial | B01, B02, B08, S30 | — |
 | SC-23 trial expiry | B09, S22 | N-31 |
-| SC-24/25 purchase | S30, S31, B11 | N-32 |
-| SC-26 restore | S32, D08, B15 | — |
+| SC-24 purchase (SC-25 retired) | S30, B16, O06, S31 | N-32 |
+| SC-26 restore | S32, D08, B15 | N-47 |
 | SC-27 season expiry | S22, S32 | N-33 |
-| SC-28 lifecycle | S22, S23 | N-20–N-27, W-10–W-15 |
+| SC-28 lifecycle | S22, S23 | N-20–N-27, N-52/N-53 (family) |
 | SC-29 clash | S37, S22 | N-28 |
 | SC-30 certificates | S36, S21 | N-29 |
-| SC-31 WhatsApp | S33, D05 | W-00, W-91 |
-| SC-32 family | S34, B12, S35, D06 | W-20, F-01–F-09, N-44 |
+| SC-31 WhatsApp | retired | — |
+| SC-32 family | S34, B12, S48, O08, S35, S49, D06, D12 | N-44, N-50–N-54 |
 | SC-33 offline | O01 all | — |
 | SC-34 deep links | S21, S23, S30, S35, S44 | all |
 | SC-35 self-test | S16, S29, S15 | N-41, data ping |
 | SC-36 update | S41, D09 | — |
 | SC-37 outage | O03, S42 | — |
 | SC-38 delete/export | S38, D03, D04 | — |
-| SC-39 logout | S38, D02 | — |
-| SC-40 multi-device | B15 | — |
+| SC-39 sign out | S38, D02 | — |
+| SC-40 multi-device | B15 | N-47 |
 | SC-41/42 growth | S45, S46 | N-45 |
-| SC-43 ads | S20, S44, O10, S30 | — |
+| SC-43 ads | S20, S44, O10, B17, S30 | — |
+| SC-44 guest → Google | O11, S10, B08, B16 | — |
+| SC-45 switch account | S38, D11, O11 | — |
+| SC-46 new phone | S03, O11, S32, B15 | N-47 |
+| SC-47 privacy notice | S47, S38, S39 | — |
+| SC-48 notif pre-prompt + ads notice | S13, B17 | — |
+| SC-49 other languages | S02, S40 | all |

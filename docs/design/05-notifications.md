@@ -1,10 +1,12 @@
-# 05 — Notifications: Push, WhatsApp, SMS, Digest
+# 05 — Notifications: Push, on-device backup, family, digest
 
 Scheduling rules (slots, daily cap 3, quiet hours 22:00–07:00, snooze, collapse) are in [03 §0.2](03-scenarios.md). This file defines **what each message looks like**.
 
+**2026-11-19:** push (FCM) is the only message channel. WhatsApp templates (W-00…W-91, F-01…F-09) and SMS (SMS-01…03, OTP) are **retired** (§4, §5); family alerts are now pushes to the member's own app (N-50…N-54, channel `family`); the on-device backup reminder (§3.6) is the fallback. All text is built on the device from string keys in the app language (07), so every template below exists in each enabled language.
+
 ## 1. Android channels (created at first launch; IDs are permanent)
 
-These six IDs are the **canonical set** for app, API (`PushData.channel`) and backend (agreed 2026-11-19, `../contract-alignment.md`). The server sends them as-is.
+These **seven** IDs are the **canonical set** for app, API (`PushData.channel`) and backend (six agreed 2026-11-19 in `../contract-alignment.md`; `family` added the same day with the family-link redesign). The server sends them as-is.
 
 | Channel ID | Name HI / EN | Importance | Sound / vibrate | Lock screen | Used by |
 | --- | --- | --- | --- | --- | --- |
@@ -13,7 +15,8 @@ These six IDs are the **canonical set** for app, API (`PushData.channel`) and ba
 | `reminders` | याद दिलाना / Reminders | `IMPORTANCE_DEFAULT` | default | `PUBLIC` | N-02, N-03 |
 | `job_updates` | नोटिस में बदलाव / Notice changes | `IMPORTANCE_DEFAULT` | default | `PUBLIC` | N-10–N-12, N-20, N-23–N-26, N-28, N-29 |
 | `digest` | रोज़ का सारांश / Daily digest | `IMPORTANCE_LOW` | none | `PUBLIC` | N-30 |
-| `account` | अकाउंट और Pro / Account & Pro | `IMPORTANCE_LOW` | none | `PRIVATE` | N-31–N-33, N-40, N-42–N-46 |
+| `account` | अकाउंट और Pro / Account & Pro | `IMPORTANCE_LOW` | none | `PRIVATE` | N-31–N-33, N-40, N-42–N-47, N-54 |
+| `family` | परिवार के अलर्ट / Family alerts | `IMPORTANCE_HIGH` | default sound + vibrate | `PRIVATE` (shows "Sarkari Match · परिवार अलर्ट" on the lock screen, details after unlock) | N-50–N-53 (created only when this phone accepts a family invite) |
 
 - Channel names follow the app language at creation; on language switch, update names via `createNotificationChannel` (same ID).
 - Small icon: monochrome `ic_stat_sm` (24 dp, white tick inside rounded square). Accent colour `primary` (`#1F4FB8`); `critical` uses `today` red as `setColor` only for R-last.
@@ -22,14 +25,15 @@ These six IDs are the **canonical set** for app, API (`PushData.channel`) and ba
 - **Delivery:** FCM **data-only, priority `high`** for N-01/N-04/N-05/critical lifecycle; `normal` for the rest. App builds the notification in `FirebaseMessagingService.onMessageReceived` (localised strings, actions, grouping) and posts `received` + `displayed` receipts (`POST /v1/me/delivery-receipts`). TTL: reminders `lastDate − now`; test 10 min.
 - **Actions** use `BroadcastReceiver` → WorkManager expedited job (API call), then replace the notification with a confirmation (no app open). Action labels ≤ 15 characters.
 - **Tap** → `PendingIntent` (FLAG_IMMUTABLE) to deep link (01 deep-link table) with `src=push&nid={template}`.
-- **No ads, sponsored lines or coaching promotions in any push, WhatsApp or SMS message** (free tier ads exist only in-app, 06 §J1).
+- **No ads, sponsored lines or coaching promotions in any push** (free tier ads exist only in-app, 06 §J1).
+- **Language:** title/body are string resources (`n01_title`, `n01_body` …) filled with payload values on the device, so a language switch applies to the next push immediately. Length limits in §2 apply per language (07 §3); the server never sends display text except job short titles and rule fragments, which it renders in the user's `lang`.
 - Every job push body ends with nothing promotional; the app name in header is the "not official" signal; the S21 screen carries the disclaimer.
 
-## 2. Length limits (enforced by server template renderer)
+## 2. Length limits (enforced by the string lint and the server renderer)
 
 | Field | Limit | Why |
 | --- | --- | --- |
-| Title | ≤ 45 characters (Unicode code points) | collapsed title fits one line on 360 dp at 100 % font |
+| Title | ≤ 45 characters (Unicode code points) **in every language** (Tamil/Malayalam translators shorten, not truncate) | collapsed title fits one line on 360 dp at 100 % font |
 | Body (collapsed) | first 60 chars must carry the key fact | one-line preview |
 | Body (`BigTextStyle`) | ≤ 200 characters | 4–5 lines expanded |
 | Action label | ≤ 15 characters | 3 actions fit |
@@ -95,99 +99,64 @@ Action result replacements (same ID, `reminders` channel, auto-cancel 10 s via `
 | N-41 | Self-test | critical | टेस्ट सूचना ✓ | यह सूचना आ गई — मतलब आपके अलर्ट पहुँचेंगे। टैप करें। | Test alert ✓ |
 | N-42 | Report outcome | account | आपकी रिपोर्ट: {job} | नोटिस के हिसाब से मैच सही है — अपनी प्रोफ़ाइल में {field} देखें। | Your report: {job} |
 | N-43 | Age crossed (P1) | account | {exam}: उम्र सीमा पार | आपके लिए अब भी खुली नौकरियाँ देखें। | Age limit crossed |
-| N-44 | Family accepted (P1) | account | {name} ने परिवार अलर्ट स्वीकार किया | अब ज़रूरी तारीख़ें उन्हें भी मिलेंगी। | {name} accepted family alerts |
+| N-44 | Family accepted (P1) | account | {relation} ने परिवार अलर्ट स्वीकार किया | अब आखिरी तारीख, एडमिट कार्ड और DV की सूचना उनके फ़ोन पर भी जाएगी। | {relation} accepted family alerts |
 | N-45 | Referral reward (P1) | account | 1 महीना Pro मुफ़्त मिला | आपके दोस्त ने पहला फ़ॉर्म भरा। | You got 1 month Pro free |
 | N-46 | Fee unpaid check (P2) | reminders | फ़ीस भर दी? {job} | फ़ीस की आखिरी तारीख {date}। फ़ीस बिना फ़ॉर्म पूरा नहीं होता। | Fee paid? {job} |
+| N-47 | Alerts moved to another phone (new 2026-11-19) | account | अलर्ट अब दूसरे फ़ोन पर | आपके अलर्ट अब {device} पर आएँगे। इसी फ़ोन पर चाहिए तो ऐप खोलें। | Alerts moved to {device} |
 | — | Weekly ping | — (data only, no UI) | — | — | — |
 
-## 4. WhatsApp Business templates (Pro; via BSP)
+### 3.5 Family alerts (Pro, P1) — on the family member's own phone
 
-Meta rules applied: category **UTILITY** (transactional, user-opted-in) unless marked; variables `{{n}}`; header text ≤ 60 chars; body ≤ 1024 (we keep ≤ 400); footer ≤ 60; ≤ 2 URL buttons (label ≤ 25) or quick replies (≤ 20). Bold with `*`. One emoji allowed as content at most. Footer for all: **"Sarkari Match · सरकारी ऐप नहीं · STOP भेजें बंद करने के लिए"** (EN: "Sarkari Match · Not a government app · Reply STOP to unsubscribe"). Language codes `hi` and `en`.
+Sent only to linked members (SC-32). Channel `family`. Push `type` = `family`. Payload adds `family_link_id`,
+`aspirant_name` (first name or the nickname the member gave), `stage`. Never contains DOB, category, state or the
+aspirant's account. Tap → S49 `family/following`. No actions (the member cannot mark Applied).
 
-**W-00 `sm_welcome`** (sent on opt-in)
-```
-नमस्ते {{1}}! अब Sarkari Match के ज़रूरी अलर्ट आपको WhatsApp पर भी मिलेंगे — नई नौकरी, आखिरी 3 दिन, एडमिट कार्ड और DV की तारीख।
-एक सीज़न में 30 से ज़्यादा मैसेज नहीं।
-```
-Quick reply: `मिल गया` → server marks WA verified.
+| ID | Trigger (aspirant's slot) | Title HI | Body HI | Title EN | Body EN |
+| --- | --- | --- | --- | --- | --- |
+| N-50 | R1 (aspirant has not marked Applied) | {name}: कल आखिरी दिन | {job} का फ़ॉर्म कल {time} तक भरना है। उन्हें याद दिला दें। | {name}: last day tomorrow | {job} form closes tomorrow at {time}. Remind them. |
+| N-51 | R-last | {name}: आज आखिरी दिन | {job} का फ़ॉर्म आज {time} तक। | {name}: last day today | {job} form closes today at {time}. |
+| N-52 | Admit card out (Applied) | {name} का एडमिट कार्ड आ गया | {job} · परीक्षा {date} | {name}'s admit card is out | {job} · exam {date} |
+| N-53 | DV / medical slot | {name} की DV तारीख | {job} · {date} — न जाने पर दोबारा मौका नहीं मिलता। | {name}'s document verification | {job} · {date} — there is no second chance. |
+| N-54 | Link removed by the aspirant (channel `account`) | परिवार अलर्ट बंद | अब आपको {name} के अलर्ट नहीं आएँगे। | Family alerts stopped | You will no longer get {name}'s alerts. |
 
-**W-01 `sm_new_match`**
-```
-*नई नौकरी — आप योग्य हैं* ✅
-{{1}}
-आखिरी तारीख: *{{2}}*
-आपकी फ़ीस: {{3}}
-पूरा ब्योरा, दस्तावेज़ और फ़ोटो का साइज़ ऐप में देखें।
-```
-Button URL: `ब्योरा देखें` → `https://sarkarimatch.in/j/{{match_id}}?src=wa` (URL-button variable, separate from body `{{1}}`)
-EN: "*New job — you're eligible* ✅ / {{1}} / Last date: *{{2}}* / Your fee: {{3}} / See documents and photo size in the app."
+Family pushes are suppressed when the aspirant has already acted (Applied stops N-50/N-51) and respect the
+**member's** quiet hours except N-51 and N-53 within 24 h.
 
-**W-02 `sm_deadline_soon`** (R3, R1)
-```
-*{{1}} दिन बाकी* ⏳
-{{2}} — आखिरी तारीख *{{3}}*
-अभी तक आपने ऐप में "फ़ॉर्म भर दिया" नहीं दबाया है।
-```
-Buttons: URL `फ़ॉर्म की साइट खोलें` → official apply URL via the tracked redirect `https://sarkarimatch.in/go/{{match_id}}`, quick reply `भर दिया`.
+### 3.6 On-device backup reminders (all users, P0)
 
-**W-03 `sm_last_day`**
-```
-*आज आखिरी दिन* ⏰
-{{1}} — आज {{2}} तक।
-साइट पर भीड़ होती है, जल्दी भरें।
-```
-Buttons: URL `फ़ॉर्म की साइट खोलें`, quick reply `भर दिया`.
+Not a server push: the app schedules a local notification for each open match's R1 and R-last from the local
+reminder mirror (same `reminder_id`), and cancels it when the FCM push with that id arrives. It uses the same
+templates N-04/N-05 and channel `critical`, with a short body suffix "(फ़ोन से याद दिलाया)" / "(reminder from
+your phone)" so support can tell them apart. Fires at R1 slot + 30 min and R-last 08:15. Needs exact alarms on
+Android 12+ (S14); without them ±15 min. It is the reason S28's "बिना इंटरनेट भी याद" row is on by default.
 
-**W-04 `sm_notice_change`** — "*नोटिस में बदलाव*\n{{1}}: {{2}}\nपूरा बदलाव ऐप में देखें।" Button URL `ब्योरा देखें`.
+## 4. WhatsApp Business templates — retired 2026-11-19
 
-**W-10..W-15 lifecycle** (one template `sm_stage_update` with variables to reduce approvals):
-```
-*{{1}}* — {{2}}
-{{3}}
-{{4}}
-```
-`{{1}}` job · `{{2}}` stage headline ("एडमिट कार्ड आ गया") · `{{3}}` key date line ("परीक्षा: 12 फ़रवरी, सुबह 9 बजे") · `{{4}}` action line ("डाउनलोड करें और 2 प्रिंट रखें।"). Button URL `आधिकारिक लिंक`; second button `ऐप में देखें` → `https://sarkarimatch.in/a/{{application_id}}?src=wa`. DV variant `sm_dv_slot` adds "न जाने पर दोबारा मौका नहीं मिलेगा।".
+Founder decision 7: **no WhatsApp messaging at all**. The IDs below are retired (never reused) and must be removed
+from backend template stores, payloads and analytics: `W-00 sm_welcome`, `W-01 sm_new_match`, `W-02 sm_deadline_soon`,
+`W-03 sm_last_day`, `W-04 sm_notice_change`, `W-10…W-15 sm_stage_update / sm_dv_slot`, `W-20 sm_family_invite`,
+`F-01…F-03 sm_family_alert`, `F-09 sm_family_removed`, `W-90 sm_pro_ended`, `W-91` opt-out reply, and STOP/START
+keyword handling. Replacements: family → N-50…N-54; escalation → on-device backup (§3.6); welcome/test → S16 self-test.
 
-**W-20 `sm_family_invite`**
-```
-नमस्ते! {{1}} ने आपको Sarkari Match परिवार अलर्ट में जोड़ा है।
-आपको उनके सरकारी फ़ॉर्म की सिर्फ़ ज़रूरी तारीख़ें (आखिरी दिन, एडमिट कार्ड, DV) भेजी जाएँगी।
-```
-Buttons: URL `स्वीकार करें` → `https://sarkarimatch.in/f/{{token}}`; quick reply `नहीं चाहिए`.
 
-**F-01..F-03 family alerts** (`sm_family_alert`): "*{{1}} के लिए ज़रूरी तारीख*\n{{2}} — {{3}}\n{{1}} को याद दिला दें।" (variables: first name, job, "कल आखिरी दिन" / "एडमिट कार्ड आ गया" / "DV 12 मार्च"). **F-09** `sm_family_removed` "अब आपको {{1}} के अलर्ट नहीं आएँगे।"
+## 5. SMS — retired 2026-11-19
 
-**W-90 `sm_pro_ended`** — **not sent in v1** (decision 2026-11-19: no marketing-category WhatsApp; Pro/trial end is told in-app and by N-31/N-33). Kept for reference; founder may revisit. (Category **MARKETING**, would be sent once, only to users who opted into WhatsApp): "आपका Pro {{1}} को ख़त्म हुआ। WhatsApp अलर्ट रुक गए हैं। फिर से चालू करने के लिए: ऐप में ‘Pro’ देखें।" Button URL `Pro देखें`.
+No phone number is collected (founder decision 5), so there is no SMS fallback (was P2) and no OTP SMS. Retired IDs:
+`SMS-01`, `SMS-02`, `SMS-03`, `OTP`, sender ID `SRKMCH`, short domain `smch.in`.
 
-**W-91** opt-out confirmation (free-form session reply within 24 h window, no template): "आपके WhatsApp अलर्ट बंद कर दिए गए। ऐप के अलर्ट चालू रहेंगे।"
-
-Inbound handling: `STOP`, `बंद`, `रोकें` (case- and space-insensitive) → opt-out; `START` → re-opt-in (Pro only); anything else → auto-reply with help link (session message).
-
-## 5. SMS fallback (P2)
-
-India DLT rules: registered sender ID (header) e.g. `SRKMCH`, registered content templates with `{#var#}` placeholders, category Service-Implicit. Hindi = Unicode → **70 chars/segment, 67 per segment when concatenated**; keep ≤ 2 segments (≤ 134 chars). English GSM 160/153.
-
-| ID | Hindi (≤ 134 chars) | English (≤ 160) |
-| --- | --- | --- |
-| SMS-01 last day | `आज आखिरी दिन: {#var#} का फ़ॉर्म {#var#} तक भरें। ब्योरा: {#var#} -Sarkari Match (सरकारी नहीं)` | `Last day today: apply for {#var#} by {#var#}. Details: {#var#} -Sarkari Match (not govt)` |
-| SMS-02 1 day | `कल आखिरी दिन: {#var#}। फ़ीस {#var#}। {#var#} -Sarkari Match` | `Last day tomorrow: {#var#}. Fee {#var#}. {#var#} -Sarkari Match` |
-| SMS-03 DV | `{#var#}: DV {#var#} को। न जाने पर दोबारा मौका नहीं। {#var#} -Sarkari Match` | `{#var#}: Document verification on {#var#}. No second chance. {#var#} -Sarkari Match` |
-| OTP | `{#var#} आपका Sarkari Match OTP है। किसी को न बताएँ। {app_hash}` | `{#var#} is your Sarkari Match OTP. Do not share. {app_hash}` |
-
-Links: short domain `smch.in/x/{6}` (≤ 20 chars). The OTP SMS ends with the 11-char SMS Retriever app hash.
 
 ## 6. Digest (P1) rules
 
 - Sent once a day at the user's digest time (default 19:00) **only if** ≥ 1 item was deferred by the cap or ≥ 2 low-priority updates (N-10/N-20/N-24/N-26) accumulated; otherwise nothing.
 - Push N-30 `InboxStyle`: max 5 lines, then "+{k} और"; tap → S44 `digest/{date}`.
 - Items are removed from the digest if the user already acted on them in-app.
-- Pro users with WhatsApp do **not** get a WhatsApp digest (cost).
+- The digest is in-app and push only; free users see one ad at the end of S44 (06 §J1), never in the push.
 
 ## 7. Copy QA checklist for every new template
 
 - [ ] Key fact (what + by when) in the first 60 characters
-- [ ] No "!!", no ALL CAPS, max one emoji (WhatsApp) / one ✓ (push)
+- [ ] No "!!", no ALL CAPS, max one ✓ (push)
 - [ ] Names the job, never "आपकी नौकरी" alone
 - [ ] Date includes month name, not only numbers (avoid DD/MM vs MM/DD confusion)
-- [ ] EN and HI versions both within limits; rendered once at 200 % font on a 360 dp phone
+- [ ] Every enabled language within limits (titles ≤ 45, actions ≤ 15); rendered once at 200 % font on a 360 dp phone; placeholders are whole values, never sentence fragments (07 §7)
 - [ ] Deep link + `src` param present

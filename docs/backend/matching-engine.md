@@ -1,14 +1,43 @@
 # Matching engine
 
-Goal: for every published post version, decide for every profile one of **eligible / not eligible / check yourself**,
-with one human-readable line per rule ("Age 24 on 01-01-2026, limit below 26 with OBC +3 ✓"). It must be fast
-enough that a new post fans out to 1M users in seconds, and cheap enough to re-run on every profile edit and every
-corrigendum.
+Goal: for every published post version, decide for the user one of **eligible / not eligible / check yourself**,
+with one human-readable line per rule ("Age 24 on 01-01-2026, limit below 26 with OBC +3 ✓"). It must be cheap
+enough to re-run on every profile edit and every corrigendum.
+
+**Where it runs (founder decision 2026-11-19, ADR-11 in [README.md](./README.md)): on the user's phone.** The
+detailed profile (DOB, category, PwD, ex-serviceman, qualifications, domicile) never leaves the device. The server
+publishes the public rules in a versioned **catalog** (§4); the app evaluates them with the same pure Kotlin module the
+server uses for review previews and tests, stores matches in Room and schedules reminders locally
+([reminders-and-delivery.md](./reminders-and-delivery.md)). §0 records why.
 
 Rule format: [`rule.schema.json`](./rule.schema.json). Worked examples:
 [`examples/ssc-gd-2026.rule.json`](./examples/ssc-gd-2026.rule.json) and
 [`examples/up-police-constable-2025.rule.json`](./examples/up-police-constable-2025.rule.json). Both validate against
 the schema, and their printed DOB windows reproduce from the formulas in §3.
+
+## 0. Decision: on-device matching vs server-side signature matching
+
+| Concern | A. Server-side signature buckets (previous design) | **B. On-device profile + matching (chosen)** |
+|---|---|---|
+| Data that leaves the phone | DOB, category (caste), PwD type, ESM, qualifications, domicile, interests, every action | None of the profile. Only what a server feature needs: Google account id (if signed in), purchases, an encrypted backup blob (opt-in), family link ids |
+| DPDP Act 2023 / Rules 2025 | Fiduciary holds caste + disability data for up to 1M people: notice + consent per purpose, breach duty, erasure, retention, export all apply to it | The core service processes no personal data on our servers; obligations shrink to accounts, purchases and family links (security-privacy.md §6) |
+| Children (17-year-old Agniveer/NDA/10th-pass aspirants) | DOB on the server = we process a child's data → verifiable parental consent (s.9) or an 18+ gate that excludes a real segment | **Minor mode** (DOB < 18 on the device): full matching and local reminders with no server account, no ads, no crash/usage telemetry, no sign-in, no purchase → we receive nothing about the child (legal check still listed) |
+| Play Data safety form | Declares personal info incl. "race and ethnicity"-type and health-type fields | Profile is processed on device only → not "collected" under Play's definition |
+| Breach impact | Caste + disability list of 1M people | Catalog is public; accounts table holds no profile |
+| New-match latency | ~2–15 min after publish | Catalog push (normal-priority topic) + sync: minutes when the phone is active, ≤ one Doze maintenance window otherwise; still far inside the 6 h NFR |
+| Reminders when the app is killed | FCM per user (fails if OEM blocks FCM) + local mirror | Local alarms/WorkManager are primary; server **topic** pushes for R1/R-last (`p_{post_id}`) and lifecycle (`n_{notice_id}`) are the backup; both fail only if the app is force-stopped, same as before |
+| Lifecycle (Pro), family | Server knows applications and family phones | Device subscribes to topic `n_{notice_id}` after Applied; family = an end-to-end-encrypted watch-list relayed to the family member's own install (reminders-and-delivery.md §5) |
+| Multi-device / reinstall | Server profile restores everything | Opt-in encrypted backup blob (key in Google Block Store, not readable by us); otherwise re-enter the 2-minute profile |
+| Analytics / curation metrics | Exact (match counts, impact preview, per-user funnels) | Coarse: opt-in, identifier-free daily counters + Play Console; impact preview uses a synthetic population (§7) |
+| Correctness | One evaluator version | Old app versions may run an older evaluator → `evaluator_min_version` per rule; older apps show `check_yourself` + "update the app" instead of guessing |
+| Cost at 1M users | ~$650/mo DB + planner/outbox at scale | Catalog is static files on the CDN; DB holds accounts only (README §5: total ≈ $330–700 vs ≈ $1,450) |
+| Battery / data | One push per alert | ~40 catalog batches a month (a few KB each) + a daily WorkManager reconcile + a handful of alarms; evaluating ≈ 300 open posts takes < 10 ms |
+
+**Why B.** It is the only option where "minimise what leaves the device" (decision 5) and "no special consent" hold
+for the sensitive fields we must use (category, PwD). It removes the parental-consent problem for 17-year-olds
+without excluding them, makes the Data safety form short, and cuts the largest infra lines. The costs (coarser
+analytics, evaluator versioning, a catalog format to maintain, E2E-encrypted family relay) are engineering, not
+recurring money, and the rule evaluator was already a pure KMP-ready module.
 
 ## 1. Principles
 
@@ -23,9 +52,11 @@ the schema, and their printed DOB windows reproduce from the formulas in §3.
    notice clause and avoids having to encode stacking law.
 4. **Physical standards never decide.** They are advisory lines ("check yourself: height 168 cm…") and do not change
    the verdict. Otherwise every police post would become `check_yourself` and the feed would lose its signal.
-5. **Explanations are rendered on read, not stored.** A match stores `verdict`, `rule_version` and compact
-   `reason_codes`. `GET /v1/me/matches/{id}` re-evaluates that one (user, post) in microseconds, so the text always
-   reflects the current rule and profile.
+5. **Explanations are rendered on read, not stored.** A local match row stores `verdict`, `rule_version` and compact
+   `reason_codes`. Opening S21 re-evaluates that one (profile, post) on the device in microseconds, so the text
+   always reflects the current rule and profile, in the current app language.
+6. **The rule is public, the profile is private.** Everything the evaluator needs from us is in the public catalog;
+   nothing about the user is needed by the server to compute a verdict.
 
 ## 2. Inputs
 
@@ -41,13 +72,13 @@ the schema, and their printed DOB windows reproduce from the formulas in §3.
 | `quals` | list of `(code, status, result_date?, pct_band?)`; codes expanded to ancestors via the taxonomy (so `grad.ba` also satisfies `grad.any` and `level ≥ 40`) |
 | `extras` | set of attribute codes; `extras_declared` says whether "none" really means none |
 | `marital`, `govt_employee` | optional |
-| `dob` | **the only continuous attribute**, kept out of the signature |
+| `dob` | **the only continuous attribute**; stays on the device like every other attribute |
 
 ### Targeting (not eligibility)
 
 A post is considered for a user only if `post.exam_tags ∩ profile.interest_exam_types ≠ ∅` and the scope fits:
-`all_india`, or `state ∈ profile.job_states ∪ {profile.domicile}`. This is a SQL filter; it does not change verdicts
-shown on demand ("browse all jobs" still evaluates any post).
+`all_india`, or `state ∈ profile.job_states ∪ {profile.domicile}`. This is a filter in the app's catalog query; it does
+not change verdicts shown on demand ("browse all jobs" still evaluates any post).
 
 ## 3. Rule semantics
 
@@ -113,92 +144,83 @@ The best result across alternatives wins (pass > check_yourself > fail).
 
 **Fee for you:** the first `fees` row whose `when` matches.
 
-## 4. Fast fan-out: signature buckets + DOB range join
+## 4. On-device evaluation and the catalog
 
-### 4.1 Idea
+### 4.1 What the server publishes
 
-Every rule except age depends only on discrete attributes, and age depends on `dob` only through **one interval**
-once the discrete attributes are fixed. So:
+On every publish (new notice, corrigendum, extension, cancellation, lifecycle event, retraction) the worker writes one
+immutable **catalog batch** and advances the catalog sequence. Catalog files are public, identical for every user and
+served from the CDN (Firebase Hosting in front of GCS), so they cost almost nothing at any scale
+([`openapi.yaml`](../api/openapi.yaml) tag `catalog`):
 
-1. **Eligibility signature** `elig_sig = sha256(canonical JSON of all non-DOB evaluation attributes)`, computed on
-   every profile write. Interests and job states are *not* in it.
-2. Table `elig_signature(sig, attrs, user_count)` holds the distinct signatures. Typical cardinality is about 5–50K
-   at 1M users, because attributes are heavily skewed (category × domicile × a few common qualification sets).
-3. For a post, evaluate the rule **once per signature**, which yields `fail`, or `(verdict_without_age, dob_lo,
-   dob_hi, [ext_lo, ext_hi))`.
-4. One set-based SQL statement joins profiles to windows using the `(elig_sig, dob)` index.
+| File | Content | Cache |
+|---|---|---|
+| `GET /v1/catalog/head` | current `seq`, `server_time`, latest snapshot id, the ids of batches after it, `evaluator_min_version_any`, available locales | public, 60 s |
+| `GET /v1/catalog/snapshots/{seq}?locales=hi,en` | every notice that is open, upcoming, closed < 90 days ago, or has lifecycle events in the last 12 months, with posts + published rules + lifecycle events | immutable |
+| `GET /v1/catalog/batches/{seq}?locales=hi,en` | the notices changed by one publish (full new version) + `removed_notice_ids` | immutable |
 
-### 4.2 Algorithm
+`locales` is normalised by the server (sorted, `en` always added), so the CDN holds at most one copy per locale.
+Published rules are `rule.schema.json` documents with `review` and `source.quote` stripped; they carry
+`evaluator_min_version`. Expected sizes at launch coverage: a snapshot ≈ 0.5–1 MB gzipped (≈ 300 open notices), a
+batch 2–10 KB.
+
+### 4.2 Device algorithm
 
 ```text
-matchPost(post, ruleVersion):
-  sigs   = SELECT sig, attrs FROM elig_signature WHERE user_count > 0          -- S rows
-  windows = []
-  for (sig, attrs) in sigs:                                                    -- O(S · R)
-     r = evaluateWithoutDob(rule, attrs)       -- all non-age rules + chosen relaxation rows
-     if r.verdict == FAIL: continue
-     windows += (sig, r.dobLo, r.dobHi, r.verdict)                             -- firm window
-     if r.extLo < r.dobLo:                                                     -- e.g. ESM with unknown service
-        windows += (sig, r.extLo, r.dobLo - 1 day, CHECK_YOURSELF)
-  COPY windows INTO temp table w                                               -- ≤ 2S rows
-  -- one statement; idempotent; runs inside a job with dedupe_key = post:version
-  INSERT INTO match (id, user_id, post_id, recruitment_id, verdict, rule_version, reason_codes, ...)
-  SELECT gen_id(), p.user_id, :post, :rec, w.verdict, :ver, w.codes, ...
-  FROM w JOIN profile p ON p.elig_sig = w.sig AND p.dob BETWEEN w.lo AND w.hi
-  JOIN app_user u ON u.id = p.user_id AND u.state = 'active'
-  WHERE p.interest_exam_types && :exam_tags
-    AND (:scope = 'all_india' OR :state = p.domicile_state OR :state = ANY(p.job_states))
-  ON CONFLICT (user_id, post_id) DO UPDATE
-     SET verdict = EXCLUDED.verdict, rule_version = EXCLUDED.rule_version, ...
-     WHERE match.verdict IS DISTINCT FROM EXCLUDED.verdict OR match.rule_version <> EXCLUDED.rule_version
-  RETURNING user_id, (xmax = 0) AS inserted                                    -- feeds reminder_state + alerts
+onCatalogSync():                                     -- FCM topic "catalog" (type=sync), daily reconcile worker, app start
+  head = GET catalog/head
+  if local.seq < head.snapshot_seq - window or local.seq == 0: apply(GET snapshot)  -- first run / far behind
+  for b in head.batches where b.seq > local.seq: apply(GET batch b)                   -- in order, each in one Room tx
+  matchChanged(changedPosts)
+
+matchChanged(posts):                                  -- O(P·R), P ≤ a few hundred, R ≈ 10: < 10 ms
+  for post in posts where targeted(post, profile):   -- §2 targeting
+     if post.rule.evaluator_min_version > EVALUATOR_VERSION: verdict = check_yourself("update app")
+     else verdict = evaluate(post.rule, profile, todayIst)
+     upsert local match (deterministic id m_{post suffix}) → new / withdrawn / unchanged (§5)
+     reminderPlanner.recompute(match)                 -- reminders-and-delivery.md §2
+     topics.sync(match)                               -- subscribe p_{post_id} while open, n_{notice_id} after Applied (Pro)
+
+onProfileEdit():  matchChanged(allOpenPosts)          -- synchronous on save; S10/B10 show the diff immediately
 ```
 
-Then, in the same job, the existing matches of this post that were **not** returned (no longer eligible) become
-`status = withdrawn` (corrigendum case), and `reminder_state` is (re)computed for every affected match
-([reminders-and-delivery.md](./reminders-and-delivery.md)).
+- `match_id` is **derived**, not issued: `m_` + the post id without its `p_` prefix. Links, routes and reminder ids
+  (`r:{match_id}:{kind}:{YYYYMMDD}`) therefore mean the same on every device and in server topic pushes, without the
+  server knowing who matched.
+- "Today" is the IST date from the device clock, checked against `head.server_time`; with a skew > 10 minutes the app
+  evaluates and schedules with the server date and shows a "phone time is wrong" banner.
+- Not-eligible results are not stored, as before; browse/"why not" evaluates on demand.
 
-**Complexity.** Rule evaluation is O(S·R), with S ≤ 50K signatures and R ≈ 10 rules, which is about 500K cheap
-evaluations, well under 1 s on one vCPU. The SQL part is O(N_f + M·log N) for N_f profiles passing the interest
-filter and M inserted matches (hash join or index range scans; the planner picks). Memory is O(S).
+### 4.3 Server-side use of the same evaluator
 
-**Measured** (local Postgres 16, 4 vCPU, 1M synthetic profiles, 20K skewed signatures, GIN interest filter; see
-`operations.md` §8 for the script):
+`:matching-core` is a Kotlin Multiplatform module (JVM + Android) with no I/O. The server uses it only for review
+tooling: the boundary-test table, the publish-time validators, the synthetic impact preview (§7) and to check a
+wrong-match report against the snapshot the user chose to send. It never stores or receives user profiles.
 
-| Case | Matches written | Time |
-|---|---|---|
-| Typical post (~10% of users) | 101,226 | **0.75 s** |
-| Re-run after corrigendum, no verdict changes (upsert no-op) | 0 changed | **0.54 s** |
-| Very broad post (60% of users) | 600,122 | **3.3 s** |
-
-Budget for Cloud SQL (network disk, more indexes, `reminder_state` and `alert` rows written by the follow-up step):
-about 3–5× slower, so **≈ 3–15 s per post at 1M users**. Fan-out of the pushes is then rate-limited on purpose (§5 of
-the reminders doc).
-
-### 4.3 Why not bitsets?
-
-Roaring bitmaps per attribute value plus a DOB-sorted array would run in about 100 ms, but they need a resident,
-warmed, invalidated cache in the worker, plus a second source of truth. The SQL approach is fast enough by two
-orders of magnitude and has zero cache. Revisit only beyond about 10M profiles.
+**Evaluator versioning.** `EVALUATOR_VERSION` is bumped when the semantics or the rule schema grow (new `Condition`
+field, new rule kind). The publish validator computes the lowest version that understands a rule and writes it into
+`evaluator_min_version`. `AppConfig.min_supported_version` is raised when old evaluators would show too many
+`check_yourself` lines.
 
 ## 5. Re-matching triggers
 
 | Trigger | What runs | User-visible effect |
 |---|---|---|
-| New post published | `matchPost` | new matches → "new match" alerts (respecting quiet hours and caps) |
-| Corrigendum or new rule version | `matchPost` with new version + diff | **newly eligible** → new match alert ("age limit raised, you can now apply"); **no longer eligible** and not yet applied → `withdrawn` + one alert ("after the corrigendum you're no longer eligible: reason"); still eligible → only date changes trigger an `extension`/`corrigendum` alert; reminders recomputed |
-| Profile edit (`PUT /v1/me/profile`) | `matchUser(user)`: evaluate all open posts (≈100–300) for one user, O(P·R), < 5 ms; synchronous in the request | added matches are `silent=true` (no push; shown in the B10 re-match sheet); removed open matches → `withdrawn`; applied ones are never withdrawn |
-| Post closes (`apply_end` passed) | housekeeping | open matches → `expired` |
-| User crosses an exam family's upper age (P1, SC-21) | nightly job over profiles whose age passes a followed exam family's general limit (cutoffs of open posts are fixed, so open matches never change) | one `age` notice: which exams are still open with relaxations (B14) |
-| Reference taxonomy change (code merged/renamed) | migration maps codes; signatures recomputed in batch | none |
-| Wrong-match report confirmed | fix the rule → new version → as corrigendum | affected users get a correction alert |
-
-The signature for a profile edit is recomputed in the same transaction (`elig_signature.user_count` ±1).
+| New post published (catalog batch) | `matchChanged` on the device | new matches → "new match" notification composed on the device (quiet hours and caps apply) |
+| Corrigendum or new rule version (catalog batch) | `matchChanged` with the new version + diff | **newly eligible** → new match alert ("age limit raised, you can now apply"); **no longer eligible** and not yet applied → `withdrawn` + one alert ("after the corrigendum you're no longer eligible: reason"); still eligible → only date changes trigger an `extension`/`corrigendum` alert; reminders recomputed |
+| Profile edit (local save, S10/S27) | `matchChanged(allOpenPosts)`: evaluate all open posts (≈100–300), O(P·R), < 10 ms on a 2 GB phone; synchronous | added matches are `silent=true` (no push; shown in the B10 re-match sheet); removed open matches → `withdrawn`; applied ones are never withdrawn |
+| Post closes (`apply_end` passed) | daily reconcile worker on the device | open matches → `expired` |
+| User crosses an exam family's upper age (P1, SC-21) | daily reconcile worker compares the local DOB with followed exam families' general limits (cutoffs of open posts are fixed, so open matches never change) | one local `age` notification: which exams are still open with relaxations (B14) |
+| Reference taxonomy change (code merged/renamed) | reference bundle carries a code map; the app migrates the stored profile on next start | none |
+| Wrong-match report confirmed | fix the rule → new version → as corrigendum | affected devices re-evaluate on the next batch and show a correction notification |
+| User turns 18 (minor mode ends) | reconcile worker | one local note: sign-in, Pro and ads notice become available (security-privacy.md §6) |
 
 ## 6. Explanations ("Why you match")
 
-`explain(rule, profile, now)` returns an ordered list of `RuleExplanation {rule, result, code, params, text{hi,en}, source}`.
-Text comes from versioned templates in both languages; the parameters are computed values. Examples (Ravi:
+`explain(rule, profile, now, locale)` returns an ordered list of `RuleExplanation {rule, result, code, params, text, source}`.
+Text comes from versioned templates in the app's string resources (one per supported locale, falling back per
+`locale.fallback`); the parameters are computed values. Rule-provided text (`qualification.text`, `physical.text`,
+`other_conditions[].text`, fee `note`) comes from the catalog's `LocalizedText`. Examples (Ravi:
 male, OBC-NCL, UP, DOB 2001-05-10, B.A. completed):
 
 | Post | Line (en) | Line (hi) |
@@ -220,8 +242,9 @@ ESM example (SSC GD): male, OBC, ex-serviceman with 96 months of service, DOB 19
 service = 21, under 29 (23 + 6 ESM-OBC)". If service months are missing → "? Ex-serviceman relaxation depends on your
 service length: add it in your profile" (`check_yourself`, with a profile-fix chip, S27).
 
-`reason_codes` (smallint) are stored per match only for analytics, e.g. which rule most often produces
-`check_yourself`, so we know which optional profile field to ask for.
+`reason_codes` (smallint) are stored per local match. With the user's opt-in, the daily usage counters include
+counts per reason code (no post, no profile), so we still learn which rule most often produces `check_yourself`
+and which optional profile field to ask for.
 
 ## 7. Correctness safeguards
 
@@ -231,16 +254,22 @@ service length: add it in your profile" (`check_yourself`, with a profile-fix ch
 2. **Boundary test set generated per post:** for each limits/relaxation row, synthesize profiles at `lo − 1d`, `lo`,
    `hi`, `hi + 1d`, plus one per qualification alternative and status. The console shows the verdict table; the
    reviewer ticks it against the PDF. It is stored with the rule version as a regression fixture.
-3. **Impact preview before publish:** "will match 12,340 users (11,900 eligible, 440 check yourself); 85 existing
-   matches would be withdrawn". Large unexpected deltas on a corrigendum need a second reviewer.
+3. **Impact preview before publish:** the server has no profiles, so the console evaluates the rule against a
+   **synthetic population** (≈ 50K profiles drawn from public applicant statistics and the opt-in aggregate counters:
+   category, gender, state, qualification and age distributions) and shows "≈ 9% of a typical audience eligible, 0.4%
+   check yourself; on the corrigendum ≈ 0.7% would lose eligibility". Large unexpected deltas on a corrigendum need a
+   second reviewer.
 4. **Second reviewer** required when `risk_flags` include state-conditional relaxations, gender-specific limits,
    `pwd`/ESM rows, an extractor/verifier disagreement, or any confirmed wrong-match report on the organization in the
    last 90 days.
-5. **Wrong-match reports** (`POST …/reports`) snapshot the minimal profile attributes. Three or more reports on one
-   post auto-pause *new-match* alerts for that post (reminders to existing matches continue) and page the founder.
-6. **Kill switch per post:** "retract" sets every open match to `withdrawn` with a correction alert, and is audited.
-7. **Shared evaluator:** the evaluator is a pure Kotlin module (`:matching-core`, KMP-ready). The same code runs in
-   the API, the worker, the admin preview and, optionally, the app's offline "why" rendering. Property-based tests
+5. **Wrong-match reports** (`POST /v1/reports`, no account needed) carry the post, rule version and rule line; the
+   minimal profile attributes are attached **only** if the user ticks "send the details needed to check this" (never
+   in minor mode). Three or more reports on one post auto-pause *new-match* notifications for that post (a catalog
+   flag `new_match_paused`; reminders to existing matches continue) and page the founder.
+6. **Kill switch per post:** "retract" publishes a batch that marks the post `retracted`; every device sets its open
+   match to `withdrawn` with a correction notification. Audited.
+7. **Shared evaluator:** the evaluator is a pure Kotlin Multiplatform module (`:matching-core`). The same code runs in
+   the app (the only place verdicts are made for users) and in the admin console's previews. Property-based tests
    (kotest) assert monotonicity: adding a relaxation never removes eligibility, and a higher qualification never
    flips pass to fail when `include_higher`.
 

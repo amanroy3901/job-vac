@@ -11,6 +11,8 @@ Sarkari Match · Material 3 for Jetpack Compose · machine-readable copy: [`toke
 5. **Simple Hindi (बोलचाल की हिंदी).** Use words people say: "फ़ॉर्म भर दिया", "आखिरी तारीख", "उम्र". Avoid Sanskritised words (e.g. "अंतिम तिथि" → "आखिरी तारीख", "आवेदन करें" → "फ़ॉर्म भरें", "अधिसूचना" → "नोटिस/सूचना"). Keep English exam names (SSC CGL, RRB NTPC, DV) as people say them.
 6. **Ads stay out of the way.** Free tier shows one clearly labelled native ad ("विज्ञापन · Ad") only at the end of the feed/digest, on a grey dashed surface that can never be mistaken for a match card or an official notice (06 §J1).
 7. **Light, fast, offline-tolerant.** Flat surfaces, vector icons, no images in lists, no custom fonts in the APK.
+8. **Every language is a first-class layout.** Hindi and English ship first, but every layout must survive Tamil/Malayalam length and Urdu right-to-left without a redesign: nothing has a fixed width, labels wrap, direction-aware spacing (`start`/`end`) only. Rules: [07-localization.md](07-localization.md).
+9. **Ask for as little as possible.** No phone number, no Aadhaar, no documents, no contacts, no location. Sign-in is optional (Google or guest), and the privacy notice (S47) says this in plain words before the first question.
 
 ## 2. Colour
 
@@ -76,7 +78,8 @@ Card surface: light `surfaceContainerLowest` (#FFF) on `#F6F7FA` + 1 dp `outline
 | urgent / onUrgent | `#B93D0A` / `#FFFFFF` | `#FFB28C` / `#511E00` | deadline 1–3 days accent |
 | urgentContainer / onUrgentContainer | `#FFE6D8` / `#6E2304` | `#4A1E07` / `#FFDCCB` | deadline 1–3 days chip & card stripe |
 | today / onToday | `#B3261E` / `#FFFFFF` | `#FFB4AB` / `#410E0B` | **filled** "आज आखिरी दिन" chip, card top stripe |
-| whatsappBrand | `#25D366` | `#25D366` | only inside the official WhatsApp glyph |
+
+`whatsappBrand` was **removed** on 2026-11-19 (no WhatsApp in the product). The only third-party brand colours left are those of the official **Sign in with Google** button, which we do not recolour (`tokens.json → component.googleSignInButton`: light fill `#FFFFFF`, stroke `#747775`, text `#1F1F1F`; dark fill `#131314`, stroke `#8E918F`, text `#E3E3E3`; Roboto Medium 14/20, Google "G" logo 20 dp). They live outside `SarkariColors` so feature code cannot use them for anything else.
 
 Semantic mapping (deadline, verdict, stage, Pro) is in `tokens.json → semantic`. Thresholds use **IST calendar days** between today and `lastDate` (inclusive of last date):
 `today` (0) · `urgent` (1–3) · `soon` (4–7) · `calm` (>7) · `closed` (<0).
@@ -148,6 +151,8 @@ object SarkariTheme { val colors @Composable get() = LocalSarkariColors.current 
 | Noto Sans Devanagari | ✓ **Fallback.** Already on every Android 8+ phone as the system Devanagari font → zero bytes |
 | Hind | Good, but Latin is narrower/lighter than its Devanagari at the same weight |
 
+**Other scripts:** Mukta covers Devanagari (Hindi, Marathi) and Latin (English). Every other launch-ready script gets its own Noto Sans family (Noto Nastaliq Urdu for Urdu), loaded the same way; the per-script table, fallback chain and line-height multipliers are in [07-localization.md §2](07-localization.md). The type scale below is the Devanagari/Latin baseline; other scripts keep the same **sizes** and multiply the **line height**.
+
 **Delivery:** Mukta via **Downloadable Fonts** (`androidx.compose.ui.text.googlefonts.GoogleFont`, provider `com.google.android.gms.fonts`) — 0 KB added to the APK (NFR < 15 MB). Until downloaded / if GMS absent, `FontFamily` falls back to `FontFamily.Default` (Roboto + system Noto Sans Devanagari); metrics are close enough that layouts are tested with both. Weights used: 400, 500, 600, 700 only.
 
 ### 3.2 Type scale (M3 roles; sp; Devanagari-safe line heights ≈ 1.5×)
@@ -174,7 +179,7 @@ Rules:
   Never use `Trim.Both` and never set a fixed `height` on a text container — use `heightIn(min = …)`.
 - Letter-spacing 0 for all Hindi text (M3 default tracking of 0.1–0.5 sp on labels must be overridden to 0; positive tracking breaks conjunct shaping visually).
 - No ALL-CAPS (meaningless in Devanagari, ugly in mixed lines). Buttons are sentence case.
-- Numbers: Western digits (0–9) in both languages — aspirants read official notices with Western digits. Dates: `24 अगस्त 2026` (HI) / `24 Aug 2026` (EN); short `24/08` only in compact chips. Money: `₹100` no decimals. Time: `सुबह 9 बजे` / `9:00 am`.
+- Numbers: Western digits (0–9) in **every** locale, including Urdu and Bengali (`-u-nu-latn`) — aspirants read official notices with Western digits. Indian grouping (`39,481`, `1,22,00,000`). Dates: `24 अगस्त 2026` (HI) / `24 Aug 2026` (EN); month names come from the locale (CLDR), never from our strings. Short `24/08` only in compact chips. Money: `₹100` no decimals. Time: `सुबह 9 बजे` / `9:00 am`. Full rules per locale: 07 §5.
 - **Font scaling to 200 %:** Android 14 non-linear scaling; all text in `sp`; containers grow vertically; buttons wrap to 2 lines (`maxLines = 2`) then stack vertically when `LocalDensity.current.fontScale >= 1.5f`. Test previews at 1.0, 1.3, 2.0.
 - Line length: body max ~ 60 characters → on medium/expanded widths constrain content to `widthIn(max = 600.dp)` centred.
 
@@ -226,15 +231,16 @@ val AppTypography = Typography(
 - **Set:** Google **Material Symbols Rounded** (Apache 2.0) — native to M3, has every glyph needed incl. `workspace_premium`, `assignment_turned_in`, `battery_saver`. Weight 400, grade 0, optical size 24, **fill 0** (outlined) by default; **fill 1** only for: selected bottom-nav tab, status icons inside verdict/deadline chips. Rounded matches pill buttons and friendly tone.
 - **Delivery:** do **not** add `material-icons-extended` (multi-MB). Import only the ~60 glyphs below as vector drawables (`res/drawable/ic_*.xml`) with a Gradle task or Android Studio Vector Asset; reference with `ImageVector.vectorResource`.
 - **Sizes:** 16 (inline in rule lines), 20 (chips/meta), 24 (default, buttons, top bar), 32 (empty state small), 48 (permission/result icons). Illustrations: flat 2-colour vector (primary + primaryContainer) 120 dp, built from the same icon shapes — no raster.
-- **Brand logos:** WhatsApp glyph from Meta's official brand resources only (green on white, not recoloured), only on WhatsApp entry points. Play, UPI app logos only inside system choosers (we don't draw them).
-- **No emoji as icons** anywhere in the app UI. (Emoji are allowed *inside* WhatsApp/push text where they are content, see 05.)
+- **Brand logos:** the Google "G" only inside the official Sign in with Google button (Google Identity branding rules; never recoloured, never on its own). Play and UPI logos appear only inside Play's own purchase sheet (we don't draw them). No WhatsApp glyph anywhere (removed 2026-11-19).
+- **RTL:** icons that show direction (back, forward, `arrow_forward` in diff rows, `open_in_new`, `send`, `chevron_right`, progress that fills from start) mirror in Urdu; icons that show real-world objects or time (clock, `check_circle`, `currency_rupee`, `qr_code_2`, media play) never mirror. Full list: 07 §4.
+- **No emoji as icons** anywhere in the app UI. (A single ✓ is allowed *inside* push text where it is content, see 05.)
 - Accessibility: icons beside visible text → `contentDescription = null`; standalone meaningful icons → `contentDescription` in the current language; icon buttons → label via `contentDescription`, and `Modifier.semantics { stateDescription = … }` for toggles.
 
 | Meaning | Symbol | Meaning | Symbol |
 | --- | --- | --- | --- |
 | Jobs tab | `work` | My forms tab | `assignment_turned_in` |
 | Profile tab | `account_circle` | Alert history | `notifications` |
-| Help | `help` (top bar) | Back | `arrow_back` (auto-mirrors) |
+| Help | `help` (top bar) | Back | `arrow_back` (`Icons.AutoMirrored`; mirrors in RTL) |
 | Eligible ✓ | `check_circle` | Check yourself ? | `help` (filled, in chips) |
 | Not eligible ✗ | `cancel` | Last date | `event` / `event_busy` |
 | Today | `alarm` | 1–3 days | `timer` |
@@ -249,7 +255,7 @@ val AppTypography = Typography(
 | Ex-servicemen | `military_tech` | Report wrong | `flag` |
 | Corrigendum/changed | `update` | Extended | `more_time` |
 | Cancelled notice | `block` | Pro | `workspace_premium` |
-| WhatsApp | official glyph | Family | `family_restroom` |
+| Google sign-in | official Google "G" (inside `GoogleSignInButton` only) | Family | `family_restroom` |
 | Clash | `event_repeat` | Certificate | `verified` |
 | Admit card | `badge` | City slip | `location_city` |
 | Exam | `edit_note` | Answer key | `key` |
@@ -264,6 +270,11 @@ val AppTypography = Typography(
 | Quiet hours | `bedtime` | Digest | `summarize` |
 | Refresh/test | `sync` | Success big | `check_circle` (48) |
 | Close sheet | `close` | Copy | `content_copy` |
+| Guest account | `person` | Signed-in account | Google profile photo, else `account_circle` |
+| Switch account | `switch_account` | Privacy notice | `privacy_tip` |
+| Sign in / sync | `cloud_done` | Invite QR | `qr_code_2` |
+| Invite link | `link` | Why ads | `info` (in the ad label row) |
+| Coming-soon language | `schedule` | On-device backup | `alarm_on` |
 
 ## 6. Motion
 
@@ -291,7 +302,7 @@ Maximum 1–2 animated elements per screen (skill rule `excessive-motion`). No a
 - **Action words (fixed):** फ़ॉर्म भर दिया (Applied) · रुचि नहीं (Not interested) · बाद में याद दिलाएँ (Remind later) · PDF देखें · फ़ॉर्म भरने की साइट खोलें (Open apply site).
 - **Nukta:** use ज़/फ़ consistently (फ़ॉर्म, ज़रूरी, फ़ीस). Chandrabindu where natural (नौकरियाँ, जाँचें).
 - **Disclaimer (fixed string):** "Sarkari Match एक निजी ऐप है, कोई सरकारी ऐप नहीं। हमेशा आधिकारिक नोटिस से मिलान करें।" / "Sarkari Match is a private app, not a government app. Always verify with the official notice."
-- String resources: `values/strings.xml` = Hindi (default locale is Hindi by product decision, but the system default resource must be safe → we put Hindi in `values-hi` and English in `values`, and set app locale to `hi` on first run via `AppCompatDelegate.setApplicationLocales`; `locales_config.xml` lists `hi`, `en`). Plurals via `<plurals>` (Hindi has one/other).
+- String resources: English in `values` (safe fallback), Hindi in `values-hi`, and later `values-bn`, `values-mr`, `values-te`, `values-ta`, `values-gu`, `values-kn`, `values-or`, `values-ml`, `values-pa`, `values-as`, `values-ur`. App locale is set to `hi` on first run unless the device is in English or in an enabled language (`AppCompatDelegate.setApplicationLocales`); `locales_config.xml` lists only **enabled** locales (launch: `hi`, `en`). Plurals via `<plurals>` with every CLDR category the language needs. Translator rules (keys, no concatenation, gender-neutral) are in 07 §7.
 
 ## 8. Accessibility baseline (applies to every screen)
 
@@ -300,4 +311,6 @@ Maximum 1–2 animated elements per screen (skill rule `excessive-motion`). No a
 - Headings: `Modifier.semantics { heading() }` on section headers and screen titles.
 - Live updates: countdown chips are *not* live regions; result banners/snackbars are polite.
 - 200 % font scale and display size "largest" must not clip; tested via `@PreviewFontScale` and `@PreviewScreenSizes`.
+- Every user-visible string carries its language for TalkBack (`LocaleSpan` / `Modifier.semantics { }` on mixed-language text) so a Hindi voice does not read an English exam name letter by letter, and Urdu text is read by an Urdu voice (07 §8).
+- Previews also run with `locale = "ta"` (longest strings) and `locale = "ur"` (RTL) once those string files exist; until then with pseudolocales `en-XA` (accented, +30 % length) and `ar-XB` (bidi), which Android generates for debug builds.
 - Low literacy: every action button has icon + word; important numbers are big; avoid tables in UI (use label/value rows); offer "सुनें" (TTS) on S21 summary — **P1**, uses Android `TextToSpeech` with `hi-IN`.

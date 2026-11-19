@@ -2,12 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://api.sarkarimatch.in/schemas/rule/v1.json",
   "title": "Sarkari Match post eligibility rule (v1)",
-  "description": "One document per post per version. Filled by the LLM extractor, edited and published by a human reviewer. Evaluated by the deterministic engine in docs/backend/matching-engine.md. Every fact carries a `source` (document + page) for provenance. Unknown/ambiguous facts must be expressed as `check_yourself`, never guessed.",
+  "description": "One document per post per version. Filled by the LLM extractor, edited and published by a human reviewer. Evaluated by the deterministic engine in docs/backend/matching-engine.md, on the user's phone (the server publishes the document in the public catalog with `review` and `source.quote` stripped). Every fact carries a `source` (document + page) for provenance. Unknown/ambiguous facts must be expressed as `check_yourself`, never guessed.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "post", "exam_tags", "age", "qualification", "fees", "source"],
   "properties": {
     "schema_version": { "const": "1" },
+    "evaluator_min_version": {
+      "type": "integer", "minimum": 1, "default": 1,
+      "description": "Lowest on-device evaluator (`:matching-core` EVALUATOR_VERSION) that understands every field used in this document. An app with an older evaluator shows the post as check_yourself with an 'update the app' line instead of guessing (matching-engine.md §4)."
+    },
     "post": {
       "type": "object",
       "additionalProperties": false,
@@ -15,6 +19,7 @@
       "properties": {
         "code": { "type": "string", "description": "Stable code within the notice, e.g. 'CAPF-CT-GD' or 'UPP-CONST-CP'" },
         "name": { "$ref": "#/$defs/LocalizedText" },
+        "short_name": { "$ref": "#/$defs/LocalizedText", "description": "≤ 32 characters per locale, for notification titles and cards (e.g. 'SSC GD 2026')" },
         "pay_level": { "type": ["string", "null"] },
         "vacancies": {
           "type": "object",
@@ -262,6 +267,7 @@
         "properties": {
           "when": { "$ref": "#/$defs/Condition" },
           "amount_paise": { "type": "integer", "minimum": 0 },
+          "note": { "$ref": "#/$defs/LocalizedText", "description": "Optional fee line shown in 'what you need', e.g. 'Free for women, SC/ST and ex-servicemen'" },
           "source": { "$ref": "#/$defs/Source" }
         }
       }
@@ -282,9 +288,16 @@
   "$defs": {
     "LocalizedText": {
       "type": "object",
+      "description": "Text per BCP-47 locale. Supported: the 13 locales of docs/backend/data-model.md (as, bn, en, gu, hi, kn, ml, mr, or, pa, ta, te, ur). `en` is always required (universal fallback); the publish validator additionally requires every locale whose `locale.status` is `launch` (hi + en at launch). Other locales are optional and filled by the translation queue; clients fall back per `locale.fallback` (e.g. mr → hi → en, ta → en → hi).",
       "additionalProperties": false,
-      "required": ["hi", "en"],
-      "properties": { "hi": { "type": "string" }, "en": { "type": "string" } }
+      "required": ["en"],
+      "minProperties": 1,
+      "properties": {
+        "as": { "type": "string" }, "bn": { "type": "string" }, "en": { "type": "string" }, "gu": { "type": "string" },
+        "hi": { "type": "string" }, "kn": { "type": "string" }, "ml": { "type": "string" }, "mr": { "type": "string" },
+        "or": { "type": "string" }, "pa": { "type": "string" }, "ta": { "type": "string" }, "te": { "type": "string" },
+        "ur": { "type": "string" }
+      }
     },
     "Source": {
       "type": "object",
