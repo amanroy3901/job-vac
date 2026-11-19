@@ -1,8 +1,10 @@
 {
   "schema_version": "1",
+  "evaluator_min_version": 1,
   "post": {
     "code": "CAPF-CT-GD",
     "name": { "hi": "कांस्टेबल (GD) — CAPFs, SSF, असम राइफल्स में राइफलमैन (GD)", "en": "Constable (GD) in CAPFs, SSF and Rifleman (GD) in Assam Rifles" },
+    "short_name": { "hi": "SSC GD 2026", "en": "SSC GD 2026" },
     "pay_level": "Level-3",
     "vacancies": {
       "total": 25487,

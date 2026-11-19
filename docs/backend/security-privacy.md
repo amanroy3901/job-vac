@@ -135,6 +135,7 @@ PRD change of 2026-11-19: light native ads in the free tier only.
 
 - Cloud SQL automated daily backups + PITR (7 days). Weekly `pg_dump` (logical) to GCS in **asia-south2 (Delhi)**,
   CMEK, 35-day retention. A quarterly restore drill into staging is a runbook item.
+- GCS: `sm-catalog` (public catalog files) is fully rebuildable from the database by the `catalog build` job.
 - GCS: `sm-docs` (notice PDFs) dual-region or with a nightly copy to asia-south2. Losing PDFs is recoverable (the
   sources are public) but slow.
 - RPO: ≤ 5 min (PITR); RTO: ≤ 2 h (restore to a new instance + Cloud Run env swap). HA (regional) instance at ≥ 300K

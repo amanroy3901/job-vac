@@ -1,21 +1,32 @@
-# Sarkari Match: Design Package (v1.0, 2026-11-19)
+# Sarkari Match: Design Package (v1.1, 2026-11-19)
 
-UX and UI design for the Hindi-first Android app (Kotlin, Jetpack Compose, Material 3). The design follows [`../PRD.md`](../PRD.md), including the 2026-11-19 change that adds light ads to the free tier.
+UX and UI design for the Hindi-first, multilingual Android app (Kotlin, Jetpack Compose, Material 3). The design follows [`../PRD.md`](../PRD.md), including the **Founder decisions (2026-11-19)** section, which overrides everything else.
+
+## Change log
+
+| Version | Date | Change |
+| --- | --- | --- |
+| **v1.1** | 2026-11-19 | Founder decisions applied. **Login:** Google Sign-In (Credential Manager) or guest; phone/OTP removed (S11, S12 retired; new O11, B16, D10, D11; SC-03 rewritten, SC-44–SC-46 added). **Payments:** Google Play Billing only (B11 and the UPI flow retired). **No WhatsApp or SMS** (S33, D05, all W-/F-/SMS templates, `whatsappBrand` token, `WhatsAppPreviewBubble` retired); delivery = push + on-device backup reminders (S14 P1→P0, S28/S29 rows); Pro benefits reshaped (lifecycle, no ads, clash, certificate, family). **Family** = invite link/QR via the Android sharesheet and push to the member's own app (new S48, S49, D12, N-50…N-54, channel `family`). **Privacy:** new S47 privacy notice in onboarding, B17 ads notice, S13 copy. **Multilingual:** new [07-localization.md](07-localization.md) (13 languages, launch hi+en; fonts per script, expansion, RTL, numerals, translator rules), S02/S40 "coming soon" list, `font.script` and `layout.i18n` tokens. **Validation** = Play closed-testing build. Prototype regenerated (61 frames; new groups I and L incl. Tamil and Urdu RTL previews). Full ID list for frontend/API/backend sync: [CHANGES-2026-11-19.md](CHANGES-2026-11-19.md) |
+| v1.0 | 2026-11-19 | First package; light native ads in the free tier; reconciled with API/backend (`../contract-alignment.md`) |
+
+Note: visual direction may change after the founder picks one of the alternative directions (built separately in `directions/`). Token **names** in `tokens.json` are kept stable and semantic so a restyle changes values only.
 
 ## Index
 
 | # | File | What's inside |
 | --- | --- | --- |
-| 01 | [01-screen-inventory.md](01-screen-inventory.md) | 43 screens (S01–S46), 15 bottom sheets, 9 dialogs and 10 overlays. Each has an ID, route, purpose, entry points, key components and P0/P1/P2 priority. Also: Mermaid navigation map and deep-link table |
-| 02 | [02-design-system.md](02-design-system.md) + [tokens.json](tokens.json) | Light and dark colour roles with hex values and verified contrast, status/urgency palette, Mukta type scale (sp and line heights), spacing, shape, elevation, Material Symbols icon map, motion tokens, voice and accessibility baseline. Includes Compose `Color.kt`/`Type.kt` snippets |
-| 03 | [03-scenarios.md](03-scenarios.md) | 43 scenarios as flows and state diagrams: user-job state machine, reminder scheduler (slots, 3 pushes/day cap, quiet hours, snooze), onboarding, OTP, permissions, OEM guides, the core loop, corrigenda, paywall and trial, Play Billing and UPI, lifecycle, WhatsApp, family, offline, outage, DPDP deletion, multi-device, ads |
+| 01 | [01-screen-inventory.md](01-screen-inventory.md) | 43 active screens (S01–S49; S11, S12, S33 retired), 16 bottom sheets, 11 dialogs and 11 overlays. Each has an ID, route, purpose, entry points, key components and P0/P1/P2 priority. Also: Mermaid navigation map and deep-link table |
+| 02 | [02-design-system.md](02-design-system.md) + [tokens.json](tokens.json) | Light and dark colour roles with hex values and verified contrast, status/urgency palette, Mukta type scale (sp and line heights; per-script fonts in 07), spacing, shape, elevation, Material Symbols icon map, motion tokens, voice and accessibility baseline. Includes Compose `Color.kt`/`Type.kt` snippets |
+| 03 | [03-scenarios.md](03-scenarios.md) | 49 scenarios (SC-25, SC-31 retired) as flows and state diagrams: user-job state machine, reminder scheduler (slots, cap, quiet hours, snooze, on-device backup), onboarding with privacy notice, Google sign-in / guest / new phone / account switch, permissions, OEM guides, the core loop, corrigenda, paywall and trial, Play Billing, lifecycle, family links, offline, outage, DPDP deletion, multi-device, ads, languages |
 | 04 | [04-screens.md](04-screens.md) | Per-screen spec: layout, component tree, every state, exact Hindi and English copy, interactions, TalkBack labels and analytics events. Includes MatchCard, the "What you need" card and the "Why you match" rule lines |
-| 05 | [05-notifications.md](05-notifications.md) | Android channels, push templates N-01…N-46, WhatsApp utility templates W-00…W-91 and family F-xx, DLT SMS fallback, digest rules and character limits |
-| 06 | [06-components.md](06-components.md) | Component library mapped to M3 Compose (props, variants, states). Includes the ad slot `NativeAdSlot` (§J) |
-| — | [prototype/index.html](prototype/index.html) | Static high-fidelity prototype: 49 phone frames at 360×800 using real tokens and Hindi copy (light theme plus 4 dark frames and one 200 % font-scale frame) |
-| — | `prototype/screens/A.png … H.png` | Screenshots grouped by area (A onboarding, B permissions, C core loop, D sheets, E tracker/profile, F Pro, G states, H dark) |
+| 05 | [05-notifications.md](05-notifications.md) | 7 Android channels, push templates N-01…N-54 (family N-50…N-54 on the member's phone), on-device backup reminders, digest rules and character limits. WhatsApp and SMS retired |
+| 06 | [06-components.md](06-components.md) | Component library mapped to M3 Compose (props, variants, states). Includes the ad slot `NativeAdSlot` and ads notice (§J), account/privacy/family (§K: `GoogleSignInButton`, `InviteShareCard` …) and localization helpers (§L) |
+| 07 | [07-localization.md](07-localization.md) | 13 Indian languages (launch hi+en): registry, Downloadable Noto font per script with line-height multipliers, string-expansion budgets, RTL mirroring rules for Urdu, numerals/dates per locale, language picker, translator guidelines, skill usage |
+| — | [CHANGES-2026-11-19.md](CHANGES-2026-11-19.md) | Every changed, retired and new screen ID, component, token, channel and notification type in v1.1 (sync list for API/backend/frontend) |
+| — | [prototype/index.html](prototype/index.html) | Static high-fidelity prototype: 61 phone frames at 360×800 using real tokens and Hindi copy (light theme plus 4 dark frames, one 200 % font-scale frame, and Tamil + Urdu RTL preview frames) |
+| — | `prototype/screens/A.png … L.png` | Screenshots grouped by area (A onboarding + privacy, B sign-in/permissions, C core loop, D sheets, E tracker/profile, F Pro + family, G states, H dark, I account/privacy/family, L localization preview) |
 
-The prototype is generated by a small Python script that sits outside the repo. To change it, edit the HTML directly or ask for the generator.
+The prototype was generated by a small Python script that sits outside the repo; the v1.1 frames were patched in by a second script (also outside the repo). To change it, edit the HTML directly.
 
 ## Key decisions
 
@@ -26,7 +37,12 @@ The prototype is generated by a small Python script that sits outside the repo. 
 5. **Urgency is earned.** Deadline levels are calm (>7 days), soon (4–7), urgent (1–3), today and closed. Filled red appears only on the "today" chip and on destructive actions.
 6. **The paywall appears only after Applied.** B02 offers a 14-day trial with no payment; the trial starts only when the user taps "14 दिन मुफ़्त शुरू करें" (the server never auto-starts it). Once the trial is used it offers the plans, at most once every 7 days. Free users still see the *name* of each next lifecycle stage with a lock, so Pro's value is concrete.
 7. **Delivery reliability is part of the product.** Onboarding includes an OEM guide (S15) and a live push self-test, including with the app killed (S16). S29 is a health checklist, and a silent ping runs weekly.
-8. **Ads (PRD change):** one native ad, clearly labelled "विज्ञापन · Ad", only as the last item of the Home feed and the digest. It sits on a grey dashed surface and has no chips or job-style title. It collapses to nothing when there is no fill or no network, and it is hidden for Pro and trial users. There are no ads in reminders, push/WhatsApp/SMS, What-you-need, Why-you-match, sheets or the tracker. The Pro paywall lists "कोई विज्ञापन नहीं" as a benefit (06 §J1, SC-43).
+8. **Ads (PRD change):** one native ad, clearly labelled "विज्ञापन · Ad", only as the last item of the Home feed and the digest. It sits on a grey dashed surface and has no chips or job-style title. It collapses to nothing when there is no fill or no network, and it is hidden for Pro and trial users. There are no ads in reminders, push, What-you-need, Why-you-match, sheets, the tracker, privacy or family screens. A "क्यों?" link opens the ads notice (B17). The Pro paywall lists "कोई विज्ञापन नहीं" as a benefit (06 §J1, SC-43). Verified consistent with the 2026-11-19 decisions.
+9. **Sign-in is optional and free (v1.1).** Guest by default; Google Sign-In through Credential Manager links the same UID, so upgrading loses nothing. It is offered at moments where it has a reason (after first matches, before a Pro purchase, after the trial starts, when the user has forms to protect, on S26/S38), never as a wall. No phone number, OTP or password anywhere (SC-03, SC-44–SC-46).
+10. **Only push, plus a phone-side safety net (v1.1).** No WhatsApp or SMS. When push fails, on-device backup reminders (R1, R-last) fire from the local mirror; this is P0 and on by default.
+11. **Family without phone numbers (v1.1).** The aspirant shares an invite link or shows a QR; the member accepts in their own app without an account and receives four kinds of critical pushes (SC-32).
+12. **Ask for as little as possible (v1.1).** The privacy notice (S47) comes before the first question and says what we never ask (phone, Aadhaar, documents, contacts, location) and how to delete.
+13. **Every language is a first-class layout (v1.1).** No fixed-width text, wrap-don't-truncate, start/end only, Western digits everywhere; the Tamil and Urdu frames in group L prove the layouts hold (07).
 
 ## Use of the UI UX Pro Max skill
 
@@ -43,17 +59,23 @@ I read SKILL.md, references/quick-reference.md and references/pro-rules.md, and 
 | `--domain icons "outline consistent stroke"` | **0 results** | Fallback: Material Symbols Rounded (native to M3), following the skill's pro-rules on icon consistency |
 | `--stack jetpack-compose` | 52 stack rules (stateless composables, UiState, typed routes, `key` in Lazy lists, semantics, M3 tokens…) | Applied in 06 (stateless components, `@Immutable` UI models), 01 (typed `@Serializable` routes) and 04 (`key = matchId`, semantics, test tags) |
 
+## Use of the skill for v1.1 (localization, sign-in)
+
+Details and results in [07 §10](07-localization.md). Summary: `--rtl` is accepted only with `--domain style|product` (the requested `--domain ux --rtl` errors); `ux` RTL queries returned 0 results; product rows for job boards and government services are `rtl_level: partial`, Flat Design `full`; `ux` returned the text-reflow, essential-truncation and compact-label rules used in 07 §3 and the accessible-authentication rule (OAuth instead of OTP transcription) that supports the Google sign-in decision; `google-fonts` confirmed the Noto per-script families and Noto Nastaliq Urdu; `--stack jetpack-compose` had no RTL/locale rules (0 results), so the Compose specifics come from Android documentation.
+
 ## Assumptions (reconciled with API and backend on 2026-11-19; see `../contract-alignment.md`)
 
 - **Launch states are Uttar Pradesh and Bihar** (from the Ravi and Pooja personas) — shared working assumption with the backend (UP watchers in P0; Bihar before launch if curation time allows, else P1). S08 pins `ReferenceBundle.pinned_states`, so changing them needs no release. Founder to confirm.
-- **Domain `sarkarimatch.in`** is a placeholder used in App Links (`/j/{matchId}`, `/p/{postId}`, `/a/{applicationId}`, `/f/{token}`, `/pro`) and the web-only redirect `/go/{matchId}`. The SMS short domain `smch.in` is also a placeholder.
-- **Login is optional for free alerts** (agreed with backend ADR-02 and API §3): Firebase anonymous auth, and a phone number plus our own OTP (→ Firebase custom token) is required for Pro restore, WhatsApp, family, data export and multi-device.
-- **One primary alert device per account.** Other devices can browse, and B15 lets the user switch which device gets alerts.
+- **Domain `sarkarimatch.in`** is a placeholder (availability not verified, PRD decision 3) used in App Links (`/j/{matchId}`, `/p/{postId}`, `/a/{applicationId}`, `/f/{token}`, `/pro`) and the web-only redirect `/go/{matchId}`. The SMS short domain `smch.in` is no longer needed.
+- **Login is optional and free** (founder decision 2, supersedes the phone/OTP design): Firebase anonymous auth for guests; Google Sign-In (Credential Manager → Firebase Google provider, `linkWithCredential`) for carrying data across phones. Nothing in the app requires sign-in; guests can buy Pro (tied to the Play account via `obfuscatedAccountId`), export and delete data. API/backend auth endpoints need to follow (see CHANGES file).
+- **One primary alert device per account.** Other devices can browse, and B15 (+ N-47 to the old phone) lets the user switch which device gets alerts.
+- **Validation test** runs as a Play closed-testing build with real Play Billing products (PRD decision 8); there is no WhatsApp concierge and no `upi` build flavour.
+- **Languages:** Hindi + English at launch; the other 11 are listed as "जल्द आ रही हैं" in the picker, enabled from `ReferenceBundle.languages` once strings ship.
 - **Default reminder time is 19:00** (works for Pooja, who studies after work). R-last fires at 08:00 on the last day. Quiet hours are 22:00–07:00.
 - Under P0 there is no digest yet, so pushes over the cap are deferred to the next morning. From P1 they go into the digest.
 - Notification channel IDs in 05 §1 are canonical for app, API and backend; the ids in routes are the API's `matchId` / `applicationId` / `postId` (the earlier `jobId` = `matchId`).
 - Prices come from Play `ProductDetails`. ₹199/₹49 appear only as fallback copy.
-- Dates use Western digits and month names in both languages, e.g. "21 नवंबर 2026".
+- Dates use Western digits and month names from the locale in every language, e.g. "21 नवंबर 2026", "21 நவம்பர் 2026", "21 نومبر 2026" (07 §5).
 - Sample data in the prototype (posts, dates, fees) is illustrative and not taken from real notices.
 
 ## Notes for frontend and backend
@@ -61,25 +83,30 @@ I read SKILL.md, references/quick-reference.md and references/pro-rules.md, and 
 - **Frontend:**
   - Turn dynamic colour off.
   - Set `includeFontPadding = false` and `LineHeightStyle(Center, Trim.None)` on every text style (prevents matra clipping).
-  - Set letter-spacing to 0 for Hindi.
+  - Set letter-spacing to 0 for Hindi and every non-Latin script; build `AppTypography(script)` from `tokens.json → font.script`.
+  - Set `android:supportsRtl="true"` now and use start/end only; run `en-XA` and `ar-XB` pseudolocales in debug.
+  - Use Credential Manager `GetSignInWithGoogleOption` (no legacy GoogleSignInClient); Auto Backup excludes auth/database files.
   - Do not add `material-icons-extended`; import the ~60 vector drawables in 02 §5 instead.
   - Load the ad SDK lazily and render the ad only as the last list item.
   - Notification actions must work without opening the app (BroadcastReceiver → expedited WorkManager).
+  - The local reminder mirror becomes a user-visible backup for R1/R-last (05 §3.6), on by default.
 - **Backend:**
   - Implement the scheduler in 03 §0.2: slots, ranks, the cap, quiet-hours bypass for ranks 1–3 within 24 h, and collapsing slots per job per day.
-  - Track push delivered/opened receipts; they are needed for the WhatsApp skip rule and S24.
+  - Track push delivered/opened receipts; they are needed for S24 and the delivery self-check.
   - Run the weekly data-only ping.
   - For each post, provide curated fields: `shortTitle` (≤ 28 chars), rule lines, the user's fee by category and gender, photo and signature specs, and links.
-  - Store WhatsApp template approvals for the utility templates in 05 §4 (W-90 is not sent in v1), DLT SMS templates (P2), and the OTP SMS with the app hash.
+  - Remove WhatsApp/SMS/OTP infrastructure (05 §4–§5 retired); add Google sign-in linking and the family invite token flow (create, accept, expire, remove) plus family push fan-out (N-50…N-54).
 
 ## Open questions
 
-1. Play policy requires Play Billing for digital goods, so a UPI deep link is fine only in the pre-launch test build or outside Play. Should the yearly plan be an auto-renew subscription or a one-time purchase?
-2. Should there be a last-day evening reminder (e.g. 18:00) in addition to 08:00? The PRD has only the morning one.
-3. Upgrading from Season to Year: charge the full ₹199 or prorate?
-4. Ad network and category blocklist: do we need an ad-quality reviewer? And should ads be shown in the first release at all, given the 30-day retention target?
-5. Should family alerts go to non-WhatsApp members by SMS (cost)?
-6. Should S24 alert history be pulled into P0? It is useful for "I dismissed the push by mistake".
+1. **Pro purchase as a guest:** allowed in this design (Play account + `obfuscatedAccountId`), with one optional B16 offer before the Play sheet. Should sign-in be required for Pro instead, to make restore across Play accounts possible?
+2. **Family invite:** 7-day single-use link, 2 members, member needs no account. OK? Should family stay P1 while the paywall already lists it with a "जल्द" tag?
+3. **Coming-soon languages in the picker:** shown (non-selectable, no waiting list). Keep, or hide until a language ships?
+4. **Urdu digits:** Western digits everywhere is assumed (matches notices). Confirm with Urdu-reading aspirants before enabling `ur`.
+5. Should the yearly plan be an auto-renew subscription or a one-time purchase? Upgrading from Season to Year: full ₹199 or prorate?
+6. Should there be a last-day evening reminder (e.g. 18:00) in addition to 08:00? The PRD has only the morning one.
+7. Ad network and category blocklist: who reviews ad quality?
+8. Should S24 alert history be pulled into P0? It is useful for "I dismissed the push by mistake".
 
 ## Pre-delivery checklist (from the skill's `references/pro-rules.md`), ticked honestly
 
@@ -92,9 +119,9 @@ I read SKILL.md, references/quick-reference.md and references/pro-rules.md, and 
 - [x] Touch targets are ≥ 48 dp in the spec. Compact 40 dp buttons and chips use `minimumInteractiveComponentSize()`. Safe areas are handled with edge-to-edge insets
 
 **Visual quality**
-- [x] No emojis as icons. ✓/✅ appear only as *content* inside push/WhatsApp text
+- [x] No emojis as icons. ✓ appears only as *content* inside push text
 - [x] One icon family (Material Symbols Rounded); outline by default, filled only for selected and status states
-- [~] Brand assets: the spec requires the official WhatsApp glyph. The prototype uses a generic `chat` icon as a placeholder
+- [x] Brand assets: only the official Google "G" inside the Sign in with Google button (prototype uses the official 4-colour mark); no WhatsApp glyph anywhere
 - [x] Pressed states use ripple only, with no layout shift
 - [x] Semantic tokens everywhere. The prototype uses CSS variables generated from tokens.json
 
@@ -102,7 +129,7 @@ I read SKILL.md, references/quick-reference.md and references/pro-rules.md, and 
 - [x] Pressed feedback (M3 ripple)
 - [x] Touch targets ≥ 48 dp
 - [x] Shared motion tokens
-- [x] Disabled states are clear and come with a reason text (e.g. S33 "चालू करने के लिए ऊपर सहमति दें")
+- [x] Disabled states are clear and come with a reason text (e.g. sign-in "साइन इन के लिए इंटरनेट चाहिए")
 - [x] TalkBack order and labels are specified per screen, with merged cards and custom actions
 - [x] No gesture-only actions. Swipe-to-dismiss is not used; every action is a visible button
 
@@ -122,13 +149,18 @@ I read SKILL.md, references/quick-reference.md and references/pro-rules.md, and 
 **Accessibility**
 - [x] Decorative icons beside text are hidden (`contentDescription = null`). Standalone icons are labelled
 - [x] Icon buttons have names, and toggles expose state
-- [x] Form fields have visible labels, helper text and inline errors (DOB, phone, OTP)
+- [x] Form fields have visible labels, helper text and inline errors (DOB, family nickname, delete confirmation)
 - [x] Colour is never the only indicator (icon shape + word on verdict, deadline, stage and health rows)
 - [x] Dynamic text is supported; layout rules are given for font scale ≥ 1.5
 - [x] Sticky bars do not cover focus (content padding)
 - [x] Drag alternatives: not applicable (no drag interactions)
-- [x] Authentication allows paste and autofill (single OTP field, SMS Retriever, Phone Number Hint)
+- [x] Accessible authentication: Google Sign-In via Credential Manager, no OTP or password to transcribe
 - [x] No auto-rotating content
 - [~] Error summary for multi-field forms: not applicable (one question per screen); inline errors are kept
+
+**Localization (v1.1)**
+- [x] No fixed-width text containers; Tamil frame shows chips wrapping and the action row stacking with no clipping
+- [x] RTL: Urdu frames mirror layout and directional icons, keep clocks/checks unmirrored, isolate LTR runs (SSC GD, dates, OBC +3)
+- [~] Real translations: Tamil/Urdu strings in the prototype are samples for layout testing, not reviewed by native speakers
 
 Legend: [x] done · [~] partially done / specified but not shown · [ ] not done.

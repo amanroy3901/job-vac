@@ -68,3 +68,23 @@ screenshot) after the one visible copy change (#20).
 | 39 | **S30 trial button** "only if store offer configured". | No Play trial offer exists; S30 shows a "14 दिन मुफ़्त आज़माएँ" text button (`startTrial`) while the trial is unused. | `design/04` S30, `frontend/billing.md` §1 |
 | 40 | **`listNotices`** had no screen. | No P0 screen; used in P1 by B14. | `frontend/data-layer.md` §8, `api/README.md` §15 |
 | 41 | **Frontend gap list** (G-02…G-18) was out of date (e.g. `reminder_id`, `listPurchases` already existed). | Replaced by a resolved summary pointing here. | `frontend/README.md` §5/§6 |
+
+## Founder decisions 2026-11-19 — design-side changes (pending sync in api/, backend/, frontend/)
+
+The design package was updated for the PRD's "Founder decisions (2026-11-19)". The full ID list is
+[`design/CHANGES-2026-11-19.md`](design/CHANGES-2026-11-19.md). Rows above that these decisions supersede:
+
+| Row | Superseded by | Design canonical value now |
+| --- | --- | --- |
+| Canonical "Android channels" | `family` channel added | `critical, new_match, reminders, job_updates, digest, account, family` (design 05 §1) |
+| Canonical "Push `type`" | `family` type added | … + `family` (N-50…N-53); N-47 and N-54 use `account` |
+| Canonical "Links" | WhatsApp no longer uses links | `/j/{match_id}?src=push`; `/f/{token}` = family invite link and QR (S48 → S35); `/go/{match_id}` web fallback only |
+| #3, #25, #26, #27, #29, #30 (WhatsApp links, number, templates, W-90, STOP, skip rule) | Decision 7: no WhatsApp | Retired: S33, D05, W-00…W-91, F-01…F-09, STOP/START, escalation windows. Fallback = on-device backup reminder (design 05 §3.6) |
+| #24 (merge on `verifyOtp`) | Decision 2: Google sign-in | Same merge semantics (`merge=auto` → 409 `profile_conflict` → `keep_local`/`discard_local`) moved to the Google sign-in link step; UI = D10 |
+| #34 (anonymous + own OTP → custom token) | Decision 2 | Guest (Firebase anonymous) or Google Sign-In (Credential Manager → Firebase Google provider, `linkWithCredential`). No phone, OTP or SMS anywhere. S11, S12 retired; O11, B16, D11 new |
+| #35 (family kinds) | Decision 7 | Same four kinds, delivered as push to the member's app (N-50 `one_day_before`, N-51 `last_day`, N-52 `admit_card`, N-53 `dv_schedule`); invite input = relation + optional nickname, **no phone** |
+| Billing: "UPI links only in the test flavour" | Decision 4, 8 | Play Billing only; no `upi` flavour; B11 retired; validation = Play closed testing |
+
+New design IDs needing routes/endpoints: S47 `privacy`, S48 `family/invite/{inviteId}`, S49 `family/following`,
+B16 sign-in offer, B17 ads notice, D10–D12, O11; S14 moved P1 → P0. New data: `ReferenceBundle.languages[]
+{code, status}`, `privacy_notice_ack{version, at}`, family invite `{token, relation, nickname?, expires_at, status}`.

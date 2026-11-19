@@ -18,7 +18,7 @@ flowchart LR
   R --> Q[(Review queue)]
   L --> Q
   Q --> H[Human review<br/>admin console]
-  H -->|publish| PUB[notice_version + post_rule vN<br/>→ match job → alerts]
+  H -->|publish| PUB[notice_version + post_rule vN<br/>→ catalog batch → topic push<br/>→ devices match locally]
   H -->|risk flags| H2[Second reviewer] --> PUB
 ```
 
@@ -140,19 +140,21 @@ A server-rendered Ktor + htmx app at `admin.sarkarimatch.in` behind IAP. The pag
      value, the verify-pass value (when different), last year's value, and accept/edit controls.
    - **Boundary-test table** (auto-generated profiles at window edges per category/gender/ESM/qualification
      status) with computed verdicts. The reviewer ticks "matches the PDF".
-   - **Impact preview:** number of users matched (eligible/check-yourself), by state; for corrigenda, added/withdrawn
-     counts and which alerts will go out.
+   - **Impact preview:** share of a **synthetic population** (we hold no user profiles) that would be eligible /
+     check-yourself, by state; for corrigenda, the share that gains or loses eligibility (matching-engine.md §7).
+   - **Translations:** every user-visible field shows its `hi` and `en` values (launch locales, both required to
+     publish) and the status of any other enabled locale (LLM draft → review in `translation_task`).
    - **Publish** is enabled only when blocking validators are green and the reviewer ticks "I checked every rule
      against the PDF". If `needs_second_review`, the task moves to the second-review queue instead.
 3. **Corrigendum fast path:** a side-by-side diff of the current published JSON and the proposed JSON patch.
    Date-only extensions publish in about 2 minutes.
 4. **Lifecycle quick-entry:** pick a recruitment (or accept the classifier's suggestion), type, stage,
-   dates/windows, regions, link, and critical flag. It shows "will alert 3,214 tracked applications (Pro: 412 →
-   WhatsApp)". Target ≤ 3 min per event.
-5. **Reports inbox:** wrong-match reports grouped by post, with the profile snapshot and a re-evaluation of the
-   current rule, plus "fix rule → new version" and "reply to users" actions.
+   dates/windows, regions, link, and critical flag, with `title`/`body` in the launch locales. Publishing adds the
+   event to a catalog batch and schedules one topic push to `n_{notice_id}`. Target ≤ 3 min per event.
+5. **Reports inbox:** anonymous wrong-match reports grouped by post, with the attributes the user chose to send (if
+   any) and a re-evaluation of the current rule against them, plus "fix rule → new version".
 6. **Dashboard:** source health, queue age, curation minutes per notice (from `review_task.active_seconds`, the PRD
-   metric), LLM spend month to date, alert pipeline lag, push receipt rate, and WhatsApp spend vs cap.
+   metric), LLM spend month to date, publish→CDN latency, topic send lag, self-test pass rate, translation queue.
 
 Admin auth and audit are in [security-privacy.md §5](./security-privacy.md#5-admin-console).
 
@@ -180,13 +182,14 @@ scorecard, next_stage, pet_pst, skill_test, dv_schedule, medical_schedule, final
   tentative schedule (e.g. "CBT: Feb 2027 (tentative)"). These show on the timeline but never alert.
 - **Reschedules:** a new event with `supersedes` = the old one; the old one becomes `cancelled`. The alert says
   "Exam date changed: 12 Mar → 26 Mar".
-- **Who is alerted:** `application.tracking = active` for the recruitment (and post/region if set), excluding
-  applications whose `progress` says `not_cleared` for an earlier stage. Pro users get push + WhatsApp for `critical`
-  events (admit card, reschedule, DV/medical, objection window last day); free users see the timeline but get no
-  lifecycle pushes (`alerts_locked`), except one teaser per application ("Admit card is out: Pro alerts you for
+- **Who is alerted:** every install subscribed to `n_{notice_id}` (Applied + Pro/trial, and family members
+  following it). Each device filters by its own application (post, region, progress — skip if `not_cleared` for an
+  earlier stage). Pro users get a push for every event, high priority for `critical` ones (admit card, reschedule,
+  DV/medical, objection window last day); free users see the timeline from the catalog but get no lifecycle
+  notifications (`alerts_locked`), except one local teaser per application ("Admit card is out: Pro alerts you for
   every stage"), at most once per 30 days.
-- Region-specific events (RRB city slips per RRB) need the user's RRB choice. That optional application field
-  (`region`) is P1; until then such events go to all trackers of that recruitment with the region in the text.
+- Region-specific events (RRB city slips per RRB) need the user's RRB choice, stored on the device (P1); until then
+  such events are shown to all trackers of that recruitment with the region in the text.
 
 ## 10. Failure modes
 

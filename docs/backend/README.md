@@ -11,8 +11,8 @@ The mobile contract is in [`../api/openapi.yaml`](../api/openapi.yaml), with con
 | [data-model.md](./data-model.md) + [schema.sql](./schema.sql) | ERD, DDL, PII handling, retention |
 | [matching-engine.md](./matching-engine.md) + [rule.schema.json](./rule.schema.json) | Rule schema, tri-state evaluation, bucketed matching, worked examples |
 | [ingestion-pipeline.md](./ingestion-pipeline.md) | Source watchers, PDF/OCR, LLM extraction, review console, versioning |
-| [reminders-and-delivery.md](./reminders-and-delivery.md) | Reminder state machine, scheduler, FCM/WhatsApp/SMS, caps, receipts |
-| [payments-and-entitlements.md](./payments-and-entitlements.md) | Play Billing, RTDN, trial, UPI links, entitlement source of truth |
+| [reminders-and-delivery.md](./reminders-and-delivery.md) | On-device reminder state machine and schedule, FCM topic backups, family relay, self-test |
+| [payments-and-entitlements.md](./payments-and-entitlements.md) | Play Billing only, RTDN, season pass as prepaid plan, trial, entitlement source of truth |
 | [security-privacy.md](./security-privacy.md) | App Check, auth, rate limits, admin auth, DPDP Act, encryption, retention |
 | [operations.md](./operations.md) | Observability, CI/CD, environments, runbooks, scaling, solo-dev build plan |
 
@@ -22,7 +22,7 @@ The mobile contract is in [`../api/openapi.yaml`](../api/openapi.yaml), with con
 
 1. **LTV is tiny.** Base-case LTV is about ₹1.6 per install, paid conversion is about 1.2%, and Pro nets about ₹42–169
    ([cac.json](../../memory/ideas/sarkari-match-pro/cac.json)). Infrastructure therefore has to cost **paise per user
-   per month**. It also has to be close to free during the 14-day WhatsApp test and the first 10K users.
+   per month**. It also has to be close to free during the 14-day Play closed test and the first 10K users.
 2. **One developer runs everything**: product, curation and on-call. That means managed services, a single
    codebase and deployable, a single database, no Kubernetes and no message broker to operate.
 3. **Correctness beats latency.** A wrong "eligible" verdict kills trust (the target is under 1% wrong). Eligibility
@@ -33,7 +33,13 @@ The mobile contract is in [`../api/openapi.yaml`](../api/openapi.yaml), with con
    predictable daily peaks in IST.
 5. **India first.** Everything runs in `asia-south1` (Mumbai), with DR copies in `asia-south2` (Delhi). Clients are on
    slow networks with 2 GB RAM phones. Delivery has to survive Xiaomi/Vivo/Oppo background-killing.
-6. **Minimal PII under the DPDP Act 2023.** No names, Aadhaar or documents. Phone is optional. Everything is deletable.
+6. **Minimal PII under the DPDP Act 2023 (founder decisions 2026-11-19).** No names, phone numbers, Aadhaar or
+   documents. The eligibility profile and matching stay **on the device** (ADR-11); the server holds the public catalog
+   and minimal accounts. Everything is deletable.
+7. **No paid messaging.** No WhatsApp, no SMS, no OTP. Delivery = FCM push + on-device reminders. Payments = Google
+   Play Billing only. Login = free Google Sign-In or guest.
+8. **All major Indian languages.** Hindi, English, Bengali, Marathi, Telugu, Tamil, Gujarati, Kannada, Odia,
+   Malayalam, Punjabi, Assamese, Urdu (RTL) are supported by the content model; Hindi + English ship at launch.
 
 ## 2. Chosen stack (summary)
 
@@ -41,15 +47,14 @@ The mobile contract is in [`../api/openapi.yaml`](../api/openapi.yaml), with con
 |---|---|
 | Language/runtime | **Kotlin + Ktor** (JVM 21), one Gradle multi-module repo, one container image with three entrypoints: `api`, `worker`, `admin` |
 | Compute | **Cloud Run** (`asia-south1`): `api` (min 1), `admin` (min 0, behind IAP), `worker` (tick-driven; always-on above about 300K users) |
-| Database | **Cloud SQL for PostgreSQL 16** (`asia-south1`): db-f1-micro during the test, then db-g1-small → custom 2 vCPU → 4 vCPU + HA. It is also the job queue (`FOR UPDATE SKIP LOCKED` outbox) |
+| Database | **Cloud SQL for PostgreSQL 16** (`asia-south1`): db-f1-micro during the test, then db-g1-small → custom 2 vCPU + HA at ~1M installs. Holds the catalog source, accounts, purchases; also the job queue (`FOR UPDATE SKIP LOCKED`) |
+| Matching | **On the device** with the shared KMP module `:matching-core` against the public **catalog** (CDN files); the server never sees profiles ([matching-engine.md](./matching-engine.md)) |
 | Scheduling | **Cloud Scheduler** → authenticated `POST /internal/tick/*` every minute (no broker) |
-| Auth | **Firebase Auth**, legacy tier with no Identity Platform upgrade: anonymous sign-in plus **custom tokens minted after our own OTP** (WhatsApp authentication template first, DLT SMS fallback). App Check with Play Integrity |
-| Push | **FCM HTTP v1**, data-only messages, app-level receipts |
-| WhatsApp | **Meta WhatsApp Cloud API direct** in production. A BSP (AiSensy/Interakt) only for the 14-day test if Meta business verification isn't done in time |
-| SMS (P2 and OTP fallback) | DLT-registered gateway (MSG91 or similar), about ₹0.16–0.25 + GST |
-| Payments | **Google Play Billing**: subscriptionsv2 verification, server acknowledgement, RTDN via **Pub/Sub** push. **Razorpay Payment Links** for the UPI test |
-| Files | **Cloud Storage**: raw notice PDFs (content-addressed), exports. Public notice JSON goes through the CDN |
-| Front door | **Firebase Hosting** custom domain with rewrites to Cloud Run. This gives free TLS and CDN caching for `Cache-Control: public` GETs (`/v1/notices/*`, `/v1/reference`, `/v1/config`, `/v1/health`) |
+| Auth | **Firebase Auth**: **Google** provider via Android Credential Manager (Sign in with Google), or **guest** via anonymous auth created only when a server feature needs an account; `linkWithCredential` upgrades a guest to Google with the same uid. No phone auth, no OTP, no custom tokens. App Check with Play Integrity |
+| Push | **FCM HTTP v1**, data-only; **topic** messages (`catalog`, `p_{post_id}`, `n_{notice_id}`) for everything match-related, token messages only for account pushes |
+| Payments | **Google Play Billing only**: subscription `pro` with a prepaid ₹49 season base plan and a ₹199 yearly auto-renew plan; subscriptionsv2 verification, server acknowledgement, RTDN via **Pub/Sub** push |
+| Files | **Cloud Storage**: raw notice PDFs (content-addressed), catalog files (public, via the CDN) |
+| Front door | **Firebase Hosting** custom domain with rewrites to Cloud Run and GCS. Free TLS and CDN caching for `Cache-Control: public` GETs (`/v1/catalog/*`, `/v1/reference`, `/v1/config`, `/v1/health`) |
 | LLM extraction | **Claude API** (`claude-opus-5-5`, structured outputs, native PDF input) + a cheap classifier pass; human review always |
 | OCR fallback | Native PDF/vision input to the LLM; Cloud Vision OCR only for re-checks of scans or legacy-font Hindi PDFs |
 | Admin console | Server-rendered Ktor + htmx + pdf.js, behind **Identity-Aware Proxy** (Google accounts allowlist) |
@@ -61,64 +66,60 @@ The mobile contract is in [`../api/openapi.yaml`](../api/openapi.yaml), with con
 ```mermaid
 flowchart LR
   subgraph Phone["Android app (Kotlin/Compose, Room, WorkManager)"]
-    APP[App]
+    APP["App: profile + :matching-core +<br/>reminder scheduler (on device)"]
   end
 
   subgraph Edge["Edge"]
-    FH["Firebase Hosting<br/>custom domain + CDN<br/>(public GETs cached)"]
+    FH["Firebase Hosting<br/>custom domain + CDN<br/>(catalog, config, reference)"]
     AC["App Check<br/>(Play Integrity)"]
-    FA["Firebase Auth<br/>anonymous + custom token"]
+    FA["Firebase Auth<br/>Google provider + anonymous"]
   end
 
   subgraph GCP["GCP asia-south1"]
     API["Cloud Run: api<br/>Ktor (REST /v1)"]
-    WRK["Cloud Run: worker<br/>tick handlers:<br/>watch · extract · match ·<br/>plan · send · escalate · housekeep"]
+    WRK["Cloud Run: worker<br/>tick handlers:<br/>watch · extract · catalog build ·<br/>topic send · housekeep"]
     ADM["Cloud Run: admin<br/>review console (IAP)"]
     SCH["Cloud Scheduler<br/>1-min ticks"]
-    PG[("Cloud SQL Postgres<br/>data + outbox queue")]
-    GCS[("Cloud Storage<br/>PDFs · exports")]
+    PG[("Cloud SQL Postgres<br/>catalog source · accounts ·<br/>purchases · job queue")]
+    GCS[("Cloud Storage<br/>PDFs · catalog files")]
     PS["Pub/Sub<br/>play-rtdn topic"]
     SM["Secret Manager / KMS"]
   end
 
   subgraph Ext["External"]
     SRC["Official sources<br/>SSC · RRB×21 · IBPS · UPSC ·<br/>UPSSSC · UPPRPB · BPSC · Employment News"]
-    LLM["Claude API<br/>(extraction)"]
-    FCM["FCM HTTP v1"]
-    WA["Meta WhatsApp<br/>Cloud API"]
-    SMS["DLT SMS gateway"]
+    LLM["Claude API<br/>(extraction, translation drafts)"]
+    FCM["FCM HTTP v1<br/>(topics + tokens)"]
     PLAY["Google Play<br/>Developer API"]
-    RZP["Razorpay<br/>Payment Links"]
   end
 
-  APP -->|HTTPS + ID token + App Check| FH --> API
+  APP -->|"GET catalog (public, cached)"| FH
+  FH --> GCS
+  APP -->|"HTTPS + App Check (+ ID token for accounts)"| API
   APP -. sign-in .-> FA
   APP -. attest .-> AC
+  APP -. "subscribe topics" .-> FCM
   API --> PG
-  API --> GCS
   SCH --> WRK
   WRK --> PG
   WRK -->|fetch, diff| SRC
   WRK -->|PDF → JSON rules| LLM
-  WRK --> GCS
-  WRK --> FCM --> APP
-  WRK --> WA
-  WRK --> SMS
+  WRK -->|catalog batches| GCS
+  WRK -->|topic + account pushes| FCM --> APP
   ADM --> PG
   ADM --> GCS
   PLAY -->|RTDN| PS -->|push, OIDC| API
   API -->|verify + ack| PLAY
-  WA -->|webhooks: opt-in, status| API
-  RZP -->|webhook paid| API
   API --> SM
   WRK --> SM
 ```
 
 **Data flow for one notice:** watcher finds a new PDF → stores it in GCS (sha256) → classifier → extractor
 (LLM → `rule.schema.json`) → validators → **human review in admin** → publish (creates `notice_version` and `post_rule`
-versions) → `match` job (signature buckets, see [matching-engine.md](./matching-engine.md)) → `match` rows +
-`reminder_state` → planner writes `delivery` outbox rows → sender pushes FCM → receipts → escalation to WhatsApp for Pro.
-Target: first push out **< 30 min after publish** (NFR is < 6 h).
+versions) → **catalog batch** written to GCS + `topic_send(sync)` → FCM topic `catalog` → every app fetches the
+batch, evaluates it against the **local** profile, and composes its own "new match" notification; R1/R-last topic
+backups are scheduled on `p_{post_id}`. Target: catalog batch out **< 5 min after publish**; notifications follow as
+soon as each phone runs (NFR < 6 h).
 
 ## 4. Decisions (ADR summaries)
 
@@ -126,6 +127,9 @@ Costs in this section are for **compute + DB only**. The full cost table is in �
 (about 30% monthly active).
 
 ### ADR-01: Platform: Cloud Run + Cloud SQL Postgres (Kotlin/Ktor)
+
+_Unchanged choice; with ADR-11 the database no longer holds profiles or matches, so the load numbers below are
+upper bounds from the earlier server-matching design._
 
 | Option | 10K | 100K | 1M | Matching fit | Ops for 1 dev | Notes |
 |---|---|---|---|---|---|---|
@@ -139,61 +143,61 @@ Costs in this section are for **compute + DB only**. The full cost table is in �
 Auth, Play RTDN (which requires Pub/Sub anyway), Cloud Scheduler and IAP. It is near-free at test scale on
 db-f1-micro (~$8–10/mo) and request-billed Cloud Run (free tier: 180K vCPU-s, 360K GiB-s and 2M requests a month,
 [Cloud Run pricing](https://cloud.google.com/run/pricing)). Kotlin is shared with Android: DTOs and the
-rule-evaluator module can be a KMP module reused for on-device previews. **Exit ramps:** plain Postgres plus a
+rule-evaluator KMP module, which is the on-device matcher (ADR-11). **Exit ramps:** plain Postgres plus a
 container means a move to Supabase, a VM or AWS is a weekend, not a rewrite.
 
-### ADR-02: Auth: Firebase anonymous + own OTP → Firebase custom token
+### ADR-02: Auth: Google Sign-In (Credential Manager + Firebase Auth) or guest; no phone, no OTP
 
-| Option | Cost per verification (India) | Notes |
-|---|---|---|
-| Firebase phone auth | **~US$0.07 per SMS (≈₹6)**, 10/day free ([Identity Platform pricing](https://cloud.google.com/identity-platform/pricing); India rate as reported by [Authgear, Aug 2026](https://www.authgear.com/post/best-otp-service-providers/), *verify*) | Simplest, but 30–50× local rates; at 1M users × ~1.3 OTPs that's about ₹80 lakh |
-| MSG91/DLT SMS OTP | **~₹0.16–0.25 + 18% GST** ([eChai summary of msg91.com](https://echai.ventures/explore/sms-marketing), [RichAutomate](https://richautomate.in/blog/sms-api-pricing-india-2026)) | Needs DLT entity, header and template registration |
-| WhatsApp authentication template | **~₹0.115–0.145** (*estimate*, India utility/auth range per [AiSensy](https://m.aisensy.com/blog/whatsapp-pricing-update-october-2026/)) | No DLT; same Meta number we use for alerts; not usable if the user has no WhatsApp |
-| **Chosen:** anonymous first; phone optional via WhatsApp OTP → SMS fallback; server mints a Firebase custom token | ~₹0.13 average | Free tier works with **zero** OTP spend; a phone is needed only for restore, WhatsApp or family |
+Founder decision 2 (2026-11-19): login is free only. **Kept:** Google via Android Credential Manager
+(`GetGoogleIdOption`/`GetSignInWithGoogleOption` → Google ID token → `GoogleAuthProvider.getCredential` → Firebase
+`signInWithCredential`, or `linkWithCredential` for a guest), and **guest**. A guest needs no account for free
+matching and reminders (on-device, ADR-11); a Firebase **anonymous** account is created only when a server feature
+first needs one (trial, purchase, family link) and can be linked to Google later with the same uid.
+**Removed:** our own WhatsApp/SMS OTP, MSG91/DLT, custom tokens, phone numbers, `otp_session`.
 
-Firebase Auth stays on the **legacy (non-Identity-Platform) tier**, where anonymous and custom-token users carry no
-MAU charge (community-reported; **verify before launch**, since Identity Platform bills above 50K MAU). Exit ramp: the
-`AuthVerifier` interface can switch to our own Ed25519-signed JWTs (we already own OTP and session creation).
-Anti-abuse is in [security-privacy.md](./security-privacy.md).
+**Cost.** Firebase Authentication without the Identity Platform upgrade charges only for phone/SMS verification;
+Google and anonymous sign-ins carry no per-MAU charge. If the project is (or must be) upgraded to Identity Platform,
+Google and anonymous are Tier 1 providers with **50,000 MAU free per month**, then about **$0.0055/MAU** (50K–100K)
+with lower rates above; anonymous accounts stop counting once Identity Platform's anonymous auto-cleanup is on; an
+upgraded project on the no-cost Spark plan is capped at 3,000 DAU. (Third-party summaries of Google's pricing pages,
+2026: [Logto](https://blog.logto.io/firebase-authentication-pricing),
+[SuperTokens](https://supertokens.com/blog/firebase-pricing),
+[RapidNative](https://www.rapidnative.com/blogs/firebase-authentication-pricing); the official
+[Firebase pricing](https://firebase.google.com/pricing) and
+[Identity Platform pricing](https://cloud.google.com/identity-platform/pricing) pages could not be fetched from the
+build environment — **confirm before launch**.) Only signed-in or paying users have accounts (~15–30% of installs),
+so the worst case at 1M installs is ≈ 60–150K account MAU → **$0–300/month**, and $0 below ~170K installs. We stay
+on Blaze without the upgrade unless a needed feature forces it, and do **not** enable anonymous auto-cleanup (guests
+with Pro are anonymous); our own housekeeping deletes idle anonymous accounts (data-model.md §5).
 
-### ADR-03: Matching: signature buckets + DOB range join in Postgres
+### ADR-03: Matching: superseded by ADR-11 (on-device)
 
-Options compared: (a) a naive per-user × per-post loop in app code, about 1M evaluations streamed from the DB, around
-30–60 s; (b) in-memory roaring bitsets per attribute value held in the worker, which is fast but needs a resident
-cache and warm-up and is hard to keep consistent on profile edits; (c) **chosen: group profiles by an
-*eligibility signature* (every eligibility-relevant attribute except DOB)**. The rule is evaluated once per distinct
-signature (S ≈ 5–50K at 1M users), producing at most one DOB window, then a single `INSERT … SELECT` joins
-`profile(elig_sig, dob)` against those windows. That is O(S·R) CPU plus O(M log N) index work. At 1M users that is
-about 1 s of rule evaluation plus 3–10 s of SQL, with no cache to keep warm. Details are in
-[matching-engine.md](./matching-engine.md).
+The earlier choice (server-side signature buckets + DOB range join in Postgres) is kept in git history only.
 
-### ADR-04: Queue and scheduler: Postgres outbox + `SKIP LOCKED`, driven by Cloud Scheduler ticks
+### ADR-04: Queue and scheduler: Postgres `job` + `topic_send` with `SKIP LOCKED`, driven by Cloud Scheduler ticks
 
-| Option | Fit |
-|---|---|
-| Cloud Tasks (one task per reminder) | $0.40/M tasks, but every Applied/Snooze/corrigendum means finding and deleting tasks; millions of future tasks; hard to cap 3 pushes a day per user |
-| Pub/Sub | No delayed delivery; still needs a DB for state |
-| pg-boss / Redis queues | Node-only or one more service to run |
-| **Postgres `reminder_state.next_due_at` index + `delivery` outbox + `FOR UPDATE SKIP LOCKED` (chosen)** | Rescheduling is one `UPDATE` in the same transaction as the user's action; caps and dedupe are SQL; no extra infra. Cloud Scheduler ticks every minute (3 jobs free, then $0.10/job/month) |
+Per-user reminder scheduling moved to the device, so the server queue is small: extraction/catalog/translation jobs
+and topic sends (one per catalog batch, two per open post for R1/R-last backups, one per lifecycle event — a few
+thousand rows a month at any user count). Cloud Scheduler ticks every minute (3 jobs free, then $0.10/job/month). No
+Cloud Tasks, Pub/Sub queues or Redis.
 
-Throughput: one worker instance drains about 2–5K FCM sends a second over HTTP/2. FCM's project quota is
-600K messages a minute ([FCM throttling](https://firebase.google.com/docs/cloud-messaging/throttling-and-quotas)).
+### ADR-05: WhatsApp and SMS: removed
 
-### ADR-05: WhatsApp: Meta Cloud API direct
+Founder decision 7 (2026-11-19): no WhatsApp alerts, OTP or templates. Meta Cloud API, BSPs, templates, opt-in
+endpoints, quotas and costs are removed. Family alerts go to the family member's own app
+([reminders-and-delivery.md §5](./reminders-and-delivery.md#5-family-alerts-pro-p1--push-to-the-family-members-own-app)).
+SMS is dropped too (it would need a phone number); see reminders-and-delivery.md §8.
 
-BSPs add ₹999–16,999/mo platform fees or a ₹0.05–0.15/msg markup on top of Meta's ₹~0.115 utility rate
-([go4whatsup](https://go4whatsup.com/guides/whatsapp-business-api-pricing-india/), [myoperator](https://myoperator.com/blog/whatsapp-business-api-pricing-india-2026)),
-which is a +40–130% markup. We need no inbox UI or broadcast tool; we need templates + webhooks, which Cloud API gives for
-free. Cost: Meta business verification and a few days of integration. **For the 14-day test** (before the app
-exists) use whichever is live first; a BSP with a free or low tier is acceptable for 2 weeks.
+### ADR-06: Payments: Google Play Billing only, server-side truth
 
-### ADR-06: Payments: Play Billing as primary, server-side truth
-
-There is one subscription product `pro` with base plans `season-4m-prepaid` (₹49, non-renewing prepaid) and
-`yearly-autorenew` (₹199). The 14-day trial is **server-granted and opt-in**: offered right after the first Applied
-(B02), started when the user taps "14 दिन मुफ़्त शुरू करें" (`POST /v1/me/trial`). There is no Play free-trial offer,
-because that needs a payment method. Entitlement is computed only on the server from `entitlement_grant` rows (trial, Play,
-UPI, referral, promo). See [payments-and-entitlements.md](./payments-and-entitlements.md).
+Google Play Billing **only** (founder decision 4). One subscription product `pro` with base plans
+`season-4m-prepaid` (₹49, **prepaid**, non-renewing, top-up allowed — recommended over a one-time product, see
+payments §1.1) and `yearly-autorenew` (₹199). The 14-day trial is **server-granted and opt-in**: offered right after
+the first Applied (B02), started when the user taps "14 दिन मुफ़्त शुरू करें" (`POST /v1/me/trial`). There is no Play
+free-trial offer (prepaid plans cannot carry offers, and it would need a payment method). Entitlement is computed only
+on the server from `entitlement_grant` rows (trial, Play, referral, promo) and handed to the app as a signed token.
+UPI links, Razorpay/Cashfree and user-choice billing are removed. See
+[payments-and-entitlements.md](./payments-and-entitlements.md).
 
 ### ADR-07: Extraction: LLM-assisted, human-verified, versioned
 
@@ -202,11 +206,13 @@ deterministic validators and DOB-window cross-checks against dates printed in th
 rule; a second reviewer is required for risk-flagged posts. Estimated cost ~$0.5–1.5 per notice, about $20–60/month
 at 40 notices. See [ingestion-pipeline.md](./ingestion-pipeline.md).
 
-### ADR-08: Push semantics: data-only, app receipts, primary device
+### ADR-08: Push semantics: data-only, topics, composed on the device
 
-Data-only FCM so the app controls language, buttons, quiet-hour dedupe and receipts. High priority is used only for
-visible alerts. App receipts drive WhatsApp escalation; FCM itself gives no per-message delivery callback. One
-primary device per account (B15).
+Data-only FCM so the app controls language, buttons, quiet-hour dedupe and caps. Match-related pushes go to
+**topics** (the server does not know recipients); the device composes the text from its string resources and the
+catalog. High priority only for R1/R-last backups, critical lifecycle and the self-test. No delivery receipts, no
+escalation channel, no primary-device rule: every install with a match reminds itself (a user with two phones gets
+the reminder on both, by design).
 
 ### ADR-10: Ads: client-side AdMob native, server only decides *whether*
 
@@ -216,9 +222,11 @@ included) and `AppConfig.ads` (global kill switch, allowed placements, minimum a
 sessions). This costs nothing at any scale. The kill switch covers a bad SDK release, a policy incident, or an ad
 that looks like an official notice. Ad content policy: block the education/test-prep look-alike, gambling, loans and
 dating categories in the AdMob console, plus a manual blocklist of advertiser URLs that mimic govt portals. For
-privacy, the app removes the `AD_ID` permission and requests only non-personalised ads, so the advertising ID is not read; the SDK still collects app-instance identifiers and diagnostics, which have to be disclosed in the Play Data safety form
-and in our DPDP notice ([frontend ads.md](../frontend/ads.md)); consent is covered in [security-privacy.md](./security-privacy.md#7-ads). An ads-free build
-flavour stays possible.
+privacy, the app removes the `AD_ID` permission, integrates **UMP** (form only where Google requires one) and
+requests only **non-personalised** ads (`npa=1` extras on the Next-Gen SDK), never for users whose on-device DOB says
+< 18; the SDK still collects app-instance identifiers and diagnostics, which are disclosed in S47, B17 and the Play
+Data safety form ([frontend ads.md](../frontend/ads.md), [security-privacy.md §7](./security-privacy.md#7-ads)). An
+ads-free build flavour stays possible.
 
 ### ADR-09: Single deployable, three roles
 
@@ -226,55 +234,75 @@ flavour stays possible.
 (rule evaluator, templates). They are separate Cloud Run services, so admin can be IAP-protected and the worker can
 scale and time out differently.
 
+### ADR-11: Privacy-first: profile and matching on the device
+
+Founder decision 5: collect only what matching needs and minimise what leaves the device. The profile (DOB,
+category, PwD, ESM, qualifications, domicile, interests) stays on the phone; the app evaluates the public rule catalog
+with `:matching-core` and schedules reminders locally; the server keeps the catalog, minimal accounts, purchases and
+end-to-end-encrypted blobs (backup, family watch-list). Chosen over server-side signature matching for DPDP scope (no
+caste/disability data held), the children's-data problem (minor mode instead of parental consent), a short Data
+safety form, breach impact and cost; the price is coarser analytics, evaluator versioning and a catalog format. Full
+comparison: [matching-engine.md §0](./matching-engine.md#0-decision-on-device-matching-vs-server-side-signature-matching).
+
+### ADR-12: Localization: LocalizedText maps + locale registry
+
+All 13 major Indian languages are modelled; Hindi + English launch. Every user-visible server string is a
+`LocalizedText` map (`en` mandatory, all `launch` locales required at publish), resolved with per-locale fallback
+chains from the `locale` table (e.g. mr → hi → en, ta → en → hi; ur is RTL). Non-launch locales are filled by an LLM
+draft + human review queue (`translation_task`) and shipped as `translation` catalog batches; the catalog is
+requested per locale set (`?locales=ta,en`). Device and account carry `locale`; `Accept-Language` selects the
+`Problem.message` language and the default catalog locales. Notification text is composed on the device from
+per-app-locale string resources; the server holds per-locale text only for account pushes (`notification_text`).
+
 ## 5. Cost table (monthly, USD, **estimates**)
 
-Assumptions: 30% monthly active; 3 API calls per active user per day; about 25 pushes per active user per month;
-Pro = 3% of MAU, each about 10 WhatsApp messages a month (cap 30 per season), plus 20% of Pro with one family member
-at about 4 messages a month; 30% of new users verify a phone (about 1.3 OTPs each); 40 notices a month (scaling to
-80 at 1M users with more states); INR ≈ 88/USD.
+Assumptions: 10K / 100K / 1M = installs; 30% monthly active; matching, reminders and notification text on the device
+(no per-user server work); ~40 catalog batches a month (80 at 1M with more states); a new install downloads one
+snapshot (~1 MB) and an active install ~0.3 MB of batches a month; ~15–30% of installs have a server account (Google
+sign-in, Pro, family); Pro = 3% of MAU; INR ≈ 88/USD. **Removed lines:** OTP (WhatsApp auth/SMS) and WhatsApp alerts;
+no feature has a per-message cost any more.
 
-| Line item | 10K users | 100K users | 1M users | Source / note |
+| Line item | 10K installs | 100K installs | 1M installs | Source / note |
 |---|---|---|---|---|
-| Cloud SQL Postgres | $10 (db-f1-micro) → $33 (db-g1-small) | $140 (2 vCPU/7.5 GB + 50 GB SSD + PITR) | $650 (4 vCPU/16 GB **HA** + 300 GB + PITR) | [Bytebase Cloud SQL table](https://www.bytebase.com/dbcost/cloudsql-pricing/) shows db-g1-small asia-south1 ≈ $31; shared-core has no SLA ([Cloud SQL pricing](https://cloud.google.com/sql/pricing)) |
-| Cloud Run (api + worker + admin) | $8–15 (min-instance idle; rest in free tier) | $50 | $250 (worker always-on, API peaks of about 2K rps after pushes) | $0.000024/vCPU-s, $0.0000025/GiB-s, $0.40/M req beyond free tier |
-| Firebase Hosting CDN + egress | $0 | $10 | $80 | notice JSON is about 8 KB gzipped; most opens hit cache |
-| Cloud Storage, Scheduler, Pub/Sub, Secret Manager, KMS | $2 | $5 | $20 | |
-| Logging/monitoring (50 GB free), Sentry free | $0 | $10 | $60 | log sampling on hot paths |
-| FCM | $0 | $0 | $0 | free |
-| Firebase Auth (anonymous + custom token) | $0 | $0 | $0* | *if the legacy tier stays MAU-free (verify) |
-| LLM extraction (Claude Opus 5.5) | $30 | $40 | $80 | ~$0.5–1.5/notice incl. re-extracts for corrigenda |
-| OTP (WhatsApp auth, SMS fallback) | $2 | $15 | $150 | ~₹0.13 average × verifications |
-| WhatsApp alerts (Pro + family) | $1 | $15 | $150 | ₹0.115–0.145/utility msg ([AiSensy](https://m.aisensy.com/blog/whatsapp-pricing-update-october-2026/), [baat.ai](https://baat.ai/blog/whatsapp-api-pricing-india)) |
+| Cloud SQL Postgres | $10 (db-f1-micro) | $33 (db-g1-small) | $70–140 (2 vCPU; HA from ~500K) | accounts + catalog only, < 3 GB ([Cloud SQL pricing](https://cloud.google.com/sql/pricing), [Bytebase table](https://www.bytebase.com/dbcost/cloudsql-pricing/)) |
+| Cloud Run (api + worker + admin) | $8–15 (min-instance idle; rest in free tier) | $20 | $60–80 | API traffic is accounts, reports, self-tests; the catalog is served by the CDN |
+| Firebase Hosting CDN + egress | $0 | $10 | $45–90 | ~150K snapshots + ~300K MAU × 0.3 MB ≈ 250–300 GB/month at 1M |
+| Cloud Storage, Scheduler, Pub/Sub, Secret Manager, KMS | $2 | $4 | $10 | |
+| Logging/monitoring (50 GB free), Sentry free | $0 | $5 | $20 | |
+| FCM (topics + tokens) | $0 | $0 | $0 | free |
+| Firebase Auth (Google + anonymous) | $0 | $0 | $0–300 | $0 without the Identity Platform upgrade; worst case Tier 1 after 50K MAU (ADR-02) |
+| LLM extraction (Claude Opus 5.5) | $30 | $40 | $80 | ~$0.5–1.5/notice incl. re-extracts; translation drafts add ~$10–40 once non-launch locales are enabled |
 | Domain, misc | $2 | $2 | $5 | |
 | Ads SDK (Google Mobile Ads / AdMob) | $0 | $0 | $0 | revenue share is taken out of eCPM, so no infra cost; backend only serves the flags |
-| **Total** | **≈ $55–90** (≈ ₹5–8K) | **≈ $290** (≈ ₹25K) | **≈ $1,450** (≈ ₹1.3 L) | |
-| Per registered user | ~₹0.5–0.7 | ~₹0.25 | ~₹0.13 | |
+| **Total** | **≈ $50–60** (≈ ₹4.5–5.5K) | **≈ $115** (≈ ₹10K) | **≈ $290–725** (≈ ₹0.26–0.64 L) | was ≈ $55–90 / $290 / $1,450 with server matching + WhatsApp/OTP |
+| Per install | ~₹0.5 | ~₹0.1 | ~₹0.03–0.06 | |
 | Subscription revenue, base case (1.2% pay, ~₹170/yr net) | ~₹1.7K | ~₹17K | ~₹1.7 L | cac.json base case |
-| **Ad revenue, free tier (ESTIMATE)** | ~₹0.9–3.5K ($10–40) | ~₹9–35K ($100–400) | ~₹0.9–3.5 L ($1–4K) | ~97% of MAU free × ~22 native impressions/MAU/month (feed bottom about 12 + digest about 10) × India native eCPM **$0.15–0.60** = ₹0.3–1.2 per free MAU/month. eCPM sources are weak: a single dev report of native at $0.14 ([Kodular forum](https://community.kodular.io/t/admob-ecpm-getting-low-by-low-everyday-india-0-22/189851)); blended India AdMob $0.5–2.0 ([adpumb](https://adpumb.com/?p=10317), [cas.ai](https://cas.ai/?p=11066)). Replace with AdMob actuals after 2 weeks |
-| Revenue vs infra | infra ≈ 1–3× revenue | revenue ≈ 1.0–2.1× infra | revenue ≈ 2–4× infra | Ads roughly double revenue at every scale and are the larger line in the low case. Per-user cost is already near the floor (LLM and DB are fixed costs). **The business case, not infra, is the risk.** |
+| **Ad revenue, free tier (ESTIMATE, unchanged)** | ~₹0.9–3.5K ($10–40) | ~₹9–35K ($100–400) | ~₹0.9–3.5 L ($1–4K) | ~97% of MAU free × ~22 native impressions/MAU/month (feed bottom about 12 + digest about 10) × India native eCPM **$0.15–0.60** = ₹0.3–1.2 per free MAU/month. eCPM sources are weak: a single dev report of native at $0.14 ([Kodular forum](https://community.kodular.io/t/admob-ecpm-getting-low-by-low-everyday-india-0-22/189851)); blended India AdMob $0.5–2.0 ([adpumb](https://adpumb.com/?p=10317), [cas.ai](https://cas.ai/?p=11066)). Minor-mode users (no ads) lower it slightly. Replace with AdMob actuals after 2 weeks |
+| Revenue vs infra | revenue ≈ 0.5–1.2× infra | revenue ≈ 2.5–5× infra | revenue ≈ 4–20× infra | Infra is now mostly fixed cost (LLM, DB floor). **The business case, not infra, is the risk.** |
 
-During the WhatsApp test and below about 2K users, run **db-f1-micro + request-billed worker**: about $20–35/month,
-dominated by the LLM. Cost guardrails are in [operations.md §6](./operations.md#6-cost-guardrails).
+During the Play closed test and below about 2K installs, run **db-f1-micro + request-billed worker**: about
+$20–35/month, dominated by the LLM. Cost guardrails are in [operations.md §6](./operations.md#6-cost-guardrails).
 
 ## 6. What is *not* built
 
 No microservices, Kubernetes, Redis, Kafka, separate search engine, GraphQL, realtime sockets, or document storage.
+No server-side profiles, matching, per-user reminder planner, WhatsApp, SMS, OTP or payment gateway.
 There is no server-side PDF rendering for users (we link the official PDF). The admin console is a few server-rendered
 pages, not an SPA.
 
 ## 7. Open questions
 
 1. **Launch states.** Working assumption (shared with design): **UP + Bihar**, UP watchers in P0 week 5 and Bihar
-   (BPSC, BSSC, CSBC) before launch only if curation stays ≤ 30 min/notice, else in P1. S08 pins whatever
-   `ReferenceBundle.pinned_states` says. Founder to confirm; the set determines the source watchers, the Hindi
-   legacy-font OCR share and the curation load.
-2. **Under-18 users** (10th-pass aspirants of 17). The DPDP Act requires verifiable parental consent. Proposal: the
-   app is for 18+; a DOB under 18 shows a limited, no-account eligibility preview only. Needs a legal check.
-3. **Firebase Auth MAU billing** for anonymous and custom-token users on the legacy tier: confirm. If it is billed,
-   switch to our own JWT (about 2 days of work).
-4. **Play prepaid plan duration of 4 months**: confirm Play Console allows a 4-month prepaid base plan. Fallback is
-   3 months (₹49) or 6 months.
-5. **UPI in the Play build.** Play payments policy: UPI links in-app only via Play's alternative billing programme for
-   India, or only in the non-Play test build. Decision needed before P0.
-6. **Meta business verification** needs a registered business (GST/Udyam). This gates WhatsApp in production.
-7. **Single primary device** (B15) vs. pushing to all devices: the frontend has assumed primary; the API supports it.
+   (BPSC, BSSC, CSBC) before launch only if curation stays ≤ 30 min/notice, else in P1. Founder to confirm.
+2. **Minor mode (under 18)** replaces the 18+ gate: confirm with a lawyer that an install that sends us nothing
+   (only Google-processed FCM topic subscriptions) needs no verifiable parental consent; and whether Pro purchase
+   should stay hidden for minors.
+3. **Firebase Auth tier:** confirm on the official pricing pages that the project can stay without the Identity
+   Platform upgrade (Google + anonymous free); else budget ADR-02's worst case.
+4. **Play prepaid plan of 4 months**: confirm `P4M` is offered in Play Console; fallback `P3M` at ₹49.
+5. **Encrypted backup in the Data safety form:** does Play treat end-to-end-encrypted data we cannot decrypt as
+   "collected"? Declared conservatively until confirmed.
+6. **Analytics depth:** opt-in identifier-free counters + Play Console may be too coarse for the validation gates
+   (≥ 300 profiles, ≥ 100 Applied). Accept, or add an explicit opt-in "test participant" id for the closed test only?
+7. **Ads under DPDP:** S47 notice + B17 + non-personalised ads with no consent toggle — confirm with the legal review
+   that this suffices for adults in India.

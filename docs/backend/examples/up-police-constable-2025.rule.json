@@ -1,5 +1,6 @@
 {
   "schema_version": "1",
+  "evaluator_min_version": 1,
   "post": {
     "code": "UPP-CONST-CP",
     "name": { "hi": "आरक्षी नागरिक पुलिस (पुरुष/महिला)", "en": "Constable, Civil Police (male/female)" },
