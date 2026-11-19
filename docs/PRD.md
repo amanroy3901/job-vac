@@ -13,9 +13,11 @@ Source of truth: https://claude.ai/artifact/4CbSA4F9WK5zc94no2kUkb (this file is
 7. **No WhatsApp messaging at all** — no WhatsApp alerts, OTP or templates. Delivery = FCM push + on-device backup reminders. Pro value = lifecycle alerts after applying, no ads, clash/certificate/family alerts (family = push to a linked family member's own app).
 8. **Validation test:** run as a Play closed-testing build with Play Billing, not over WhatsApp.
 
+9. **Platforms (2026-11-19, later):** Android AND iOS from one codebase — Kotlin Multiplatform (shared logic: models, eligibility engine, data, sync) + Compose Multiplatform (shared UI). Payments: Google Play Billing on Android, StoreKit 2 / App Store in-app purchase on iOS. Sign-in: Google Sign-In (+ Sign in with Apple on iOS, required by App Store rules when offering third-party login) or guest. Push: FCM (APNs on iOS). Same design (Marigold Home) on both.
+
 ## Summary
 
-Sarkari Match is a Hindi-first Android app that alerts a government-job aspirant only about jobs they are actually eligible for, and keeps reminding them until they apply or say "not interested". It is alert-only: no courses, test series or prep content.
+Sarkari Match is a Hindi-first Android and iOS app that alerts a government-job aspirant only about jobs they are actually eligible for, and keeps reminding them until they apply or say "not interested". It is alert-only: no courses, test series or prep content.
 
 **Positioning line:** "Sirf aapki naukri. Koi miss nahi." (Only your jobs. Nothing missed.)
 
