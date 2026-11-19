@@ -198,7 +198,8 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
    - `pending` **"जवाब बाकी"** / *"Waiting for your reply"*
    - `help` **"ख़ुद जाँचें"** / *"Check yourself"* (checkYourself verdict, any deadline — sorted inside sections above if urgent ≤ 3 days)
 4. "क्या आपने ये फ़ॉर्म भरे थे?" grouped card (SC-17) when applicable, between sections 2 and 3.
-5. Footer `DisclaimerNote` (short): "सरकारी ऐप नहीं · हर जानकारी आधिकारिक नोटिस से मिलाएँ".
+5. **Ad slot (free users only)** — `NativeAdSlot` (06 §J1) as the last list item after all job sections, never between job cards. Pro/trial: not rendered. No-fill/offline: collapses to nothing.
+6. Footer `DisclaimerNote` (short): "सरकारी ऐप नहीं · हर जानकारी आधिकारिक नोटिस से मिलाएँ".
 
 **MatchCard** (see 06 §C1 for API). Layout inside card (16 padding):
 ```
@@ -224,7 +225,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 - Pull-to-refresh (`PullToRefreshBox`) → sync; snackbar "अपडेट हो गया" only if changes.
 
 **A11y:** each card: "SSC GD कांस्टेबल भर्ती 2027. आप योग्य हैं. आज आखिरी दिन, रात 11 बजे तक. फ़ीस 100 रुपये." + custom actions "फ़ॉर्म भर दिया", "बाद में याद दिलाएँ", "रुचि नहीं", "पूरा ब्योरा खोलें". Section headers `heading()`.
-**Analytics:** `home_view{n_today, n_soon, n_new, n_pending, n_check}`, `card_tap{job_id, section}`, `card_action{action, section}`, `home_refresh`.
+**Analytics:** `home_view{n_today, n_soon, n_new, n_pending, n_check, ad_slot}`, `card_tap{job_id, section}`, `card_action{action, section}`, `home_refresh`.
 
 ---
 
@@ -411,7 +412,8 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
   3. `key` आंसर की, आपत्ति की आखिरी तारीख, रिज़ल्ट, कट-ऑफ़
   4. `fact_check` DV और मेडिकल की तारीख — "न जाने पर दोबारा मौका नहीं मिलता"
   5. WhatsApp glyph · WhatsApp पर भी अलर्ट — "फ़ोन सूचना रोके तब भी"
-  6. (P1, shown with "जल्द" tag) परिवार अलर्ट · परीक्षा टकराव · सर्टिफ़िकेट की जाँच
+  6. `block` **कोई विज्ञापन नहीं** / *No ads* — "ऐप में कहीं भी विज्ञापन नहीं"
+  7. (P1, shown with "जल्द" tag) परिवार अलर्ट · परीक्षा टकराव · सर्टिफ़िकेट की जाँच
 - **Plans** (`PlanOptionCard` radio group, 12 gap):
   - **साल भर — ₹199** · sub "सिर्फ़ ₹17/महीना" · badge (tertiary filled) "सबसे सस्ता" · default selected.
   - **एक सीज़न — ₹49** · sub "4 महीने · एक भर्ती के मौसम के लिए".
@@ -473,7 +475,7 @@ Icon `report` 48 · "अभी हमारा सर्वर काम नह�
 
 ## S43/S44/S45/S46 — P1/P2 (summary)
 - **S43 Age countdown (P2):** list `AgeChanceRow`: exam, "आपकी आख़िरी योग्य साल: 2029", "लगभग 2 मौके" chip (urgent if 1).
-- **S44 Digest (P1):** header "आज का सारांश · 19 नवं" + compact `MatchCard`s + "बदलाव" list.
+- **S44 Digest (P1):** header "आज का सारांश · 19 नवं" + compact `MatchCard`s + "बदलाव" list + (free only) one `NativeAdSlot` at the very end.
 - **S45 Invite (P1):** headline "दोस्त को बताएँ — दोनों को 1 महीना Pro मुफ़्त", share button (Android sharesheet), status "2 दोस्त जुड़े".
 - **S46 Share card (P1):** preview of the rendered card (primary bg, white text "मैं 7 सरकारी नौकरियों के योग्य हूँ") + "शेयर करें"; no DOB/category/phone on card.
 

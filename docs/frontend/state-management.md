@@ -64,7 +64,7 @@ sealed interface UiText {
 ```kotlin
 @Immutable
 data class HomeUiState(
-    val feed: LoadState<ImmutableList<FeedSection>> = LoadState.Loading,
+    val feed: LoadState<ImmutableList<FeedItem>> = LoadState.Loading,  // Header | Match | Ad (free tier, last) | FooterDisclaimer — see ads.md §4
     val banners: ImmutableList<Banner> = persistentListOf(),
     val refreshing: Boolean = false,
     val freshness: Freshness = Freshness(online = true, syncedAt = null, stale = false),
@@ -100,6 +100,9 @@ sealed interface HomeAction {
     data class Undo(val token: RecordedAction) : HomeAction
     data class BannerTapped(val banner: Banner) : HomeAction
     data object DismissSheet : HomeAction
+    data object AdSlotNearViewport : HomeAction                      // lazy ad load, once per visit (ads.md)
+    data object AdClicked : HomeAction
+    data class OpenPaywall(val source: PaywallSource) : HomeAction  // e.g. "विज्ञापन हटाएँ" → S30 (src = AdSlot)
 }
 
 sealed interface HomeEffect {
@@ -170,7 +173,7 @@ Screen-level states for S20:
 | State | Trigger | UI |
 | --- | --- | --- |
 | `Loading` | first launch after onboarding, Room empty, sync running | 3 skeleton `MatchCard`s (static when reduced motion) |
-| `Content` | ≥ 1 open match | sections in `LazyColumn`, `key = matchId`, `contentType = section kind` |
+| `Content` | ≥ 1 open match | `FeedItem`s in `LazyColumn`, `key = item.key`, `contentType = item class`; free tier: one `FeedItem.Ad` last (before footer) when `AdsGate.shouldShow(FeedBottom)` |
 | `Empty(NoMatchesYet)` | profile saved, 0 matches ever | "अभी कोई नौकरी नहीं — नई आते ही बताएँगे" + delivery-health CTA |
 | `Empty(AllCaughtUp)` | matches exist but none open | "सब का जवाब दे दिया ✓" + link to S22 |
 | `Empty(ProfileIncomplete)` | `profile.missing_optional` blocks verdicts | CTA → S27 |

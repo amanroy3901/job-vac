@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.sarkarimatch.in/schemas/rule/v1.json",
+  "title": "Sarkari Match post eligibility rule (v1)",
+  "description": "One document per post per version. Filled by the LLM extractor, edited and published by a human reviewer. Evaluated by the deterministic engine in docs/backend/matching-engine.md. Every fact carries a `source` (document + page) for provenance. Unknown/ambiguous facts must be expressed as `check_yourself`, never guessed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "post", "exam_tags", "age", "qualification", "fees", "source"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "post": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "name"],
+      "properties": {
+        "code": { "type": "string", "description": "Stable code within the notice, e.g. 'CAPF-CT-GD' or 'UPP-CONST-CP'" },
+        "name": { "$ref": "#/$defs/LocalizedText" },
+        "pay_level": { "type": ["string", "null"] },
+        "vacancies": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "total": { "type": ["integer", "null"], "minimum": 0 },
+            "by_category": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+            "by_gender": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+            "by_state": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+            "allocation_basis": {
+              "enum": ["none", "domicile_state", "zone_choice", "region_choice"],
+              "description": "domicile_state: vacancies allotted by the candidate's domicile (SSC GD). Drives `vacancies_for_you` only, never eligibility."
+            },
+            "source": { "$ref": "#/$defs/Source" }
+          }
+        }
+      }
+    },
+    "exam_tags": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "enum": ["ssc", "railway", "banking", "police", "defence", "teaching", "upsc", "state_psc", "other"] },
+      "description": "Matched (overlap) against profile.interests.exam_types. Targeting, not eligibility."
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["all_india", "state"] },
+        "state": { "type": ["string", "null"], "description": "For kind=state: alert users whose domicile or job_states include it" }
+      }
+    },
+
+    "age": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cutoff_date", "limits", "relaxations", "source"],
+      "properties": {
+        "cutoff_date": { "type": "string", "format": "date", "description": "Crucial date for determining age ('as on')" },
+        "limits": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Base limits. First row whose `when` matches applies; a row without `when` is the default. Example: UP Police male 18-22 / female 18-25.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["min_years", "max_years"],
+            "properties": {
+              "when": { "$ref": "#/$defs/Condition" },
+              "min_years": { "type": "integer", "minimum": 14, "maximum": 60 },
+              "max_years": { "type": "integer", "minimum": 16, "maximum": 70 }
+            }
+          }
+        },
+        "max_convention": {
+          "enum": ["not_attained", "completed_years"],
+          "default": "not_attained",
+          "description": "not_attained: candidate must NOT have attained max_years on cutoff (age < max; SSC/UPSC style: '18-23' prints window 02-01-2003..01-01-2008 for cutoff 01-01-2026). completed_years: completed age <= max. The validator derives which one the notice uses from printed_dob_window and blocks publish on mismatch."
+        },
+        "general_extension_years": {
+          "type": "integer", "minimum": 0, "maximum": 10, "default": 0,
+          "description": "One-time relaxation for ALL candidates added to every max (e.g. UP govt +3 for UPP 2025). Added before category relaxation."
+        },
+        "relaxations": {
+          "type": "array",
+          "description": "Copy the notice's relaxation table row by row. Combinations (e.g. OBC+PwD = 13) are written as their own rows exactly as printed. Engine policy: among rows whose `when` matches, apply the single MOST BENEFICIAL one (highest resulting upper age). No implicit stacking.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "when", "years", "mode"],
+            "properties": {
+              "id": { "type": "string", "examples": ["obc", "sc_st", "pwd_ur", "pwd_obc", "esm", "esm_obc"] },
+              "label": { "$ref": "#/$defs/LocalizedText" },
+              "when": { "$ref": "#/$defs/Condition" },
+              "years": { "type": "integer", "minimum": 0, "maximum": 20 },
+              "mode": {
+                "enum": ["add_to_max", "after_service_deduction"],
+                "description": "after_service_deduction: (age - military service) must be <= max + years (DoPT ex-servicemen rule)."
+              },
+              "absolute_max_years": { "type": ["integer", "null"], "description": "Cap after relaxation, if the notice states one" },
+              "needs_profile": {
+                "type": "array",
+                "items": { "enum": ["esm_service_months", "govt_employee", "riot_victim_family", "widow_divorced", "other"] },
+                "description": "Profile facts needed; if the profile cannot answer, the relaxation is shown as check_yourself instead of applied."
+              },
+              "source": { "$ref": "#/$defs/Source" }
+            }
+          }
+        },
+        "printed_dob_window": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "description": "'Born not before X and not later than Y' exactly as printed for the base (unrelaxed) limits. Validator recomputes it from cutoff_date + limits and blocks publish on mismatch.",
+          "properties": {
+            "when": { "$ref": "#/$defs/Condition" },
+            "born_on_or_after": { "type": "string", "format": "date" },
+            "born_on_or_before": { "type": "string", "format": "date" }
+          },
+          "required": ["born_on_or_after", "born_on_or_before"]
+        },
+        "source": { "$ref": "#/$defs/Source" }
+      }
+    },
+
+    "qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["any_of", "source"],
+      "properties": {
+        "any_of": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "codes": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Taxonomy codes; a code matches itself and all descendants (grad.any matches grad.ba)."
+              },
+              "min_level": { "type": ["integer", "null"], "description": "Alternative to codes: any qualification with taxonomy level >= this" },
+              "include_higher": { "type": "boolean", "default": true, "description": "A higher qualification (higher level) also satisfies this alternative" },
+              "min_percentage_band": { "enum": [null, "50_55", "55_60", "ge_60"], "default": null },
+              "when": { "$ref": "#/$defs/Condition", "description": "Alternative applies only to these candidates (e.g. relaxed marks for SC/ST)" }
+            }
+          }
+        },
+        "must_complete_by": { "type": ["string", "null"], "format": "date", "description": "Qualification must be acquired on/before this date" },
+        "appearing_policy": {
+          "enum": ["not_allowed", "allowed", "if_passed_by_date"],
+          "default": "if_passed_by_date",
+          "description": "Final-year/appearing candidates: not_allowed→fail; allowed→pass (provisional); if_passed_by_date→check_yourself unless result_date known."
+        },
+        "equivalence": {
+          "enum": ["listed_only", "check_yourself_same_level"],
+          "default": "check_yourself_same_level",
+          "description": "'or equivalent' clauses: unlisted qualifications at the same level become check_yourself."
+        },
+        "text": { "$ref": "#/$defs/LocalizedText" },
+        "source": { "$ref": "#/$defs/Source" }
+      }
+    },
+
+    "required_attributes": {
+      "type": "array",
+      "description": "Extra certificates/skills (CCC, typing, NCC, TET, driving licence).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["any_of_codes", "stage"],
+        "properties": {
+          "any_of_codes": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "stage": { "enum": ["at_application", "before_joining", "preferential"], "description": "Only at_application affects the verdict; others are advisory lines." },
+          "source": { "$ref": "#/$defs/Source" }
+        }
+      }
+    },
+
+    "domicile": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "required_states": { "type": "array", "items": { "type": "string" }, "description": "Only domiciles of these states may apply at all" },
+        "note": { "$ref": "#/$defs/LocalizedText" },
+        "source": { "$ref": "#/$defs/Source" }
+      }
+    },
+    "gender": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "allowed": { "type": "array", "items": { "enum": ["male", "female", "transgender"] }, "minItems": 1 },
+        "source": { "$ref": "#/$defs/Source" }
+      }
+    },
+    "category": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Only for posts restricted to some categories (special recruitment drives). Normal reservation is NOT an eligibility rule.",
+      "properties": {
+        "allowed": { "type": "array", "items": { "enum": ["gen", "ews", "obc", "sc", "st"] } },
+        "source": { "$ref": "#/$defs/Source" }
+      }
+    },
+    "pwd": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "eligible": { "type": "boolean", "description": "false = post not identified suitable for PwD (PwD candidates cannot apply)" },
+        "suitable_types": { "type": "array", "items": { "type": "string" } },
+        "source": { "$ref": "#/$defs/Source" }
+      }
+    },
+    "ex_serviceman": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "eligible": { "type": "boolean", "default": true },
+        "source": { "$ref": "#/$defs/Source" }
+      }
+    },
+    "marital_status": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "allowed": { "type": "array", "items": { "enum": ["unmarried", "married", "widowed", "divorced"] } },
+        "source": { "$ref": "#/$defs/Source" }
+      }
+    },
+    "physical": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Height/chest/run/eyesight: never in the profile; always rendered as an advisory 'check yourself' line that does not change the verdict.",
+      "properties": {
+        "text": { "$ref": "#/$defs/LocalizedText" },
+        "source": { "$ref": "#/$defs/Source" }
+      }
+    },
+    "other_conditions": {
+      "type": "array",
+      "description": "Anything the schema cannot express. severity=check_yourself downgrades eligible→check_yourself for candidates matching `when`.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "severity"],
+        "properties": {
+          "text": { "$ref": "#/$defs/LocalizedText" },
+          "severity": { "enum": ["advisory", "check_yourself"] },
+          "when": { "$ref": "#/$defs/Condition" },
+          "source": { "$ref": "#/$defs/Source" }
+        }
+      }
+    },
+
+    "fees": {
+      "type": "array",
+      "minItems": 1,
+      "description": "First matching row wins; row without `when` is the default.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["amount_paise"],
+        "properties": {
+          "when": { "$ref": "#/$defs/Condition" },
+          "amount_paise": { "type": "integer", "minimum": 0 },
+          "source": { "$ref": "#/$defs/Source" }
+        }
+      }
+    },
+
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "risk_flags": { "type": "array", "items": { "type": "string" } },
+        "extractor_confidence": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 } },
+        "notes": { "type": "string" }
+      }
+    },
+    "source": { "$ref": "#/$defs/Source" }
+  },
+
+  "$defs": {
+    "LocalizedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hi", "en"],
+      "properties": { "hi": { "type": "string" }, "en": { "type": "string" } }
+    },
+    "Source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["doc"],
+      "properties": {
+        "doc": { "type": "string", "description": "source_document id or official URL" },
+        "page": { "type": ["integer", "null"], "minimum": 1 },
+        "para": { "type": ["string", "null"], "description": "Paragraph/clause number as printed, e.g. '5.2'" },
+        "quote": { "type": ["string", "null"], "maxLength": 400, "description": "Short verbatim snippet for the reviewer" }
+      }
+    },
+    "Condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "All present fields must match (AND). `any` = OR over sub-conditions. Category uses the EFFECTIVE category (OBC without non-creamy-layer → gen).",
+      "properties": {
+        "category": { "type": "array", "items": { "enum": ["gen", "ews", "obc", "sc", "st"] } },
+        "gender": { "type": "array", "items": { "enum": ["male", "female", "transgender"] } },
+        "domicile_states": { "type": "array", "items": { "type": "string" } },
+        "not_domicile_states": { "type": "array", "items": { "type": "string" } },
+        "pwd": { "type": "boolean" },
+        "pwd_types": { "type": "array", "items": { "type": "string" } },
+        "esm": { "type": "boolean" },
+        "govt_employee": { "enum": ["central", "state", "any"] },
+        "marital_status": { "type": "array", "items": { "type": "string" } },
+        "has_attribute": { "type": "array", "items": { "type": "string" } },
+        "any": { "type": "array", "items": { "$ref": "#/$defs/Condition" }, "minItems": 1 }
+      }
+    }
+  }
+}

@@ -20,6 +20,7 @@ Scheduling rules (slots, daily cap 3, quiet hours 22:00–07:00, snooze, collaps
 - **Delivery:** FCM **data-only, priority `high`** for N-01/N-04/N-05/critical lifecycle; `normal` for the rest. App builds the notification in `FirebaseMessagingService.onMessageReceived` (localised strings, actions, grouping), records `delivered` receipt. TTL: reminders `lastDate − now`; test 10 min.
 - **Actions** use `BroadcastReceiver` → WorkManager expedited job (API call), then replace the notification with a confirmation (no app open). Action labels ≤ 15 characters.
 - **Tap** → `PendingIntent` (FLAG_IMMUTABLE) to deep link (01 deep-link table) with `src=push&nid={template}`.
+- **No ads, sponsored lines or coaching promotions in any push, WhatsApp or SMS message** (free tier ads exist only in-app, 06 §J1).
 - Every job push body ends with nothing promotional; the app name in header is the "not official" signal; the S21 screen carries the disclaimer.
 
 ## 2. Length limits (enforced by server template renderer)

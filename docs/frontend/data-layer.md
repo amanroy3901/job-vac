@@ -272,7 +272,7 @@ interface MatchActionRepository {
 
 sealed interface UserAction {
     data object Seen : UserAction
-    data class Applied(val feePaid: Boolean? = null) : UserAction        // feePaid: see gap G-10
+    data class Applied(val feePaid: Boolean? = null) : UserAction        // → MatchActionInput.fee_paid (B01 checkbox)
     data class NotInterested(val reason: NotInterestedReason?) : UserAction
     data class Snooze(val option: SnoozeOption) : UserAction             // Tomorrow | TwoDaysBeforeLastDate | TodayEvening
 }
@@ -446,6 +446,7 @@ Privacy at rest: the profile (DOB, category, state) lives in app-private Room st
 | `AccountRepository` | `delete()`, `cancelDeletion()` | `deleteAccount`, `cancelDeletion` | direct | D03, S38 |
 | `AccountRepository` | `requestExport()`, `pollExport(id)` | `requestExport`, `getExport` | direct | S38, D04 |
 | `ConsentRepository` | `list()`, `record()` | `listConsents`, `recordConsent` | outbox | S11 checkbox, S33, S38, analytics opt-in, `required_consents` after `startSession` |
+| `AdsGate` | `shouldShow(placement)` | `getAppConfig` (`ads`) + `getEntitlement`/`sync` (`ads_enabled`) | Room | S20, S44 (O10) |
 | — | — | `listNotices` | **not used in v1 app** (no browse screen in the inventory) | — |
 
 Unused operation: `listNotices` (browse all notices). Every repository call above maps to an operation; remaining mismatches are listed in README *Contract gaps*.

@@ -55,7 +55,7 @@ Why only 3: low-literacy users, one job ("act on my alerts"). Notification histo
 
 | ID | Route | Name | Purpose | Entry points | Key components | P |
 | --- | --- | --- | --- | --- | --- | --- |
-| S20 | `home` | नौकरियाँ / Jobs (Home) | Inbox of eligible jobs **that still need a reply**, grouped by urgency: "आज आखिरी दिन" → "जल्द ख़त्म" (≤3 days) → "नई" → "जवाब बाकी" ; plus "जाँच लें" (check-yourself) section; banners (permission off, delivery problem, trial, corrigendum, offline) | Bottom nav; app open; digest push; most pushes when job list context needed | `TopAppBar` (logo wordmark, bell → S24, help), `StatusBanner` slot, `SectionHeader`, `MatchCard` list (`LazyColumn`, `key = jobId`), `EmptyState`, pull-to-refresh | P0 |
+| S20 | `home` | नौकरियाँ / Jobs (Home) | Inbox of eligible jobs **that still need a reply**, grouped by urgency: "आज आखिरी दिन" → "जल्द ख़त्म" (≤3 days) → "नई" → "जवाब बाकी" ; plus "जाँच लें" (check-yourself) section; one native ad at the very bottom for free users (O10); banners (permission off, delivery problem, trial, corrigendum, offline) | Bottom nav; app open; digest push; most pushes when job list context needed | `TopAppBar` (logo wordmark, bell → S24, help), `StatusBanner` slot, `SectionHeader`, `MatchCard` list (`LazyColumn`, `key = jobId`), `EmptyState`, pull-to-refresh | P0 |
 | S21 | `job/{jobId}` | नौकरी का पूरा ब्योरा / Job detail ("alert card") | The full alert: headline verdict, deadline countdown, primary actions (भर दिया / रुचि नहीं / बाद में), "आपको क्या चाहिए" card, "आप योग्य क्यों हैं" rules, official PDF + apply link, report wrong match, change log (corrigenda) | Push tap; WhatsApp link; S20/S22/S24/S25 rows | `DeadlineHero`, `ActionBar` (sticky bottom), `WhatYouNeedCard`, `WhyYouMatchList`, `OfficialLinksCard`, `ChangeLogCard`, `DisclaimerNote` | P0 |
 | S22 | `applied` | मेरे फ़ॉर्म / My forms (tracker) | All jobs marked Applied. Each row shows next lifecycle stage + date. Free users: rows show "अगला चरण: एडमिट कार्ड — Pro में अलर्ट" lock row; Pro: live stage | Bottom nav; push "admit card out" | `TrackerRow` list, filter chips (चालू / पूरे), `ProUpsellInline` (free), `ClashBanner` (P1) | P0 |
 | S23 | `applied/{jobId}` | फ़ॉर्म की टाइमलाइन / Application timeline | Vertical lifecycle timeline: Applied → City slip → Admit card → Exam → Answer key (objection window) → Result → Cut-off → DV/Medical → Final. Each stage: status, date, official link, "क्या करें" | S22 row; lifecycle push; WhatsApp link | `LifecycleTimeline` (`TimelineStep` items), `StageActionCard`, `RescheduleNotice` | P0 (Pro) |
@@ -135,6 +135,7 @@ Why only 3: low-literacy users, one job ("act on my alerts"). Notification histo
 | O07 | OS settings deep links (app notification settings, battery optimisation, exact alarm, OEM autostart) | OS | P0 |
 | O08 | Android sharesheet | OS | P1 |
 | O09 | Play In-App Update (immediate/flexible) | Play | P0 |
+| O10 | Native ad slot "विज्ञापन · Ad" (free tier only; 06 §J1) | Last item of S20 feed and of S44 digest — nowhere else | P0 |
 
 ---
 

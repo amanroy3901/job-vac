@@ -1388,10 +1388,33 @@ components:
           description: Remote flags. Unknown keys ignored.
           additionalProperties: { type: boolean }
           examples:
-            - { paywall_enabled: true, family_alerts: false, clash_alerts: false, upi_link_purchase: true, digest: true }
+            - { paywall_enabled: true, family_alerts: false, clash_alerts: false, upi_link_purchase: true, digest: true, ads: true }
         kill_switches:
           type: object
           additionalProperties: { type: boolean }
+        ads:
+          type: object
+          description: |
+            Global ad settings (free tier light ads, PRD 2026-11-19). The client shows an ad only when
+            `config.ads.enabled && entitlement.ads_enabled` and the placement is listed here. Setting
+            `enabled=false` is the remote kill switch (takes effect on next config fetch, cached ≤ 15 min).
+          required: [enabled, placements]
+          properties:
+            enabled: { type: boolean }
+            placements:
+              type: array
+              description: 'Only these two exist. Never in pushes, WhatsApp, the what-you-need card or why-you-match.'
+              items: { type: string, enum: [feed_bottom, digest] }
+            min_app_version: { type: [integer, 'null'], description: 'Disable ads on older builds (e.g. a bad SDK version)' }
+            frequency:
+              type: object
+              properties:
+                max_per_screen: { type: integer, default: 1 }
+                hide_on_first_sessions: { type: integer, default: 3, description: 'No ads in the first N sessions after install (onboarding trust)' }
+            blocked_categories:
+              type: array
+              description: 'AdMob sensitive/general categories the app must also block client-side if the SDK supports it (informational; primary blocking is in the AdMob console)'
+              items: { type: string }
         maintenance:
           type: [object, 'null']
           properties:
@@ -2174,7 +2197,7 @@ components:
 
     Entitlement:
       type: object
-      required: [plan, status, features, trial_available]
+      required: [plan, status, features, trial_available, ads_enabled]
       properties:
         plan: { type: string, enum: [free, pro] }
         status: { type: string, enum: [active, in_grace, on_hold, expired, none] }
@@ -2183,9 +2206,13 @@ components:
         expires_at: { type: [string, 'null'], format: date-time }
         auto_renewing: { type: boolean }
         trial_available: { type: boolean }
+        ads_enabled:
+          type: boolean
+          description: 'Effective per-user flag: true for free users, false for Pro (any source incl. trial/referral). Combine with AppConfig.ads.enabled (global kill switch).'
         features:
           type: object
           properties:
+            ad_free: { type: boolean }
             lifecycle_alerts: { type: boolean }
             whatsapp_backup: { type: boolean }
             family_alerts: { type: boolean }

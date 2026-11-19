@@ -85,7 +85,7 @@ flowchart TB
 | S14 | `Setup.ExactAlarm` | — | alerts | `ExactAlarmViewModel` | `CanSchedule(bool)` | P1 |
 | S15 | `Setup.OemGuide(mode, brand: String? = null)` | — | alerts | `OemGuideViewModel` | `OemGuideUiState(brand, brandConfident, steps: List<OemStep>, batteryOk, doneChecks)` | P0 |
 | S16 | `Setup.SelfTest(mode)` | `sarkarimatch://test` | alerts | `SelfTestViewModel` | `Idle / Running(step, elapsedSec) / Passed(latency) / Failed(advice: List<Advice>) / RateLimited` | P0 |
-| S20 | `Home` | `sarkarimatch://home` | :feature:jobs | `HomeViewModel` | `HomeUiState(sections: List<FeedSection>, banners: List<Banner>, refreshing, syncedAt, sheet)` · Empty variants: `NoMatchesYet`, `AllCaughtUp`, `ProfileIncomplete` | P0 |
+| S20 | `Home` | `sarkarimatch://home` | :feature:jobs | `HomeViewModel` | `HomeUiState(feed: List<FeedItem> incl. O10 ad slot for free tier, banners, refreshing, syncedAt, sheet)` · Empty variants: `NoMatchesYet`, `AllCaughtUp`, `ProfileIncomplete` | P0 |
 | S21 | `JobDetail(matchId: String, src: String? = null)` | `https://sarkarimatch.in/j/{matchId}`, `sarkarimatch://job/{matchId}`, alias `sarkarimatch://match/{matchId}` | jobs | `JobDetailViewModel` | `Loading / Content(JobDetailUi, sheet) / NotFound / Offline(cached?)` | P0 |
 | S22 | `Applied` | `sarkarimatch://forms` | :feature:applications | `AppliedViewModel` | `AppliedUiState(filter: Active/Done, rows, isPro, clashBanner?)` | P0 |
 | S23 | `Timeline(applicationId: String)` | `https://sarkarimatch.in/a/{applicationId}` | applications | `TimelineViewModel` | `Content(steps, locked: Boolean, nextAction) / NotFound` | P0 |
@@ -108,8 +108,8 @@ flowchart TB
 | S40 | `LanguageSettings` | — | profile | `LanguageViewModel` (same class as S02) | `LanguageUiState` | P0 |
 | S41 | `ForceUpdate` | — | :app | `ForceUpdateViewModel` | `Immediate(inAppUpdateAvailable) / StoreOnly` | P0 |
 | S42 | `Outage` | — | :app | `OutageViewModel` | `Outage(message, until, hasCache, alertsDelayed)` from `getHealth` | P0 |
-| S43 | `AgeCountdown` | — | profile | `AgeCountdownViewModel` | **blocked by Contract gap G-12** | P2 |
-| S44 | `Digest(date: String)` | `sarkarimatch://digest/{date}` | jobs | `DigestViewModel` | `Content(rows) / Empty` | P1 |
+| S43 | `AgeCountdown` | — | profile | `AgeCountdownViewModel` | **blocked by Contract gap G-11** | P2 |
+| S44 | `Digest(date: String)` | `sarkarimatch://digest/{date}` | jobs | `DigestViewModel` | `Content(items: List<FeedItem> incl. O10 ad slot) / Empty` | P1 |
 | S45 | `Refer` | — | profile | `ReferViewModel` | `Content(code, shareUrl, earned) / RedeemError` | P1 |
 | S46 | `ShareCard` | — | profile | `ShareCardViewModel` | `Rendering / Ready(bitmapUri)` | P1 |
 
@@ -130,9 +130,11 @@ flowchart TB
 | B11 UPI | S30 | `sheet = UpiChooser(apps)` | `createUpiPaymentLink` |
 | B12 Add family | S34 | `sheet = AddFamily(form)` | `inviteFamily` |
 | B13 Digest time | S28 | `sheet = DigestTime` | `putNotificationPrefs` |
-| B14 Age crossed | S20 | `Sheet.AgeCrossed` | **gap G-12** |
+| B14 Age crossed | S20 | `Sheet.AgeCrossed` | **gap G-11** |
 | B15 New device | app-level `MainViewModel` | `notPrimary: Boolean` | `makeDevicePrimary` |
 | D01–D09 | host VM sets `dialog: DialogState?` | | D03 → `deleteAccount`; D04 → `requestExport`/`getExport`; D08 → restore result |
+
+O10 native ad slot: a `FeedItem.Ad` on S20/S44 only (ads.md), never a destination.
 
 Global overlays: O01 offline / O03 outage / O02 delivery banners come from one `BannerProvider` in `:core:data` (combines `ConnectivityObserver`, `OutageDetector`, `DeliveryHealthRepository`, permission state) and are rendered by `StatusBannerSlot` on S20/S21/S22/S23.
 

@@ -9,7 +9,8 @@ Sarkari Match · Material 3 for Jetpack Compose · machine-readable copy: [`toke
 3. **Urgency is earned.** Red is reserved for "last date today" and destructive actions. Everything else is calm, so red still means something.
 4. **Words + icon, never colour alone.** Every status = icon + Hindi word (+ ✓ / ? / ✗ glyph in rule lines).
 5. **Simple Hindi (बोलचाल की हिंदी).** Use words people say: "फ़ॉर्म भर दिया", "आखिरी तारीख", "उम्र". Avoid Sanskritised words (e.g. "अंतिम तिथि" → "आखिरी तारीख", "आवेदन करें" → "फ़ॉर्म भरें", "अधिसूचना" → "नोटिस/सूचना"). Keep English exam names (SSC CGL, RRB NTPC, DV) as people say them.
-6. **Light, fast, offline-tolerant.** Flat surfaces, vector icons, no images in lists, no custom fonts in the APK.
+6. **Ads stay out of the way.** Free tier shows one clearly labelled native ad ("विज्ञापन · Ad") only at the end of the feed/digest, on a grey dashed surface that can never be mistaken for a match card or an official notice (06 §J1).
+7. **Light, fast, offline-tolerant.** Flat surfaces, vector icons, no images in lists, no custom fonts in the APK.
 
 ## 2. Colour
 

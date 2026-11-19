@@ -20,13 +20,13 @@ Contract owner: backend, `docs/api/README.md` §10. **All pushes are data-only**
 | `match_id` / `application_id` / `notice_id` | | deep-link target + action target |
 | `title_hi`, `title_en`, `body_hi`, `body_en` | | pick by in-app locale; fall back to `hi` |
 | `priority` | `high` / `normal` | |
-| `channel` | `deadline_critical` · `new_match` · `reminders` · `lifecycle` · `digest` · `system` | Android channel id (table §2); unknown → `system` |
+| `channel` | `deadline_critical` · `new_match` · `reminders` · `lifecycle` · `digest` · `system` | mapped to a device channel (table §2); unknown → `reminders` |
 | `actions` | `applied,not_interested,snooze` | which buttons to add |
 | `last_date` | `2026-08-01` | "2 दिन बाकी" chip; also `setTimeoutAfter` |
 | `collapse` | `m_01JD…` | **notification tag**, so a newer reminder replaces the older one for the same match |
 | `sync` | `1` | enqueue a delta sync after showing |
 
-`type=sync` is silent. `type=self_test` carries `test_id` and shows a low-importance "अलर्ट काम कर रहे हैं ✓" notification on `system`.
+`type=sync` is silent. `type=self_test` carries `test_id` and shows a low-importance "अलर्ट काम कर रहे हैं ✓" notification on `critical` (design N-41).
 
 ```kotlin
 @AndroidEntryPoint
@@ -70,18 +70,20 @@ class PushHandler @Inject constructor(
 
 ## 2. Channels
 
-Channel IDs are fixed by the backend contract. Created on every app start (idempotent, cheap). Names/descriptions are localized; on language change we re-create them with the same IDs so names update. Importance cannot be raised by the app after creation, so it is chosen right the first time.
+Channel IDs are permanent once shipped, so they must be agreed **before the first release**. Design (`05-notifications.md §1`) and backend (`channel` field, API README §10) currently use **different IDs** (Contract gap G-04). The client creates the **design's** channel set (it defines importance, sound and lock-screen behaviour) and maps the payload's `channel` value through a table, so either backend naming works:
 
-| Channel ID | Name (hi / en) | Importance | Used for | Notes |
-| --- | --- | --- | --- | --- |
-| `new_match` | नई नौकरी / New job matches | HIGH | first alert for an eligible match, extension, corrigendum | heads-up, sound + vibration |
-| `deadline_critical` | आखिरी तारीख / Last-date alerts | HIGH | 3-day / 1-day / last-day reminders | last day bypasses *our* quiet hours (not system DND) |
-| `reminders` | याद दिलाना / Repeat reminders | DEFAULT | every-3-days repeats | no heads-up; replaces by tag |
-| `lifecycle` | फ़ॉर्म अपडेट / Form updates (Pro) | HIGH | admit card, exam date, result, DV slot, clash, certificate | critical for Pro |
-| `digest` | दैनिक सारांश / Daily digest | LOW | P1 digest, overflow beyond 3/day | silent |
-| `system` | ऐप और खाता / App & account | DEFAULT | self-test, trial ending, payment status, device switch (B15), expedited-work FGS on API < 31 | |
+| Device channel ID (design) | Name (hi / en) | Importance | Lock screen | Payload `channel` values mapped here | Used for |
+| --- | --- | --- | --- | --- | --- |
+| `critical` | आखिरी तारीख और ज़रूरी सूचना / Last dates & critical | HIGH (heads-up), vibrate `[0,250,150,250]` | PUBLIC | `critical`, `deadline_critical`, critical `lifecycle` (`LifecycleEvent.critical=true`) | N-04 (1 day before), N-05 (last day), critical lifecycle (admit card, DV slot), self-test |
+| `new_match` | नई नौकरी / New job matches | HIGH | PUBLIC | `new_match` | N-01, N-01b |
+| `reminders` | याद दिलाना / Reminders | DEFAULT | PUBLIC | `reminders` | N-02 every-3-days, N-03 (3 days before), action confirmations |
+| `job_updates` | नोटिस में बदलाव / Notice changes | DEFAULT | PUBLIC | `job_updates`, non-critical `lifecycle` | extension, corrigendum, answer key, result, clash, certificate |
+| `digest` | रोज़ का सारांश / Daily digest | LOW, silent | PUBLIC | `digest` | N-30 |
+| `account` | अकाउंट और Pro / Account & Pro | LOW | PRIVATE | `account`, `system` | trial, payment, primary device (B15), WhatsApp status, expedited-work FGS on API < 31 |
 
-Groups: `grp_alerts` (new_match, deadline_critical, reminders, lifecycle) and `grp_other` (digest, system).
+Unknown `channel` → `reminders`. Channels are created on every app start (idempotent, cheap); names follow the app language and are re-created with the same IDs on language switch.
+
+Grouping (design): job pushes use group `jobs`, with an `InboxStyle` summary "{n} नौकरियाँ आपका जवाब माँग रही हैं" once ≥ 2 are visible (explicit summary because OEM skins don't always auto-bundle); lifecycle pushes use group `forms`. Notification ID = stable hash of `match_id` (+ `stage` for lifecycle), tag = payload `collapse`, so a newer reminder replaces the older one.
 
 On every resume we read `NotificationManagerCompat.areNotificationsEnabled()` and each channel's importance; changes go to `upsertDevice` (`notifications_enabled`, `channels_blocked[]`) and drive banner O02 on S20 and the S29 checklist. Analytics event `notif_channel_blocked{channel}` feeds the "<15 % disable notifications" metric.
 
@@ -91,7 +93,7 @@ On every resume we read `NotificationManagerCompat.areNotificationsEnabled()` an
 [icon] Sarkari Match · नई नौकरी · 2 घंटे पहले
 SSC CGL 2026 — आप योग्य हैं ✓
 आखिरी तारीख 3 दिसंबर · फीस ₹0 (OBC महिला) · 12 दिन बाकी
-[ भर दिया ]  [ रुचि नहीं ]  [ बाद में ]
+[ भर दिया ]  [ बाद में ]
 ```
 
 - `setStyle(BigTextStyle)` with the "why you match" first line and the fee for *their* category.
@@ -103,14 +105,25 @@ SSC CGL 2026 — आप योग्य हैं ✓
 - Footer text: "आधिकारिक सरकारी ऐप नहीं" is shown on the detail screen, not in the notification (length). The source link is in the detail.
 - Content intent: `sarkarimatch://job/{jobId}?src=push&push_id=…` (route S21 `job/{jobId}`; `sarkarimatch://match/{id}` kept as an alias) via `PendingIntent.getActivity` with `TaskStackBuilder` so Back goes to the Matches feed (see navigation.md).
 
-### Actions
+### Actions (per design templates N-01…N-05)
 
-| Action | Shown when | Behaviour |
-| --- | --- | --- |
-| भर दिया / Applied | match_new, reminder, deadline | broadcast `ACTION_APPLIED` (marks directly, no B01 confirm; B02 paywall moment is queued for the next app open, per inventory B01). After success, replace the notification with a short "✓ आवेदन दर्ज" for 4 s (`setTimeoutAfter(4000)`). On free tier, it also posts the Pro offer into the app (not a notification) the next time the app opens. |
-| रुचि नहीं / Not interested | same | broadcast `ACTION_NOT_INTERESTED`, cancel notification. Reason is not asked from the notification (keep one tap); the app may ask later. |
-| बाद में / Later | same, not on last day | broadcast `ACTION_SNOOZE` with default "कल सुबह 9 बजे" (or "आज शाम 6 बजे" if ≤ 2 days left, matching B04); "2 days before last date" is picked inside the app (B04). |
-| PDF देखें / Open notice | lifecycle (admit card, result) | opens the official URL in a Custom Tab via a trampoline-free `PendingIntent.getActivity` to `MainActivity` with a deep link (Android 12+ forbids notification trampolines through receivers). |
+The payload's `actions` list decides which buttons appear; labels ≤ 15 characters.
+
+| Template | Actions |
+| --- | --- |
+| N-01 new eligible match, N-02/N-03 reminders | भर दिया · बाद में |
+| N-01b check-yourself match | देखें (opens S21, B06) |
+| N-04 one day before | भर दिया · रुचि नहीं (no snooze) |
+| N-05 last day | साइट खोलें · भर दिया (no snooze) |
+| lifecycle (admit card, result…) | देखें / PDF देखें |
+
+| Action | Behaviour |
+| --- | --- |
+| भर दिया / Applied | broadcast `ACTION_APPLIED` → marks directly (no B01 confirm); notification replaced (same ID, `reminders`, `setTimeoutAfter(10 s)`) by "✓ दर्ज हो गया: {job}" + free/Pro line; B02 paywall moment is queued for the next app open. |
+| बाद में / Later | broadcast `ACTION_SNOOZE` with default `tomorrow` (09:00 IST) or `today_evening` when ≤ 2 days are left; replaced by "ठीक है — कल सुबह 9 बजे फिर याद दिलाएँगे". "2 days before last date" is chosen in-app (B04). |
+| रुचि नहीं / Not interested | broadcast `ACTION_NOT_INTERESTED`; replaced by "छुपा दिया: {job}" with a **वापस लाएँ** action (`ACTION_UNDO`) for 10 s → deletes the pending action or enqueues `undo`. |
+| साइट खोलें / Open apply site | `PendingIntent.getActivity` (no trampoline) to a tiny transparent `ApplySiteActivity` that reads the apply URL from the cached `match_detail.links` (prefetched by sync) and fires `ACTION_VIEW`; if not cached, opens S21. Logs `apply_site_open{src=push}`. (The payload has no apply URL — gap G-05.) |
+| देखें / PDF देखें | content-style `getActivity` deep link (S21 / S23). |
 
 Android 12+ forbids starting an activity from a BroadcastReceiver launched by a notification, so actions that need UI use `getActivity` directly; the three state-change actions do not need UI and use `getBroadcast`.
 
@@ -193,17 +206,20 @@ Why: Chinese-brand phones (Xiaomi, Vivo, Oppo, Realme) often block FCM for apps 
 - When a local reminder fires, it goes through the same `PushHandler` with `Source.LOCAL`; dedupe by `reminder_id` == server `push_id`. If FCM already showed it, local does nothing; if local fires first, the later FCM is dropped.
 - A daily `PeriodicWorkRequest` (24 h, flex 4 h, `requiresBatteryNotLow=false`, network not required) re-computes the mirror and runs the delta sync when network exists. This is the "heartbeat".
 
-## 6. Quiet hours, daily cap, snooze
+## 6. Quiet hours, daily cap, snooze (device-side mirror of design 03 §0.2)
 
-Quiet hours and digest time come from `NotificationPrefs` (synced; edited in S28 via `putNotificationPrefs`, mirrored in Room so the gate works offline). `DeliveryGate` applies (in this order):
+The **server** schedules (slots R0, Rp, R3, R1, R-last, lifecycle, corrigendum; ranks 1–6; daily cap 3; quiet hours; collapse). The device re-applies the same rules in `DeliveryGate` because it also shows local-mirror reminders, may hold offline actions, and may have a skewed clock. Prefs (`NotificationPrefs`: quiet hours, digest time) are synced to Room and edited in S28 via `putNotificationPrefs`.
 
-1. User already acted (Room) → Suppress.
-2. Channel disabled → still ack as "received, channel off" so the server can fall back to WhatsApp for Pro.
-3. Quiet hours 22:00–07:00 IST (user-editable in Settings, stored in DataStore) → Defer to 07:00, **except** `urgency = last_day`.
-4. Daily cap 3 pushes (rolling IST day) → Defer to digest, except `deadline`/`lifecycle` with `urgency >= high`.
-5. Snoozed until T (per match, Room) → Defer to T, but never past last-date morning.
+| Order | Rule | Result |
+| --- | --- | --- |
+| 1 | User already acted for this match (Room status or pending action) | Suppress |
+| 2 | Notifications/channel blocked | `blocked` receipt (server escalates to WhatsApp for Pro) |
+| 3 | Same match already notified today (IST) and this is not higher-ranked | Replace silently (`setOnlyAlertOnce`) |
+| 4 | Quiet hours (default 22:00–07:00 IST) | Defer to quiet-hours end, **except ranks 1–3** (R-last, R1, critical lifecycle) whose slot is within 24 h |
+| 5 | Daily cap: 3 pushes per IST day | Ranks 1–3 always shown (may exceed cap); others deferred to digest (`digest` channel) |
+| 6 | Snoozed until T | Defer Rp/R3 to T; **R1 and R-last are never suppressed** |
 
-The server applies the same rules; doing it on device too protects against clock drift, offline actions and local-mirror reminders. Times are computed in `Asia/Kolkata` regardless of device zone (users near Nepal border sometimes have wrong zones), using `java.time` (core library desugaring on API 26 is not needed: `java.time` exists from API 26).
+Rank comes from the payload: `type` + `channel` (`deadline`/`critical` → 1–2, critical `lifecycle` → 3, `corrigendum`/`extension`/`match_new` → 4, R3 → 5, Rp → 6). An explicit `rank` field in the payload would remove the guesswork (gap G-08). Times use `Asia/Kolkata` regardless of device zone; `java.time` is native from API 26.
 
 ## 7. Permissions and OEM reliability
 
@@ -274,4 +290,4 @@ Only the **primary** device receives alert pushes; the newest signed-in device b
 
 - Aspirant side (S34/B12): `inviteFamily` returns `invite_text` + `invite_link` → Android sharesheet (WhatsApp first). `listFamily` / `removeFamily` (D06).
 - Invitee side (S35, App Link `https://sarkarimatch.in/f/{token}`): `getFamilyInvite(token)` → OTP (`purpose=family_accept`, S11/S12 reused) → `acceptFamilyInvite(token, channels=[push, whatsapp?], consent_version)`. Invitees have no profile; the app opens into a minimal "family mode" home (list of the aspirant's critical dates from their inbox).
-- Family pushes use the `lifecycle`/`deadline_critical` channels with **no action buttons** (family members can't mark Applied). If 05-notifications.md defines a separate `family` channel ID, add it here; the backend channel list currently has none.
+- Family pushes use the `critical`/`job_updates` channels with **no action buttons** (family members can't mark Applied). Design 05 has no separate family channel, so none is created.

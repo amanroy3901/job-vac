@@ -177,12 +177,20 @@ so prompt receipts save the user from duplicate messages.
 - The trial starts automatically on the first `applied` action; the action result carries `entitlement` and a
   `paywall` hint for the "Track this application to the end?" sheet.
 
-## 13. Health / outage
+## 13. Ads (free tier)
+
+Show the single native ad slot (feed bottom, digest screen) only when
+`config.ads.enabled && entitlement.ads_enabled && placement ∈ config.ads.placements`, and not during the first
+`config.ads.frequency.hide_on_first_sessions` sessions. `entitlement.ads_enabled` is false for every Pro source,
+including trial and referral, so the trial demonstrates "no ads". Flipping `config.ads.enabled` to false is the
+remote kill switch. Ads are never placed in notifications, WhatsApp, the what-you-need card or the why-you-match list.
+
+## 14. Health / outage
 
 `GET /v1/health` (no auth, cached 30 s) returns `up|degraded|down` and `alerts_delayed` for O03/S42. Check it
 after 3 consecutive 5xx/timeouts, not on every start.
 
-## 14. Not in this contract
+## 15. Not in this contract
 
 `/admin/**` (curation console), `/hooks/**` (Play RTDN via Pub/Sub push, WhatsApp, Razorpay, SMS DLR) and
 `/internal/**` (scheduler ticks) are server-only and protected separately.

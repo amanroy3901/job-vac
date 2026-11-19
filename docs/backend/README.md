@@ -207,6 +207,18 @@ Data-only FCM so the app controls language, buttons, quiet-hour dedupe and recei
 visible alerts. App receipts drive WhatsApp escalation; FCM itself gives no per-message delivery callback. One
 primary device per account (B15).
 
+### ADR-10: Ads: client-side AdMob native, server only decides *whether*
+
+Light ads were added to the free tier by a PRD change on 2026-11-19. The backend does not serve, select or proxy ads
+and stores no ad identifiers. It exposes two flags: `Entitlement.ads_enabled` (false for any Pro source, trial
+included) and `AppConfig.ads` (global kill switch, allowed placements, minimum app version, no ads in the first N
+sessions). This costs nothing at any scale. The kill switch covers a bad SDK release, a policy incident, or an ad
+that looks like an official notice. Ad content policy: block the education/test-prep look-alike, gambling, loans and
+dating categories in the AdMob console, plus a manual blocklist of advertiser URLs that mimic govt portals. For
+privacy, the Google Mobile Ads SDK collects the advertising ID. That has to be disclosed in the Play Data safety form
+and in our DPDP notice; consent is covered in [security-privacy.md](./security-privacy.md#ads). An ads-free build
+flavour stays possible.
+
 ### ADR-09: Single deployable, three roles
 
 `api`, `worker` and `admin` are the same image with a different `ROLE` env. This means one build and shared code
@@ -233,9 +245,12 @@ at about 4 messages a month; 30% of new users verify a phone (about 1.3 OTPs eac
 | OTP (WhatsApp auth, SMS fallback) | $2 | $15 | $150 | ~₹0.13 average × verifications |
 | WhatsApp alerts (Pro + family) | $1 | $15 | $150 | ₹0.115–0.145/utility msg ([AiSensy](https://m.aisensy.com/blog/whatsapp-pricing-update-october-2026/), [baat.ai](https://baat.ai/blog/whatsapp-api-pricing-india)) |
 | Domain, misc | $2 | $2 | $5 | |
+| Ads SDK (Google Mobile Ads / AdMob) | $0 | $0 | $0 | revenue share is taken out of eCPM, so no infra cost; backend only serves the flags |
 | **Total** | **≈ $55–90** (≈ ₹5–8K) | **≈ $290** (≈ ₹25K) | **≈ $1,450** (≈ ₹1.3 L) | |
 | Per registered user | ~₹0.5–0.7 | ~₹0.25 | ~₹0.13 | |
-| Revenue at base case (1.2% pay, ~₹170/yr net) | ~₹1.7K | ~₹17K | ~₹1.7 L | infra is about 4× revenue at 10K, about 1.5× at 100K and about 0.75× at 1M. The per-user cost is already near the floor (LLM and DB are fixed costs). **The business case, not infra, is the risk** (see the cac.json verdict). |
+| Subscription revenue, base case (1.2% pay, ~₹170/yr net) | ~₹1.7K | ~₹17K | ~₹1.7 L | cac.json base case |
+| **Ad revenue, free tier (ESTIMATE)** | ~₹0.9–3.5K ($10–40) | ~₹9–35K ($100–400) | ~₹0.9–3.5 L ($1–4K) | ~97% of MAU free × ~22 native impressions/MAU/month (feed bottom about 12 + digest about 10) × India native eCPM **$0.15–0.60** = ₹0.3–1.2 per free MAU/month. eCPM sources are weak: a single dev report of native at $0.14 ([Kodular forum](https://community.kodular.io/t/admob-ecpm-getting-low-by-low-everyday-india-0-22/189851)); blended India AdMob $0.5–2.0 ([adpumb](https://adpumb.com/?p=10317), [cas.ai](https://cas.ai/?p=11066)). Replace with AdMob actuals after 2 weeks |
+| Revenue vs infra | infra ≈ 1–3× revenue | revenue ≈ 1.0–2.1× infra | revenue ≈ 2–4× infra | Ads roughly double revenue at every scale and are the larger line in the low case. Per-user cost is already near the floor (LLM and DB are fixed costs). **The business case, not infra, is the risk.** |
 
 During the WhatsApp test and below about 2K users, run **db-f1-micro + request-billed worker**: about $20–35/month,
 dominated by the LLM. Cost guardrails are in [operations.md §6](./operations.md#6-cost-guardrails).

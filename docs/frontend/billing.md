@@ -123,6 +123,7 @@ Refresh points: app start (`startSession`), every `sync`, FCM `sync` push after 
 | Locked lifecycle row on S22 / locked S23 | S30 (`source = LockedRow`) | always available |
 | S33/S34/S36/S37 opened by a free user | inline locked state → S30 | |
 | Profile Pro card | S30 / S32 | |
+| "विज्ञापन हटाएँ" on the free-tier native ad (O10) | S30 (`source = AdSlot`) | ads.md; Pro and trial remove ads (`Entitlement.ads_enabled = false`) |
 | Deep link `https://sarkarimatch.in/pro?plan=` | S30 preselect | |
 
 Never on first launch, never during onboarding, no interstitials (PRD: "no upselling", free tier ad-free). `paywall_enabled` remote flag hides all upsell surfaces during the validation phase if needed.

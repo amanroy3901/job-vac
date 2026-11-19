@@ -491,6 +491,14 @@ S10/S20 overflow → S46 renders card "मैं 7 सरकारी नौक�
 
 ---
 
+### SC-43 Ads in the free tier
+
+- Free user scrolls S20 to the end → `NativeAdSlot` (O10) requested when within 2 items of the end → shows labelled "विज्ञापन · Ad" or collapses on no-fill/offline. Same at the end of S44 digest.
+- Tap "विज्ञापन हटाएँ" → S30 (`surface=ad_slot`), benefit "कोई विज्ञापन नहीं" highlighted.
+- Trial starts or Pro bought → ad slot disappears immediately (entitlement flow emits; no restart). Pro lapses → slot returns on next S20 visit.
+- Hard rules: no ads in S21, any sheet, S22/S23, onboarding, permission screens, paywall, push/WhatsApp/SMS; no interstitial/app-open/video; blocked categories per 06 §J1. Ad loading must never delay the feed (slot is last and lazy).
+- ev: `ad_slot_view`, `ad_no_fill`, `ad_click`, `ad_remove_tap`.
+
 ## 7. Coverage matrix (scenario → screens)
 
 | Scenario | Screens / sheets | Notifications |
@@ -533,3 +541,4 @@ S10/S20 overflow → S46 renders card "मैं 7 सरकारी नौक�
 | SC-39 logout | S38, D02 | — |
 | SC-40 multi-device | B15 | — |
 | SC-41/42 growth | S45, S46 | N-45 |
+| SC-43 ads | S20, S44, O10, S30 | — |
