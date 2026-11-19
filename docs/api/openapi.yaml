@@ -1,0 +1,2305 @@
+openapi: 3.1.0
+info:
+  title: Sarkari Match App API
+  version: 1.0.0
+  summary: Contract between the Sarkari Match Android app and the backend.
+  description: |
+    Mobile-facing API. Admin/curation and provider webhooks are NOT part of this contract
+    (see docs/backend/README.md).
+
+    Conventions (details in docs/api/README.md):
+    - Auth: `Authorization: Bearer <Firebase ID token>` on every `/v1/me/**` call, plus
+      `X-Firebase-AppCheck: <App Check token>` (Play Integrity provider) on every call.
+    - Every request sends `X-App-Version` (versionCode), `X-Installation-Id` (Firebase installation id)
+      and `Accept-Language: hi` or `en`.
+    - Errors are RFC 9457 `application/problem+json` with a stable machine `code`.
+    - Every mutating request carries `Idempotency-Key` (UUIDv4, generated once per user intent and
+      reused on retry). Replays within 24 h return the original response with `Idempotent-Replayed: true`.
+    - Timestamps are RFC 3339 with offset (`2026-08-01T09:00:00+05:30`); calendar dates (`format: date`)
+      are Indian Standard Time calendar dates.
+    - User-visible strings arrive as `LocalizedText {hi, en}` so a language switch works offline.
+    - Lists use opaque cursors. Delta sync uses `sync_token` (see /v1/me/sync).
+    - Additive changes only within v1: clients MUST ignore unknown fields and treat unknown enum
+      values as the documented fallback (`other`/`unknown`).
+  contact:
+    name: Sarkari Match backend
+servers:
+  - url: https://api.sarkarimatch.in
+    description: Production (Cloud Run, asia-south1) — placeholder domain
+  - url: https://api-staging.sarkarimatch.in
+    description: Staging
+security:
+  - firebaseIdToken: []
+    appCheck: []
+tags:
+  - name: config
+  - name: session
+  - name: reference
+  - name: profile
+  - name: sync
+  - name: matches
+  - name: notices
+  - name: applications
+  - name: notifications
+  - name: devices
+  - name: entitlements
+  - name: family
+  - name: whatsapp
+  - name: account
+  - name: referral
+
+paths:
+  /v1/config:
+    get:
+      tags: [config]
+      operationId: getAppConfig
+      summary: App configuration, force/soft update, feature flags, kill switches.
+      description: Callable without a Firebase ID token (App Check still required). Cacheable; honour ETag.
+      security:
+        - appCheck: []
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppConfig' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/session:
+    post:
+      tags: [session]
+      operationId: startSession
+      summary: Bootstrap after Firebase sign-in (anonymous, Google or phone). Creates the user on first call.
+      description: |
+        Call after every fresh Firebase sign-in or account link, and at most once per app start otherwise.
+        Idempotent per Firebase UID. If the Firebase user was upgraded from anonymous to a linked provider,
+        the same UID keeps all data. If the client signs in to an existing account on a new phone, the response
+        returns that account's data and `is_new_user=false`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SessionRequest' }
+      responses:
+        '200':
+          description: Session established
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/health:
+    get:
+      tags: [config]
+      operationId: getHealth
+      summary: Lightweight service status for the outage banner/screen (S42/O03). No auth, CDN-cached 30 s.
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [up, degraded, down] }
+                  message: { $ref: '#/components/schemas/LocalizedText' }
+                  alerts_delayed: { type: boolean, description: 'true when the delivery pipeline is behind (e.g. FCM outage)' }
+
+  /v1/auth/otp:send:
+    post:
+      tags: [session]
+      operationId: sendOtp
+      summary: Send a 6-digit OTP to an Indian mobile number (WhatsApp authentication template first, DLT SMS fallback).
+      description: |
+        Requires a Firebase ID token (anonymous is fine) and App Check. We run our own OTP instead of Firebase
+        phone auth because Firebase bills ~US$0.07 per SMS to India vs ~₹0.12–0.25 via WhatsApp/DLT SMS.
+        Limits: 3 sends per number per 15 min, 5 per number per day, 10 per installation per day.
+        The SMS body is SMS-Retriever compatible (ends with the app hash) so the app can auto-fill.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, purpose]
+              properties:
+                phone: { type: string, pattern: '^\+91[6-9]\d{9}$' }
+                purpose: { type: string, enum: [sign_in, whatsapp_link, family_accept, delete_account] }
+                channel: { type: string, enum: [auto, whatsapp, sms], default: auto }
+                app_hash: { type: string, description: 'SMS Retriever 11-char app hash' }
+      responses:
+        '202':
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [otp_session_id, channel, resend_after_s, expires_at]
+                properties:
+                  otp_session_id: { type: string }
+                  channel: { type: string, enum: [whatsapp, sms] }
+                  resend_after_s: { type: integer, examples: [30] }
+                  expires_at: { type: string, format: date-time }
+        '429': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/auth/otp:verify:
+    post:
+      tags: [session]
+      operationId: verifyOtp
+      summary: Verify the OTP. Returns a Firebase custom token; the app calls signInWithCustomToken(), then POST /v1/session.
+      description: |
+        purpose=sign_in: if the number already belongs to an account, the custom token signs into THAT account
+        (restore on a new phone; the anonymous account's data is merged only if it had no profile, else discarded
+        after confirmation `merge=discard_local`). Otherwise the number is attached to the caller's current UID.
+        5 wrong attempts invalidate the session. Other purposes return `verified=true` and no token.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [otp_session_id, code]
+              properties:
+                otp_session_id: { type: string }
+                code: { type: string, pattern: '^\d{6}$' }
+                merge: { type: string, enum: [auto, discard_local], default: auto }
+      responses:
+        '200':
+          description: Verified
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [verified]
+                properties:
+                  verified: { type: boolean }
+                  firebase_custom_token: { type: [string, 'null'] }
+                  existing_account: { type: boolean, description: 'true = signing into a different, existing account (show B15/restore copy)' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/family-invites/{token}:
+    get:
+      tags: [family]
+      operationId: getFamilyInvite
+      summary: Invitee side (S35) — who invited me and which alerts I will get. Token comes from the App Link.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilyInviteView' }
+        '410': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/family-invites/{token}:accept:
+    post:
+      tags: [family]
+      operationId: acceptFamilyInvite
+      summary: Accept as invitee. Requires a phone-verified session (OTP purpose=family_accept or sign_in); alerts go to this app (push) and, if chosen, WhatsApp.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [consent_version]
+              properties:
+                consent_version: { type: string }
+                channels:
+                  type: array
+                  items: { type: string, enum: [push, whatsapp] }
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilyInviteView' }
+        '410': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/family-invites/{token}:decline:
+    post:
+      tags: [family]
+      operationId: declineFamilyInvite
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Declined
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/reference:
+    get:
+      tags: [reference]
+      operationId: getReferenceBundle
+      summary: All reference data in one bundle (qualifications taxonomy, categories, states, exam types, PwD types, extra attributes, organisations).
+      description: Large-ish (~40 KB gzipped), changes rarely. Cache in Room; revalidate with If-None-Match daily or when `AppConfig.reference_version` changes.
+      security:
+        - appCheck: []
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReferenceBundle' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me:
+    get:
+      tags: [account]
+      operationId: getMe
+      summary: Current user summary (no profile body).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [account]
+      operationId: deleteAccount
+      summary: Request account deletion (DPDP Act right to erasure).
+      description: |
+        Immediately disables alerts and revokes WhatsApp/family delivery; hard-deletes all personal data
+        within 7 days (grace period during which `POST /v1/me/deletion:cancel` restores the account).
+        Play subscriptions are NOT cancelled by this call; the client must show the Play subscription
+        management deep link if `Entitlement.source` is a Play product.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  enum: [too_many_alerts, wrong_matches, got_job, privacy, other]
+                comment: { type: string, maxLength: 500 }
+      responses:
+        '202':
+          description: Deletion scheduled
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeletionStatus' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/deletion:cancel:
+    post:
+      tags: [account]
+      operationId: cancelDeletion
+      summary: Cancel a pending deletion during the grace period.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Deletion cancelled
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeletionStatus' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/exports:
+    post:
+      tags: [account]
+      operationId: requestExport
+      summary: Request a machine-readable export of all personal data (JSON).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Export job accepted; poll it.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/exports/{export_id}:
+    get:
+      tags: [account]
+      operationId: getExport
+      summary: Poll an export job. When ready, `download_url` is a signed URL valid for 15 minutes.
+      parameters:
+        - name: export_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/consents:
+    get:
+      tags: [account]
+      operationId: listConsents
+      summary: Current consent state per purpose.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Consent' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [account]
+      operationId: recordConsent
+      summary: Grant or withdraw consent for a purpose (append-only log server side).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentInput' }
+      responses:
+        '200':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Consent' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/profile:
+    get:
+      tags: [profile]
+      operationId: getProfile
+      summary: The eligibility profile. 404 `profile_missing` before onboarding completes.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [profile]
+      operationId: putProfile
+      summary: Create or replace the eligibility profile; re-matches synchronously against all open posts.
+      description: |
+        Full replace. Send `If-Match: <ETag>` when updating (omit on first create). A 412 `profile_conflict`
+        means another device changed it: GET, merge, retry. The response contains the fresh match summary;
+        the client should then call `/v1/me/sync` to pull the changed matches. Allowed at most 20 times/day.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: If-Match
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileInput' }
+      responses:
+        '200':
+          description: Saved and re-matched
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfileSaveResult' }
+        '412': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/eligibility/check:
+    post:
+      tags: [profile]
+      operationId: checkEligibilityPreview
+      summary: Stateless eligibility preview for a profile draft (onboarding "You match 7 jobs" and the shareable check).
+      description: Does not persist anything. Works for anonymous Firebase users. Rate limited to 10/min.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileInput' }
+      responses:
+        '200':
+          description: Preview
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EligibilityPreview' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/sync:
+    get:
+      tags: [sync]
+      operationId: sync
+      summary: Delta sync of everything the offline-first Room cache holds (matches, applications, lifecycle events, entitlement, prefs, inbox).
+      description: |
+        First call without `since` returns a full snapshot (paged). Store `next_sync_token` after the last
+        page (`has_more=false`) and pass it as `since` next time. Deleted/hidden objects come back as
+        tombstones in `removed`. A 410 `sync_token_expired` (tokens older than 30 days or after server-side
+        compaction) means: drop the cache tables listed in the problem `details.reset` and resync from scratch.
+        Call on app start, on pull-to-refresh, on FCM `sync` messages, and from a 12-hourly WorkManager job.
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema: { type: string }
+        - name: page_token
+          in: query
+          required: false
+          description: Continuation within one sync when `has_more=true`.
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200, default: 100 }
+      responses:
+        '200':
+          description: Changes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SyncResponse' }
+        '410': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/matches:
+    get:
+      tags: [matches]
+      operationId: listMatches
+      summary: Paged matches feed (online fallback; prefer /v1/me/sync for the cache).
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Comma-separated filter. Default `open` = new,seen,reminded,snoozed.
+          schema:
+            type: string
+            examples: ['open', 'applied', 'not_interested,expired']
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/MatchSummary' }
+                  next_cursor: { type: [string, 'null'] }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/matches/{match_id}:
+    get:
+      tags: [matches]
+      operationId: getMatch
+      summary: Match detail — what-you-need card, why-you-match, reminder plan, corrigenda.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchDetail' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/matches/{match_id}/actions:
+    post:
+      tags: [matches]
+      operationId: actOnMatch
+      summary: Applied / Not interested / Snooze / Undo for one match.
+      description: |
+        Safe to replay (dedup on `action_id`). The server applies actions in `occurred_at` order;
+        an action older than the match's last applied action is recorded but ignored (`applied=false`).
+        First `applied` on an account that never had a trial starts the 14-day Pro trial automatically
+        and returns the new entitlement plus a `paywall` hint.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MatchActionInput' }
+      responses:
+        '200':
+          description: Result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchActionResult' }
+        '409': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/actions:batch:
+    post:
+      tags: [matches]
+      operationId: actOnMatchesBatch
+      summary: Flush the offline action queue (up to 50 actions, any matches).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [actions]
+              properties:
+                actions:
+                  type: array
+                  maxItems: 50
+                  items:
+                    allOf:
+                      - $ref: '#/components/schemas/MatchActionInput'
+                      - type: object
+                        required: [match_id]
+                        properties:
+                          match_id: { type: string }
+      responses:
+        '200':
+          description: Per-action results in input order (partial success allowed).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      required: [action_id, ok]
+                      properties:
+                        action_id: { type: string, format: uuid }
+                        ok: { type: boolean }
+                        result: { $ref: '#/components/schemas/MatchActionResult' }
+                        error: { $ref: '#/components/schemas/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/matches/{match_id}/reports:
+    post:
+      tags: [matches]
+      operationId: reportMatch
+      summary: One-tap "wrong match" report (feeds the curation queue; may trigger second review).
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MatchReportInput' }
+      responses:
+        '201':
+          description: Report received
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchReport' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/notices:
+    get:
+      tags: [notices]
+      operationId: listNotices
+      summary: Browse currently open notices (all, not only matched) — each post carries the caller's verdict.
+      parameters:
+        - name: exam_type
+          in: query
+          required: false
+          schema: { type: string }
+        - name: state
+          in: query
+          required: false
+          schema: { type: string, description: 'State code, e.g. UP' }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string, maxLength: 60 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/NoticeSummary' }
+                  next_cursor: { type: [string, 'null'] }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/notices/{notice_id}:
+    get:
+      tags: [notices]
+      operationId: getNotice
+      summary: Shared, user-independent notice content (posts, dates, fees, documents, corrigenda, sources). CDN-cacheable.
+      security:
+        - appCheck: []
+      parameters:
+        - $ref: '#/components/parameters/NoticeId'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notice' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/posts/{post_id}/eligibility:
+    get:
+      tags: [notices]
+      operationId: getMyEligibilityForPost
+      summary: On-demand evaluation of the caller against any post, including "why not" explanations.
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Evaluation' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/applications:
+    get:
+      tags: [applications]
+      operationId: listApplications
+      summary: Applications the user marked Applied, with their next lifecycle event.
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Application' }
+                  next_cursor: { type: [string, 'null'] }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/applications/{application_id}:
+    get:
+      tags: [applications]
+      operationId: getApplication
+      summary: Lifecycle timeline for one application (past, announced and expected events).
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      tags: [applications]
+      operationId: updateApplication
+      summary: Report progress (cleared/not cleared a stage) or stop tracking.
+      description: Reporting `not_cleared` for a stage stops alerts for later stages of that application.
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplicationUpdate' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/clashes:
+    get:
+      tags: [applications]
+      operationId: listClashes
+      summary: (Pro, P1) Exam-date clashes among the user's applications and open matches.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Clash' }
+        '403': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/notification-prefs:
+    get:
+      tags: [notifications]
+      operationId: getNotificationPrefs
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPrefs' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [notifications]
+      operationId: putNotificationPrefs
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificationPrefs' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPrefs' }
+        '422': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/notifications:
+    get:
+      tags: [notifications]
+      operationId: listInbox
+      summary: In-app notification history (last 90 days), mirrors what was pushed/WhatsApp'd.
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/InboxItem' }
+                  next_cursor: { type: [string, 'null'] }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/delivery-receipts:
+    post:
+      tags: [notifications]
+      operationId: postDeliveryReceipts
+      summary: Batch of push receipts (received / displayed / opened / dismissed). Drives WhatsApp escalation.
+      description: |
+        Send `received`+`displayed` immediately from FirebaseMessagingService via an expedited WorkManager job;
+        batch the rest. Unknown or duplicate `message_id`s are ignored. Always returns 202.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receipts]
+              properties:
+                receipts:
+                  type: array
+                  maxItems: 100
+                  items: { $ref: '#/components/schemas/DeliveryReceipt' }
+      responses:
+        '202':
+          description: Accepted
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/devices/{installation_id}:
+    put:
+      tags: [devices]
+      operationId: upsertDevice
+      summary: Register/refresh this device (FCM token, permission and battery state). Call on token refresh, app start (if changed) and after the permission guide.
+      parameters:
+        - $ref: '#/components/parameters/InstallationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [devices]
+      operationId: deleteDevice
+      summary: Unregister on sign-out.
+      parameters:
+        - $ref: '#/components/parameters/InstallationId'
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/devices/{installation_id}:make-primary:
+    post:
+      tags: [devices]
+      operationId: makeDevicePrimary
+      summary: Make this device the one that receives alerts (B15). Only the primary device gets reminder pushes; others get `sync` only.
+      parameters:
+        - $ref: '#/components/parameters/InstallationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/devices/{installation_id}/self-tests:
+    post:
+      tags: [devices]
+      operationId: startSelfTest
+      summary: Ask the server to send a test push to this device now (onboarding step and weekly check).
+      description: |
+        Server sends a high-priority FCM data message `type=self_test` carrying `test_id`. The app shows a
+        visible notification and posts `received`/`displayed` receipts with `message_id = test_id`.
+        Poll GET .../self-tests/{test_id} (or wait for the receipt locally). Times out after 120 s.
+        Max 5 per hour per device.
+      parameters:
+        - $ref: '#/components/parameters/InstallationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Test push sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SelfTest' }
+        '429': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/devices/{installation_id}/self-tests/{test_id}:
+    get:
+      tags: [devices]
+      operationId: getSelfTest
+      parameters:
+        - $ref: '#/components/parameters/InstallationId'
+        - name: test_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SelfTest' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/products:
+    get:
+      tags: [entitlements]
+      operationId: listProducts
+      summary: Plan catalogue (ids map to Play product/base plan ids). Prices MUST be shown from Play Billing ProductDetails, not from here.
+      security:
+        - appCheck: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Product' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/entitlement:
+    get:
+      tags: [entitlements]
+      operationId: getEntitlement
+      summary: The single source of truth for Pro access. Re-fetch on app start and after any purchase.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Entitlement' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/trial:
+    post:
+      tags: [entitlements]
+      operationId: startTrial
+      summary: Start the 14-day Pro trial explicitly (normally auto-started on first Applied). 409 `trial_already_used`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Entitlement' }
+        '409': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/purchases/google-play:
+    post:
+      tags: [entitlements]
+      operationId: verifyPlayPurchase
+      summary: Verify a Play Billing purchase server-side; server acknowledges it and grants the entitlement.
+      description: |
+        Call from `PurchasesUpdatedListener` and for every unacknowledged purchase found by `queryPurchasesAsync`
+        on app start. The client must NOT call `acknowledgePurchase` itself (server acknowledges). Launch the
+        billing flow with `setObfuscatedAccountId(User.billing_account_ref)`. 409 `purchase_owned_by_other_account`
+        when the token is linked to a different user.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlayPurchaseInput' }
+      responses:
+        '200':
+          description: Verified (or already verified)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Entitlement' }
+        '402': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/purchases/upi-link:
+    post:
+      tags: [entitlements]
+      operationId: createUpiPaymentLink
+      summary: Create a UPI payment link (Razorpay) for a plan — used by the WhatsApp payment test and as a Play fallback where policy allows.
+      description: Entitlement is granted only by the provider webhook; the app polls GET /v1/me/entitlement after returning.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_id]
+              properties:
+                product_id: { type: string, examples: ['pro_season', 'pro_year'] }
+      responses:
+        '201':
+          description: Link created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UpiLink' }
+        '403': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/referral:
+    get:
+      tags: [referral]
+      operationId: getReferral
+      summary: My invite code, share link and rewards earned (+1 month Pro per friend who completes a profile).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Referral' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/referral:redeem:
+    post:
+      tags: [referral]
+      operationId: redeemReferral
+      summary: Redeem a friend's code (once per account, within 7 days of sign-up).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, pattern: '^[A-Z0-9]{6,10}$' }
+      responses:
+        '200':
+          description: Redeemed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Referral' }
+        '409': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/whatsapp:
+    get:
+      tags: [whatsapp]
+      operationId: getWhatsApp
+      summary: WhatsApp backup channel status for the user.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WhatsAppStatus' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [whatsapp]
+      operationId: optOutWhatsApp
+      summary: Opt out of WhatsApp messages and forget the number.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WhatsAppStatus' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/whatsapp/opt-in:
+    post:
+      tags: [whatsapp]
+      operationId: startWhatsAppOptIn
+      summary: Opt in to WhatsApp backup alerts.
+      description: |
+        Two modes. (a) `use_verified_phone=true`: the account's OTP-verified number is used and the in-app consent
+        is the opt-in → `state=active` immediately. (b) different number: returns a wa.me deep link with a
+        prefilled `START <code>`; when the user sends it from WhatsApp, the webhook binds that number
+        (`state` pending → active; poll GET /v1/me/whatsapp). No OTP cost in either mode.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [consent_version]
+              properties:
+                use_verified_phone: { type: boolean, default: true }
+                consent_version: { type: string }
+      responses:
+        '201':
+          description: Pending opt-in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WhatsAppStatus' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/whatsapp/test:
+    post:
+      tags: [whatsapp]
+      operationId: sendWhatsAppTest
+      summary: Send one test utility message to the linked number (max 2/day; counts against quota).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Sent
+        '403': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/family:
+    get:
+      tags: [family]
+      operationId: listFamily
+      summary: (Pro, P1) Family recipients of critical alerts (max 2).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, max]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/FamilyMember' }
+                  max: { type: integer, examples: [2] }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [family]
+      operationId: inviteFamily
+      summary: Create an invite. Returns a share text + wa.me link the family member uses to opt in from their own WhatsApp. We never message a family member before they opt in.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FamilyInviteInput' }
+      responses:
+        '201':
+          description: Invite created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilyMember' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/me/family/{member_id}:
+    delete:
+      tags: [family]
+      operationId: removeFamily
+      parameters:
+        - name: member_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+
+components:
+  securitySchemes:
+    firebaseIdToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase Auth ID token (anonymous, Google or phone provider). Refresh via Firebase SDK; on 401 `token_expired` refresh once and retry.
+    appCheck:
+      type: apiKey
+      in: header
+      name: X-Firebase-AppCheck
+      description: Firebase App Check token (Play Integrity provider; debug provider in debug builds).
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUIDv4 created once per user intent and reused on every retry of it. Stored 24 h.
+      schema: { type: string, format: uuid }
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      required: false
+      schema: { type: string }
+    AppVersion:
+      name: X-App-Version
+      in: header
+      required: false
+      description: Android versionCode. Sent on every request (listed here where it changes the response).
+      schema: { type: integer }
+    MatchId:
+      name: match_id
+      in: path
+      required: true
+      schema: { type: string, examples: ['m_01JD3X7Q5M2V8K'] }
+    NoticeId:
+      name: notice_id
+      in: path
+      required: true
+      schema: { type: string }
+    ApplicationId:
+      name: application_id
+      in: path
+      required: true
+      schema: { type: string }
+    InstallationId:
+      name: installation_id
+      in: path
+      required: true
+      description: Firebase Installations ID of this app install.
+      schema: { type: string }
+
+  headers:
+    ETag:
+      description: Strong validator; send back in If-None-Match / If-Match.
+      schema: { type: string }
+    CacheControl:
+      schema: { type: string, examples: ['public, max-age=300, stale-while-revalidate=86400'] }
+    RetryAfter:
+      schema: { type: integer }
+
+  responses:
+    NotModified:
+      description: Not modified (ETag matched)
+    Problem:
+      description: Error (RFC 9457)
+      headers:
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri, examples: ['https://api.sarkarimatch.in/problems/profile_conflict'] }
+        title: { type: string, description: English, for logs. Show `message` to users. }
+        status: { type: integer }
+        code:
+          type: string
+          description: |
+            Stable machine code. Known values: unauthenticated, token_expired, app_check_failed,
+            upgrade_required, forbidden, pro_required, not_found, profile_missing, profile_conflict,
+            validation_failed, idempotency_key_reused, rate_limited, sync_token_expired, match_closed,
+            trial_already_used, purchase_invalid, purchase_pending, purchase_owned_by_other_account,
+            family_limit_reached, whatsapp_not_linked, whatsapp_quota_exhausted, account_pending_deletion,
+            maintenance, internal. Unknown codes: treat by HTTP status.
+        message: { $ref: '#/components/schemas/LocalizedText' }
+        detail: { type: string }
+        retryable: { type: boolean }
+        request_id: { type: string }
+        errors:
+          type: array
+          description: Field errors for validation_failed.
+          items:
+            type: object
+            required: [field, code]
+            properties:
+              field: { type: string, examples: ['qualifications[0].code'] }
+              code: { type: string, examples: ['unknown_code', 'out_of_range', 'required'] }
+              message: { $ref: '#/components/schemas/LocalizedText' }
+        details:
+          type: object
+          additionalProperties: true
+
+    LocalizedText:
+      type: object
+      required: [hi, en]
+      properties:
+        hi: { type: string }
+        en: { type: string }
+
+    Money:
+      type: object
+      required: [amount_paise, currency]
+      properties:
+        amount_paise: { type: integer, minimum: 0, description: 'Integer paise. ₹100 = 10000.' }
+        currency: { type: string, const: INR }
+
+    Link:
+      type: object
+      required: [kind, url]
+      properties:
+        kind: { type: string, enum: [official_pdf, apply, official_site, admit_card, result, answer_key, other] }
+        url: { type: string, format: uri }
+        label: { $ref: '#/components/schemas/LocalizedText' }
+        page: { type: [integer, 'null'], description: 'PDF page the fact comes from (provenance)' }
+
+    AppConfig:
+      type: object
+      required: [min_supported_version, latest_version, update, reference_version, features, support]
+      properties:
+        min_supported_version: { type: integer, description: 'Below this: blocking update screen (code upgrade_required on all calls).' }
+        latest_version: { type: integer }
+        update:
+          type: string
+          enum: [none, soft, force]
+        reference_version: { type: string, description: 'Compare with cached ReferenceBundle.version' }
+        features:
+          type: object
+          description: Remote flags. Unknown keys ignored.
+          additionalProperties: { type: boolean }
+          examples:
+            - { paywall_enabled: true, family_alerts: false, clash_alerts: false, upi_link_purchase: true, digest: true }
+        kill_switches:
+          type: object
+          additionalProperties: { type: boolean }
+        maintenance:
+          type: [object, 'null']
+          properties:
+            message: { $ref: '#/components/schemas/LocalizedText' }
+            until: { type: string, format: date-time }
+        support:
+          type: object
+          properties:
+            whatsapp_number: { type: string }
+            email: { type: string }
+            privacy_policy_url: { type: string, format: uri }
+            terms_url: { type: string, format: uri }
+        disclaimer:
+          $ref: '#/components/schemas/LocalizedText'
+        oem_guides:
+          type: object
+          description: Per-manufacturer (lowercase Build.MANUFACTURER) autostart/battery instructions, optional server override of bundled ones.
+          additionalProperties:
+            type: object
+            properties:
+              steps: { type: array, items: { $ref: '#/components/schemas/LocalizedText' } }
+              intent_actions: { type: array, items: { type: string } }
+        self_test_interval_days: { type: integer, default: 7 }
+
+    SessionRequest:
+      type: object
+      required: [installation_id, locale]
+      properties:
+        installation_id: { type: string }
+        locale: { type: string, enum: [hi, en] }
+        referral_code: { type: [string, 'null'] }
+        install_referrer: { type: [string, 'null'], description: 'Play Install Referrer utm string, first session only' }
+        device: { $ref: '#/components/schemas/DeviceInput' }
+
+    SessionResponse:
+      type: object
+      required: [user, is_new_user, has_profile, entitlement, sync_hint]
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        is_new_user: { type: boolean }
+        has_profile: { type: boolean }
+        entitlement: { $ref: '#/components/schemas/Entitlement' }
+        sync_hint:
+          type: string
+          enum: [none, delta, full]
+          description: '`full` after account switch/restore: wipe local cache and sync from scratch.'
+        required_consents:
+          type: array
+          description: Consent purposes whose current version the user has not yet accepted.
+          items: { type: string }
+
+    User:
+      type: object
+      required: [id, created_at, locale, auth_providers, billing_account_ref]
+      properties:
+        id: { type: string, examples: ['u_01JD3X5ZQ7'] }
+        created_at: { type: string, format: date-time }
+        locale: { type: string, enum: [hi, en] }
+        auth_providers:
+          type: array
+          items: { type: string, enum: [anonymous, google, phone] }
+          description: '`phone` = verified through /v1/auth/otp:verify (custom token), not Firebase phone auth.'
+        recovery_linked: { type: boolean, description: 'false for anonymous-only accounts; nudge to verify phone (S11) or link Google' }
+        phone_masked: { type: [string, 'null'], examples: ['+91 98xxxxxx21'] }
+        billing_account_ref: { type: string, description: 'Opaque value for BillingFlowParams.setObfuscatedAccountId' }
+        deletion: { $ref: '#/components/schemas/DeletionStatus' }
+
+    DeletionStatus:
+      type: object
+      required: [state]
+      properties:
+        state: { type: string, enum: [none, pending, deleted] }
+        hard_delete_at: { type: [string, 'null'], format: date-time }
+
+    ExportJob:
+      type: object
+      required: [id, state]
+      properties:
+        id: { type: string }
+        state: { type: string, enum: [queued, running, ready, failed, expired] }
+        download_url: { type: [string, 'null'], format: uri }
+        expires_at: { type: [string, 'null'], format: date-time }
+
+    Consent:
+      type: object
+      required: [purpose, version, granted, recorded_at]
+      properties:
+        purpose:
+          type: string
+          enum: [terms_privacy, eligibility_processing, push_alerts, whatsapp_alerts, family_alerts, analytics]
+        version: { type: string, examples: ['2026-11-01'] }
+        granted: { type: boolean }
+        recorded_at: { type: string, format: date-time }
+    ConsentInput:
+      type: object
+      required: [purpose, version, granted]
+      properties:
+        purpose: { type: string }
+        version: { type: string }
+        granted: { type: boolean }
+        notice_language: { type: string, enum: [hi, en] }
+
+    ReferenceBundle:
+      type: object
+      required: [version, qualifications, categories, states, exam_types, pwd_types, extra_attributes]
+      properties:
+        version: { type: string }
+        qualifications:
+          type: array
+          description: Taxonomy tree; `level` orders education levels so "graduate in any discipline" includes all graduate codes.
+          items: { $ref: '#/components/schemas/QualificationNode' }
+        categories:
+          type: array
+          items: { $ref: '#/components/schemas/RefItem' }
+          description: 'gen, ews, obc, sc, st (+ state-specific sub-categories later)'
+        states:
+          type: array
+          items: { $ref: '#/components/schemas/RefItem' }
+          description: 'ISO 3166-2:IN suffix codes: UP, BR, RJ, MP, DL ...'
+        exam_types:
+          type: array
+          items: { $ref: '#/components/schemas/RefItem' }
+          description: 'ssc, railway, banking, police, defence, teaching, upsc, state_psc, other'
+        pwd_types:
+          type: array
+          items: { $ref: '#/components/schemas/RefItem' }
+          description: 'RPwD Act 2016 benchmark disability groups: vi, hh, ld (locomotor incl. CP/leprosy/dwarfism/acid attack/muscular dystrophy), id_mi (autism/ID/SLD/mental illness), md (multiple)'
+        extra_attributes:
+          type: array
+          items: { $ref: '#/components/schemas/RefItem' }
+          description: 'Optional skills/certificates used by some posts: ncc_a/b/c, ccc, typing_hi, typing_en, driving_licence_lmv, ctet, uptet, etc.'
+        organizations:
+          type: array
+          items: { $ref: '#/components/schemas/RefItem' }
+
+    RefItem:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string }
+        name: { $ref: '#/components/schemas/LocalizedText' }
+        sort: { type: integer }
+        deprecated: { type: boolean }
+
+    QualificationNode:
+      type: object
+      required: [code, name, level]
+      properties:
+        code: { type: string, examples: ['grad.ba', 'grad.any', 'class12.science', 'diploma.engg.civil', 'iti.electrician'] }
+        parent: { type: [string, 'null'] }
+        level:
+          type: integer
+          description: '10=class10, 20=iti, 25=class12, 30=diploma, 40=graduate, 50=postgraduate, 60=doctorate'
+        name: { $ref: '#/components/schemas/LocalizedText' }
+        aliases: { type: array, items: { type: string } }
+        selectable: { type: boolean, description: 'false for grouping nodes like grad.any' }
+
+    QualificationInput:
+      type: object
+      required: [code, status]
+      properties:
+        code: { type: string }
+        status:
+          type: string
+          enum: [completed, final_year, appearing]
+          description: '`final_year`/`appearing`: result not yet declared — some notices allow these (provisional eligibility).'
+        result_date: { type: [string, 'null'], format: date, description: 'Optional; completed: date result declared; used when a notice requires qualification by a cutoff date.' }
+        percentage_band:
+          type: [string, 'null']
+          enum: [lt_50, '50_55', '55_60', ge_60, null]
+          description: 'Optional coarse band; only some posts need minimum marks.'
+
+    ProfileInput:
+      type: object
+      required: [dob, gender, category, domicile_state, qualifications, interests]
+      properties:
+        dob: { type: string, format: date }
+        gender: { type: string, enum: [male, female, transgender] }
+        category: { type: string, enum: [gen, ews, obc, sc, st] }
+        obc_non_creamy_layer: { type: [boolean, 'null'], description: 'Required when category=obc; false → treated as gen for relaxation.' }
+        domicile_state: { type: string }
+        pwd:
+          type: object
+          properties:
+            has_benchmark_disability: { type: boolean, default: false }
+            type: { type: [string, 'null'] }
+        ex_serviceman:
+          type: object
+          properties:
+            is_ex_serviceman: { type: boolean, default: false }
+            service_years: { type: [number, 'null'], minimum: 0, maximum: 40 }
+            release_date: { type: [string, 'null'], format: date }
+        govt_employee:
+          type: [object, 'null']
+          description: 'Optional (P1): departmental relaxations.'
+          properties:
+            is_central_govt: { type: boolean }
+            is_state_govt: { type: boolean }
+            state: { type: [string, 'null'] }
+            continuous_service_years: { type: [number, 'null'] }
+        marital_status:
+          type: [string, 'null']
+          enum: [unmarried, married, widowed, divorced, null]
+          description: 'Optional; only used for posts restricted by marital status (else check_yourself).'
+        qualifications:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { $ref: '#/components/schemas/QualificationInput' }
+        extra_attributes:
+          type: array
+          items: { type: string }
+        certificates:
+          type: object
+          description: '(Pro P1) For certificate-validity alerts. No documents are uploaded.'
+          properties:
+            obc_ncl_financial_year: { type: [string, 'null'], pattern: '^\d{4}-\d{2}$' }
+            ews_financial_year: { type: [string, 'null'], pattern: '^\d{4}-\d{2}$' }
+            domicile_certificate: { type: [boolean, 'null'] }
+            domicile_certificate_issued_on: { type: [string, 'null'], format: date }
+            pwd_certificate: { type: [boolean, 'null'] }
+        interests:
+          type: object
+          required: [exam_types]
+          properties:
+            exam_types:
+              type: array
+              minItems: 1
+              items: { type: string }
+            job_states:
+              type: array
+              description: 'States whose state-level recruitments the user wants (domicile state is added implicitly).'
+              items: { type: string }
+            include_all_india: { type: boolean, default: true }
+
+    Profile:
+      allOf:
+        - $ref: '#/components/schemas/ProfileInput'
+        - type: object
+          required: [version, updated_at, completeness]
+          properties:
+            version: { type: integer }
+            updated_at: { type: string, format: date-time }
+            completeness:
+              type: number
+              minimum: 0
+              maximum: 1
+            missing_optional:
+              type: array
+              description: Optional fields that would turn some check_yourself verdicts into firm ones.
+              items: { type: string }
+
+    ProfileSaveResult:
+      type: object
+      required: [profile, match_summary]
+      properties:
+        profile: { $ref: '#/components/schemas/Profile' }
+        match_summary: { $ref: '#/components/schemas/MatchSummaryCounts' }
+
+    MatchSummaryCounts:
+      type: object
+      required: [eligible, check_yourself]
+      properties:
+        eligible: { type: integer }
+        check_yourself: { type: integer }
+        added: { type: integer, description: 'New matches created by this save' }
+        removed: { type: integer, description: 'Open matches that no longer match (status → withdrawn)' }
+
+    EligibilityPreview:
+      type: object
+      required: [summary, top]
+      properties:
+        summary: { $ref: '#/components/schemas/MatchSummaryCounts' }
+        top:
+          type: array
+          maxItems: 10
+          items:
+            type: object
+            required: [post_id, notice_id, title, verdict, last_date]
+            properties:
+              post_id: { type: string }
+              notice_id: { type: string }
+              title: { $ref: '#/components/schemas/LocalizedText' }
+              verdict: { $ref: '#/components/schemas/Verdict' }
+              last_date: { type: string, format: date }
+        share_card:
+          type: object
+          properties:
+            text: { $ref: '#/components/schemas/LocalizedText' }
+            url: { type: string, format: uri }
+
+    Verdict:
+      type: string
+      enum: [eligible, not_eligible, check_yourself]
+      description: '`check_yourself` = we cannot decide from the profile (e.g. physical standards, marks, rule ambiguity). Never shown as eligible.'
+
+    MatchStatus:
+      type: string
+      enum: [new, seen, reminded, snoozed, applied, not_interested, expired, withdrawn]
+      description: '`withdrawn` = no longer matches after corrigendum/profile change. Unknown values: treat as `seen`.'
+
+    Priority:
+      type: string
+      enum: [high, normal, low]
+      description: 'low = digest only'
+
+    MatchSummary:
+      type: object
+      required: [id, post_id, notice_id, verdict, status, title, org, last_date, updated_at]
+      properties:
+        id: { type: string }
+        post_id: { type: string }
+        notice_id: { type: string }
+        notice_etag: { type: string, description: 'If different from the cached Notice ETag, refetch /v1/notices/{id}' }
+        verdict: { $ref: '#/components/schemas/Verdict' }
+        status: { $ref: '#/components/schemas/MatchStatus' }
+        title: { $ref: '#/components/schemas/LocalizedText' }
+        org: { $ref: '#/components/schemas/LocalizedText' }
+        exam_type: { type: string }
+        vacancies_total: { type: [integer, 'null'] }
+        vacancies_for_category: { type: [integer, 'null'] }
+        last_date: { type: string, format: date }
+        last_date_time: { type: [string, 'null'], description: 'HH:MM IST if the notice states one' }
+        fee_for_you: { oneOf: [ { $ref: '#/components/schemas/Money' }, { type: 'null' } ] }
+        priority: { $ref: '#/components/schemas/Priority' }
+        badges:
+          type: array
+          items: { type: string, enum: [new, closing_soon, last_day, extended, corrigendum, check_yourself] }
+        snoozed_until: { type: [string, 'null'], format: date-time }
+        next_reminder_at: { type: [string, 'null'], format: date-time }
+        next_reminder_id: { type: [string, 'null'], description: 'Deterministic id `r:{match_id}:{kind}:{YYYYMMDD IST}`; the FCM msg_id of that reminder equals it, so a local mirror alarm can dedupe' }
+        next_reminder_kind: { oneOf: [ { $ref: '#/components/schemas/ReminderKind' }, { type: 'null' } ] }
+        headline_reason: { $ref: '#/components/schemas/LocalizedText' }
+        matched_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        application_id: { type: [string, 'null'] }
+
+    MatchDetail:
+      allOf:
+        - $ref: '#/components/schemas/MatchSummary'
+        - type: object
+          required: [why, what_you_need, disclaimer]
+          properties:
+            why:
+              type: array
+              description: One line per rule, in display order.
+              items: { $ref: '#/components/schemas/RuleExplanation' }
+            what_you_need: { $ref: '#/components/schemas/WhatYouNeed' }
+            reminder_plan:
+              type: array
+              description: Upcoming reminders (for the "We'll remind you on…" row).
+              items:
+                type: object
+                required: [reminder_id, kind, at]
+                properties:
+                  reminder_id: { type: string }
+                  kind: { $ref: '#/components/schemas/ReminderKind' }
+                  at: { type: string, format: date-time }
+                  channels: { type: array, items: { type: string, enum: [push, whatsapp, family] } }
+            corrigenda:
+              type: array
+              items: { $ref: '#/components/schemas/CorrigendumSummary' }
+            rule_version: { type: integer }
+            disclaimer: { $ref: '#/components/schemas/LocalizedText' }
+
+    ReminderKind:
+      type: string
+      enum: [new_match, periodic, d_minus_3, d_minus_1, last_day, snooze_due, extension, corrigendum]
+
+    RuleExplanation:
+      type: object
+      required: [rule, result, text]
+      properties:
+        rule:
+          type: string
+          enum: [age, qualification, domicile, gender, category, pwd, ex_serviceman, marital_status, physical, experience, extra_attribute, nationality, other]
+        result: { type: string, enum: [pass, fail, check_yourself] }
+        code: { type: string, examples: ['age.within_limit_with_relaxation'] }
+        params:
+          type: object
+          additionalProperties: true
+          examples: [ { age_years: 24, age_months: 3, cutoff: '2026-08-01', max: 27, relaxation_years: 3, relaxation_basis: obc } ]
+        text: { $ref: '#/components/schemas/LocalizedText' }
+        source: { $ref: '#/components/schemas/Link' }
+
+    WhatYouNeed:
+      type: object
+      required: [key_dates, links]
+      properties:
+        key_dates:
+          type: array
+          items: { $ref: '#/components/schemas/KeyDate' }
+        fee_for_you: { oneOf: [ { $ref: '#/components/schemas/Money' }, { type: 'null' } ] }
+        fee_note: { $ref: '#/components/schemas/LocalizedText' }
+        payment_modes: { type: array, items: { type: string } }
+        documents:
+          type: array
+          items: { $ref: '#/components/schemas/LocalizedText' }
+        photo_spec: { $ref: '#/components/schemas/UploadSpec' }
+        signature_spec: { $ref: '#/components/schemas/UploadSpec' }
+        other_uploads:
+          type: array
+          items: { $ref: '#/components/schemas/UploadSpec' }
+        selection_process: { $ref: '#/components/schemas/LocalizedText' }
+        exam_pattern_note: { $ref: '#/components/schemas/LocalizedText' }
+        physical_standards: { $ref: '#/components/schemas/LocalizedText' }
+        links:
+          type: array
+          items: { $ref: '#/components/schemas/Link' }
+
+    UploadSpec:
+      type: object
+      properties:
+        label: { $ref: '#/components/schemas/LocalizedText' }
+        format: { type: array, items: { type: string, examples: ['jpg', 'jpeg'] } }
+        min_kb: { type: [integer, 'null'] }
+        max_kb: { type: [integer, 'null'] }
+        width_px: { type: [integer, 'null'] }
+        height_px: { type: [integer, 'null'] }
+        width_cm: { type: [number, 'null'] }
+        height_cm: { type: [number, 'null'] }
+        notes: { $ref: '#/components/schemas/LocalizedText' }
+
+    KeyDate:
+      type: object
+      required: [kind, date]
+      properties:
+        kind:
+          type: string
+          enum: [notification, apply_start, apply_end, fee_end, correction_start, correction_end, exam_tentative, other]
+        date: { type: string, format: date }
+        time: { type: [string, 'null'], description: 'HH:MM IST' }
+        label: { $ref: '#/components/schemas/LocalizedText' }
+        changed_from: { type: [string, 'null'], format: date, description: 'Previous date if changed by corrigendum' }
+
+    CorrigendumSummary:
+      type: object
+      required: [id, published_on, summary]
+      properties:
+        id: { type: string }
+        published_on: { type: string, format: date }
+        summary: { $ref: '#/components/schemas/LocalizedText' }
+        affects_you: { type: boolean }
+        link: { $ref: '#/components/schemas/Link' }
+
+    MatchActionInput:
+      type: object
+      required: [action_id, type, occurred_at]
+      properties:
+        action_id: { type: string, format: uuid, description: 'Client-generated, unique per action; dedup key.' }
+        type: { type: string, enum: [seen, applied, not_interested, snooze, undo] }
+        occurred_at: { type: string, format: date-time, description: 'Device time of the tap (server clamps skew).' }
+        snooze:
+          type: object
+          description: 'tomorrow = 09:00 IST next day; today_evening = 18:00 IST (offered only when ≤2 days left). Never later than the last-day morning reminder.'
+          properties:
+            option: { type: string, enum: [tomorrow, two_days_before_last_date, today_evening] }
+        fee_paid: { type: [boolean, 'null'], description: 'Applied only: user ticked "fee also paid" (P2 payment-status watch)' }
+        source:
+          type: string
+          enum: [notification_action, match_detail, feed, whatsapp, other]
+        not_interested_reason:
+          type: [string, 'null']
+          enum: [not_interested_in_post, location, salary, already_applied_elsewhere, other, null]
+
+    MatchActionResult:
+      type: object
+      required: [match, applied]
+      properties:
+        applied: { type: boolean, description: 'false if the action was stale/ignored' }
+        match: { $ref: '#/components/schemas/MatchSummary' }
+        application: { oneOf: [ { $ref: '#/components/schemas/Application' }, { type: 'null' } ] }
+        entitlement: { oneOf: [ { $ref: '#/components/schemas/Entitlement' }, { type: 'null' } ], description: 'Present when it changed (trial started)' }
+        paywall:
+          type: [object, 'null']
+          description: 'Present after Applied when the client should show the "Track this application to the end?" sheet.'
+          properties:
+            variant: { type: string, examples: ['trial_started', 'trial_ended', 'free'] }
+            trial_ends_at: { type: [string, 'null'], format: date-time }
+
+    MatchReportInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          enum: [not_eligible_age, not_eligible_qualification, not_eligible_domicile, not_eligible_gender, not_eligible_category, wrong_dates, wrong_fee, wrong_link, duplicate, other]
+        rule: { type: [string, 'null'] }
+        comment: { type: [string, 'null'], maxLength: 500 }
+    MatchReport:
+      type: object
+      required: [id, state]
+      properties:
+        id: { type: string }
+        state: { type: string, enum: [received, confirmed_fixed, rejected] }
+
+    Evaluation:
+      type: object
+      required: [post_id, verdict, why]
+      properties:
+        post_id: { type: string }
+        verdict: { $ref: '#/components/schemas/Verdict' }
+        why:
+          type: array
+          items: { $ref: '#/components/schemas/RuleExplanation' }
+        match_id: { type: [string, 'null'] }
+
+    NoticeSummary:
+      type: object
+      required: [id, title, org, status, posts]
+      properties:
+        id: { type: string }
+        title: { $ref: '#/components/schemas/LocalizedText' }
+        org: { $ref: '#/components/schemas/LocalizedText' }
+        exam_type: { type: string }
+        status: { type: string, enum: [upcoming, open, closed, cancelled] }
+        apply_end: { type: [string, 'null'], format: date }
+        vacancies_total: { type: [integer, 'null'] }
+        posts:
+          type: array
+          items:
+            type: object
+            required: [id, name, my_verdict]
+            properties:
+              id: { type: string }
+              name: { $ref: '#/components/schemas/LocalizedText' }
+              my_verdict: { $ref: '#/components/schemas/Verdict' }
+              match_id: { type: [string, 'null'] }
+
+    Notice:
+      type: object
+      required: [id, version, title, org, status, posts, key_dates, links, source, updated_at]
+      properties:
+        id: { type: string }
+        version: { type: integer, description: 'Bumps with each published corrigendum/edit' }
+        title: { $ref: '#/components/schemas/LocalizedText' }
+        org: { $ref: '#/components/schemas/LocalizedText' }
+        advt_no: { type: [string, 'null'] }
+        exam_type: { type: string }
+        status: { type: string, enum: [upcoming, open, closed, cancelled] }
+        scope: { type: string, enum: [all_india, state] }
+        state: { type: [string, 'null'] }
+        summary: { $ref: '#/components/schemas/LocalizedText' }
+        key_dates:
+          type: array
+          items: { $ref: '#/components/schemas/KeyDate' }
+        fees:
+          type: array
+          description: Fee table by category/gender/PwD.
+          items:
+            type: object
+            properties:
+              applies_to: { $ref: '#/components/schemas/LocalizedText' }
+              amount: { $ref: '#/components/schemas/Money' }
+        posts:
+          type: array
+          items: { $ref: '#/components/schemas/Post' }
+        documents: { type: array, items: { $ref: '#/components/schemas/LocalizedText' } }
+        photo_spec: { $ref: '#/components/schemas/UploadSpec' }
+        signature_spec: { $ref: '#/components/schemas/UploadSpec' }
+        links: { type: array, items: { $ref: '#/components/schemas/Link' } }
+        corrigenda: { type: array, items: { $ref: '#/components/schemas/CorrigendumSummary' } }
+        lifecycle:
+          type: array
+          description: Public lifecycle events of this recruitment (admit card, answer key, result...).
+          items: { $ref: '#/components/schemas/LifecycleEvent' }
+        source:
+          type: object
+          required: [url, fetched_at]
+          properties:
+            url: { type: string, format: uri }
+            fetched_at: { type: string, format: date-time }
+            reviewed_at: { type: [string, 'null'], format: date-time }
+        disclaimer: { $ref: '#/components/schemas/LocalizedText' }
+        updated_at: { type: string, format: date-time }
+
+    Post:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { $ref: '#/components/schemas/LocalizedText' }
+        vacancies_total: { type: [integer, 'null'] }
+        vacancies_by_category:
+          type: object
+          additionalProperties: { type: integer }
+        pay_level: { type: [string, 'null'] }
+        eligibility_text: { $ref: '#/components/schemas/LocalizedText' }
+        age_cutoff_date: { type: [string, 'null'], format: date }
+        age_min: { type: [integer, 'null'] }
+        age_max: { type: [integer, 'null'] }
+
+    LifecycleEventType:
+      type: string
+      enum: [correction_window, application_status, city_slip, admit_card, exam_date, exam_rescheduled, answer_key, objection_window, response_sheet, result, cutoff, scorecard, next_stage, pet_pst, skill_test, dv_schedule, medical_schedule, final_result, joining, other]
+
+    LifecycleEvent:
+      type: object
+      required: [id, type, title, status]
+      properties:
+        id: { type: string }
+        type: { $ref: '#/components/schemas/LifecycleEventType' }
+        stage: { type: [string, 'null'], examples: ['tier1', 'cbt1', 'pet', 'dv'] }
+        title: { $ref: '#/components/schemas/LocalizedText' }
+        body: { $ref: '#/components/schemas/LocalizedText' }
+        status: { type: string, enum: [expected, announced, live, past, cancelled] }
+        starts_at: { type: [string, 'null'], format: date-time }
+        ends_at: { type: [string, 'null'], format: date-time }
+        expected_window: { type: [string, 'null'], description: 'Free text e.g. "Feb 2027 (tentative)" for expected events' }
+        links: { type: array, items: { $ref: '#/components/schemas/Link' } }
+        published_at: { type: [string, 'null'], format: date-time }
+        critical: { type: boolean, description: 'Critical events escalate to WhatsApp/family for Pro' }
+
+    Application:
+      type: object
+      required: [id, match_id, notice_id, post_id, title, applied_at, tracking, alerts_locked]
+      properties:
+        id: { type: string }
+        match_id: { type: string }
+        notice_id: { type: string }
+        post_id: { type: string }
+        title: { $ref: '#/components/schemas/LocalizedText' }
+        applied_at: { type: string, format: date-time }
+        tracking: { type: string, enum: [active, stopped, completed] }
+        current_stage: { type: [string, 'null'] }
+        next_event: { oneOf: [ { $ref: '#/components/schemas/LifecycleEvent' }, { type: 'null' } ] }
+        alerts_locked: { type: boolean, description: 'true when not Pro: timeline visible, lifecycle alerts not sent' }
+        updated_at: { type: string, format: date-time }
+
+    ApplicationDetail:
+      allOf:
+        - $ref: '#/components/schemas/Application'
+        - type: object
+          required: [timeline]
+          properties:
+            timeline:
+              type: array
+              items: { $ref: '#/components/schemas/LifecycleEvent' }
+            progress:
+              type: array
+              items:
+                type: object
+                properties:
+                  stage: { type: string }
+                  outcome: { type: string, enum: [cleared, not_cleared, absent, unknown] }
+
+    ApplicationUpdate:
+      type: object
+      properties:
+        tracking: { type: string, enum: [active, stopped] }
+        progress:
+          type: object
+          required: [stage, outcome]
+          properties:
+            stage: { type: string }
+            outcome: { type: string, enum: [cleared, not_cleared, absent] }
+
+    Clash:
+      type: object
+      required: [id, date_from, date_to, items]
+      properties:
+        id: { type: string }
+        date_from: { type: string, format: date }
+        date_to: { type: string, format: date }
+        severity: { type: string, enum: [same_day, same_week] }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              application_id: { type: [string, 'null'] }
+              match_id: { type: [string, 'null'] }
+              event: { $ref: '#/components/schemas/LifecycleEvent' }
+
+    NotificationPrefs:
+      type: object
+      required: [quiet_hours, digest, channels]
+      properties:
+        quiet_hours:
+          type: object
+          required: [start, end]
+          properties:
+            start: { type: string, pattern: '^\d{2}:\d{2}$', default: '22:00' }
+            end: { type: string, pattern: '^\d{2}:\d{2}$', default: '07:00' }
+          description: IST. Last-day alerts ignore quiet hours (they are sent from 07:00 anyway).
+        digest:
+          type: object
+          properties:
+            enabled: { type: boolean, default: true }
+            time: { type: string, pattern: '^\d{2}:\d{2}$', default: '19:00' }
+        channels:
+          type: object
+          properties:
+            push: { type: boolean, default: true }
+            whatsapp: { type: boolean, default: false, description: 'Effective only when Pro and WhatsApp linked' }
+        lifecycle_alerts: { type: boolean, default: true }
+        family_alerts: { type: boolean, default: true }
+        max_push_per_day: { type: integer, minimum: 1, maximum: 3, default: 3, readOnly: true }
+
+    InboxItem:
+      type: object
+      required: [id, kind, title, created_at]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [match_new, reminder, deadline, extension, corrigendum, lifecycle, digest, clash, certificate, system] }
+        title: { $ref: '#/components/schemas/LocalizedText' }
+        body: { $ref: '#/components/schemas/LocalizedText' }
+        match_id: { type: [string, 'null'] }
+        application_id: { type: [string, 'null'] }
+        channels: { type: array, items: { type: string, enum: [push, whatsapp, sms, family] } }
+        created_at: { type: string, format: date-time }
+        opened_at: { type: [string, 'null'], format: date-time }
+        delivery:
+          type: object
+          description: Per-channel status for the S24 icons.
+          additionalProperties: { type: string, enum: [queued, sent, delivered, read, failed, skipped] }
+
+    DeliveryReceipt:
+      type: object
+      required: [message_id, event, at]
+      properties:
+        message_id: { type: string, description: 'The `msg_id` from the FCM data payload (or test_id)' }
+        event: { type: string, enum: [received, displayed, opened, dismissed, action_tapped, blocked] }
+        at: { type: string, format: date-time }
+        notification_channel: { type: [string, 'null'] }
+        app_state: { type: [string, 'null'], enum: [foreground, background, killed, null] }
+
+    DeviceInput:
+      type: object
+      required: [fcm_token, app_version]
+      properties:
+        fcm_token: { type: string }
+        app_version: { type: integer }
+        os_api_level: { type: integer }
+        manufacturer: { type: string, description: 'Build.MANUFACTURER lowercased' }
+        model: { type: string }
+        notifications_enabled: { type: boolean }
+        channels_blocked: { type: array, items: { type: string } }
+        battery_optimization_ignored: { type: [boolean, 'null'] }
+        autostart_confirmed: { type: [boolean, 'null'], description: 'User said they enabled autostart in the OEM guide' }
+        timezone: { type: string, examples: ['Asia/Kolkata'] }
+
+    Device:
+      allOf:
+        - $ref: '#/components/schemas/DeviceInput'
+        - type: object
+          required: [installation_id, updated_at]
+          properties:
+            installation_id: { type: string }
+            updated_at: { type: string, format: date-time }
+            last_self_test: { oneOf: [ { $ref: '#/components/schemas/SelfTest' }, { type: 'null' } ] }
+            delivery_health: { type: string, enum: [good, degraded, failing, unknown] }
+            primary: { type: boolean, description: 'Receives alert pushes. Newest signed-in device becomes primary automatically.' }
+
+    SelfTest:
+      type: object
+      required: [test_id, status, sent_at]
+      properties:
+        test_id: { type: string }
+        status: { type: string, enum: [sent, received, displayed, timeout, fcm_error] }
+        sent_at: { type: string, format: date-time }
+        received_at: { type: [string, 'null'], format: date-time }
+        latency_ms: { type: [integer, 'null'] }
+        advice:
+          type: array
+          items: { type: string, enum: [enable_notifications, enable_autostart, disable_battery_optimization, unblock_channel, update_play_services, link_whatsapp] }
+
+    Product:
+      type: object
+      required: [id, kind, play_product_id, features]
+      properties:
+        id: { type: string, examples: ['pro_season', 'pro_year'] }
+        kind: { type: string, enum: [prepaid_season, auto_renew_year, auto_renew_month] }
+        play_product_id: { type: string, examples: ['pro'] }
+        play_base_plan_id: { type: string, examples: ['season-4m-prepaid', 'yearly-autorenew'] }
+        duration_days: { type: integer }
+        highlight: { type: boolean }
+        title: { $ref: '#/components/schemas/LocalizedText' }
+        features: { type: array, items: { $ref: '#/components/schemas/LocalizedText' } }
+
+    Entitlement:
+      type: object
+      required: [plan, status, features, trial_available]
+      properties:
+        plan: { type: string, enum: [free, pro] }
+        status: { type: string, enum: [active, in_grace, on_hold, expired, none] }
+        source: { type: [string, 'null'], enum: [trial, play_season, play_year, play_month, upi, referral, promo, null] }
+        starts_at: { type: [string, 'null'], format: date-time }
+        expires_at: { type: [string, 'null'], format: date-time }
+        auto_renewing: { type: boolean }
+        trial_available: { type: boolean }
+        features:
+          type: object
+          properties:
+            lifecycle_alerts: { type: boolean }
+            whatsapp_backup: { type: boolean }
+            family_alerts: { type: boolean }
+            clash_alerts: { type: boolean }
+            certificate_alerts: { type: boolean }
+        whatsapp_quota:
+          type: [object, 'null']
+          properties:
+            used: { type: integer }
+            limit: { type: integer, examples: [30] }
+            period_ends_at: { type: string, format: date-time }
+        manage_url: { type: [string, 'null'], format: uri, description: 'Play subscription deep link' }
+
+    PlayPurchaseInput:
+      type: object
+      required: [product_id, purchase_token]
+      properties:
+        product_id: { type: string, description: 'Play product id' }
+        base_plan_id: { type: [string, 'null'] }
+        purchase_token: { type: string }
+        order_id: { type: [string, 'null'] }
+
+    UpiLink:
+      type: object
+      required: [id, url, amount, expires_at]
+      properties:
+        id: { type: string }
+        url: { type: string, format: uri }
+        amount: { $ref: '#/components/schemas/Money' }
+        expires_at: { type: string, format: date-time }
+
+    Referral:
+      type: object
+      required: [code, share_url]
+      properties:
+        code: { type: string }
+        share_url: { type: string, format: uri }
+        share_text: { $ref: '#/components/schemas/LocalizedText' }
+        friends_joined: { type: integer }
+        pro_days_earned: { type: integer }
+        redeemed_code: { type: [string, 'null'] }
+
+    WhatsAppStatus:
+      type: object
+      required: [state]
+      properties:
+        state: { type: string, enum: [none, pending, active, opted_out, blocked] }
+        masked_number: { type: [string, 'null'], examples: ['+91 98xxxxxx21'] }
+        opt_in_link: { type: [string, 'null'], format: uri, description: 'wa.me link with prefilled "START <code>"' }
+        opt_in_code: { type: [string, 'null'] }
+        expires_at: { type: [string, 'null'], format: date-time }
+        quota: { $ref: '#/components/schemas/Entitlement/properties/whatsapp_quota' }
+
+    FamilyInviteInput:
+      type: object
+      required: [display_name, relation]
+      properties:
+        display_name: { type: string, maxLength: 30 }
+        relation: { type: string, enum: [parent, sibling, spouse, other] }
+        alert_kinds:
+          type: array
+          items: { type: string, enum: [last_day, one_day_before, admit_card, exam_date, dv_schedule, result] }
+
+    FamilyMember:
+      type: object
+      required: [id, display_name, relation, state]
+      properties:
+        id: { type: string }
+        display_name: { type: string }
+        relation: { type: string }
+        state: { type: string, enum: [invited, active, opted_out, expired] }
+        masked_number: { type: [string, 'null'] }
+        invite_link: { type: [string, 'null'], format: uri }
+        invite_text: { $ref: '#/components/schemas/LocalizedText' }
+        alert_kinds: { type: array, items: { type: string } }
+
+    FamilyInviteView:
+      type: object
+      required: [state, inviter_first_name, alert_kinds]
+      properties:
+        state: { type: string, enum: [invited, active, declined, expired] }
+        inviter_first_name: { type: string, description: 'Display name the aspirant chose to share; nothing else about them' }
+        relation: { type: string }
+        alert_kinds: { type: array, items: { type: string } }
+        expires_at: { type: [string, 'null'], format: date-time }
+
+    SyncResponse:
+      type: object
+      required: [has_more, changes, removed]
+      properties:
+        has_more: { type: boolean }
+        page_token: { type: [string, 'null'] }
+        next_sync_token: { type: [string, 'null'], description: 'Present on the last page only' }
+        server_time: { type: string, format: date-time }
+        changes:
+          type: object
+          properties:
+            matches: { type: array, items: { $ref: '#/components/schemas/MatchSummary' } }
+            applications: { type: array, items: { $ref: '#/components/schemas/Application' } }
+            notices:
+              type: array
+              description: Notice ids+etags whose shared content changed; fetch with /v1/notices/{id}.
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  etag: { type: string }
+            inbox: { type: array, items: { $ref: '#/components/schemas/InboxItem' } }
+            entitlement: { oneOf: [ { $ref: '#/components/schemas/Entitlement' }, { type: 'null' } ] }
+            notification_prefs: { oneOf: [ { $ref: '#/components/schemas/NotificationPrefs' }, { type: 'null' } ] }
+            profile_version: { type: [integer, 'null'] }
+        removed:
+          type: object
+          properties:
+            matches: { type: array, items: { type: string } }
+            applications: { type: array, items: { type: string } }
+            inbox: { type: array, items: { type: string } }
