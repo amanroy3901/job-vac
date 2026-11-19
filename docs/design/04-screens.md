@@ -542,7 +542,7 @@ Icon `report` 48 · "अभी हमारा सर्वर काम नह�
 | ID | Title | Body | Confirm | Dismiss |
 | --- | --- | --- | --- | --- |
 | D01 | सूचना बंद है | "आखिरी तारीख की याद के लिए सेटिंग में ‘सूचना’ चालू करें।" | सेटिंग खोलें | अभी नहीं |
-| D02 | साइन आउट करें? | "इस फ़ोन पर अलर्ट आना बंद हो जाएगा। आपकी प्रोफ़ाइल आपके Google अकाउंट में सुरक्षित रहेगी।" | साइन आउट (error) | रद्द करें |
+| D02 | साइन आउट करें? | "आपकी प्रोफ़ाइल और नौकरियाँ इसी फ़ोन पर रहेंगी — आप मेहमान के रूप में इस्तेमाल करते रहेंगे। Pro, परिवार लिंक और बैकअप Google अकाउंट के साथ रहेंगे; दोबारा साइन इन करने पर वापस मिलेंगे।" + optional checkbox "इस फ़ोन से सब कुछ भी हटाएँ" (→ local wipe as D03 guest). Flow per frontend data-layer.md: final backup (if on) → `deleteDevice` → sign-out → account state cleared; local profile, matches and reminders kept | साइन आउट (error) | रद्द करें |
 | D03 | अकाउंट हमेशा के लिए हटाएँ? | "यह वापस नहीं होगा। पुष्टि के लिए नीचे ‘हटाएँ’ लिखें।" → text field (signed-in users: "Google से पुष्टि करें" → O11 re-auth instead) | हटाएँ (error, enabled after typing / re-auth) | रद्द करें |
 | D04 | आपका डेटा तैयार है | "फ़ाइल ‘sarkari-match-data.json’ में आपकी प्रोफ़ाइल, नौकरियों पर आपके जवाब और सूचनाओं का इतिहास है।" | फ़ाइल सेव करें | बंद करें |
 | ~~D05~~ | retired 2026-11-19 (WhatsApp) | — | — | — |
