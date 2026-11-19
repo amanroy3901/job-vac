@@ -74,7 +74,7 @@ The family chain per script comes from `tokens.json` `font.script.*` (design 07)
 
 | Script (locales) | Family chain | Line-height × |
 | --- | --- | --- |
-| Latin (en), Devanagari (hi, mr) | Mukta → Noto Sans Devanagari / Roboto | 1.0 |
+| Latin (en), Devanagari (hi, mr) | Baloo 2 (headings) + Hind (body) → Noto Sans Devanagari / Roboto | 1.0 |
 | Bengali (bn, as) | Noto Sans Bengali | 1.05 |
 | Telugu (te) | Noto Sans Telugu | 1.15 |
 | Tamil (ta) | Noto Sans Tamil | 1.05 |
@@ -101,7 +101,7 @@ The family chain per script comes from `tokens.json` `font.script.*` (design 07)
 | `color.light/dark.*` (M3 roles) | `lightColorScheme(...)` / `darkColorScheme(...)` | `Color.kt` |
 | `color.*.ext.*` (success, warning, urgent, today) | `@Immutable data class SarkariColors` via `staticCompositionLocalOf` | `SarkariColors.kt` |
 | `semantic.*` (verdict, deadline, stage, pro) | `VerdictStyle`, `DeadlineStyle`, `StageStyle` lookups returning container/content/icon | `Semantic.kt` |
-| `font.family` + `font.scale` | `Typography` (12 M3 roles) with Mukta + Devanagari-safe style | `Type.kt` |
+| `font.family` + `font.scale` | `Typography` (12 M3 roles) with Baloo 2 + Hind (Direction C, Devanagari-safe) | `Type.kt` |
 | `space.*` | `@Immutable data class Spacing(xxs=2.dp … sectionGap=24.dp)` via `LocalSpacing` | `Spacing.kt` |
 | `radius.*` | M3 `Shapes(extraSmall=4, small=8, medium=12, large=16, extraLarge=28)`; buttons keep pill | `Shape.kt` |
 | `size.*` | `object SmSize { touchMin=48.dp; buttonHeight=52.dp; bottomActionBar=84.dp … }` | `Size.kt` |

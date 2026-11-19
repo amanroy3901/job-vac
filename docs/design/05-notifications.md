@@ -19,7 +19,7 @@ These **seven** IDs are the **canonical set** for app, API (`PushData.channel`) 
 | `family` | परिवार के अलर्ट / Family alerts | `IMPORTANCE_HIGH` | default sound + vibrate | `PRIVATE` (shows "Sarkari Match · परिवार अलर्ट" on the lock screen, details after unlock) | N-50–N-53 (created only when this phone accepts a family invite) |
 
 - Channel names follow the app language at creation; on language switch, update names via `createNotificationChannel` (same ID).
-- Small icon: monochrome `ic_stat_sm` (24 dp, white tick inside rounded square). Accent colour `primary` (`#1F4FB8`); `critical` uses `today` red as `setColor` only for R-last.
+- Small icon: monochrome `ic_stat_sm` (24 dp, white tick inside rounded square). Accent colour `primary` (forest `#1E5B46`, Direction C); `critical` uses `today` red as `setColor` only for R-last.
 - **Grouping:** job pushes share group key `jobs`; when ≥ 2 visible post a summary (`InboxStyle`, title "Sarkari Match", summary "{n} नौकरियाँ आपका जवाब माँग रही हैं"). Lifecycle pushes group `forms`.
 - **Notification ID** = stable hash of `match_id` (+ `stage` for lifecycle, keyed by `application_id`) so a newer reminder replaces the older one; tag = push `collapse`.
 - **Delivery:** FCM **data-only, priority `high`** for N-01/N-04/N-05/critical lifecycle; `normal` for the rest. App builds the notification in `FirebaseMessagingService.onMessageReceived` (localised strings, actions, grouping) and posts `received` + `displayed` receipts (`POST /v1/me/delivery-receipts`). TTL: reminders `lastDate − now`; test 10 min.

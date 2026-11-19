@@ -11,10 +11,10 @@ Reads with: [02 design system](02-design-system.md) (type scale, icons) · [`tok
 
 | Code | Language (own script) | Script | Dir | Status | Font (07 §2) | Plural categories (CLDR) |
 | --- | --- | --- | --- | --- | --- | --- |
-| `hi` | हिंदी | Devanagari | LTR | **launch, default** | Mukta | one, other |
-| `en` | English | Latin | LTR | **launch** | Mukta | one, other |
+| `hi` | हिंदी | Devanagari | LTR | **launch, default** | Baloo 2 (headings) + Hind (body) | one, other |
+| `en` | English | Latin | LTR | **launch** | Baloo 2 + Hind | one, other |
 | `bn` | বাংলা | Bengali | LTR | planned | Noto Sans Bengali | one, other |
-| `mr` | मराठी | Devanagari | LTR | planned | Mukta | one, other |
+| `mr` | मराठी | Devanagari | LTR | planned | Baloo 2 + Hind | one, other |
 | `te` | తెలుగు | Telugu | LTR | planned | Noto Sans Telugu | one, other |
 | `ta` | தமிழ் | Tamil | LTR | planned | Noto Sans Tamil | one, other |
 | `gu` | ગુજરાતી | Gujarati | LTR | planned | Noto Sans Gujarati | one, other |
@@ -38,12 +38,12 @@ Reads with: [02 design system](02-design-system.md) (type scale, icons) · [`tok
 
 All fonts are **Downloadable Google Fonts** (`androidx.compose.ui.text.googlefonts`, provider
 `com.google.android.gms.fonts`), so the APK grows by 0 KB per language (NFR < 15 MB). Only the font of the
-**selected** language is requested (plus Latin, which Mukta already covers); fonts for other scripts are never
+**selected** language is requested (plus Latin, which Baloo 2 and Hind already cover); fonts for other scripts are never
 prefetched.
 
 | Script | Primary | Fallback chain (until downloaded / no GMS) | Line-height × | Notes |
 | --- | --- | --- | --- | --- |
-| Devanagari + Latin | Mukta 400/500/600/700 | Noto Sans Devanagari (system) → Roboto | 1.0 (baseline scale in 02 §3.2) | Unchanged |
+| Devanagari + Latin | Baloo 2 600 (headings, numbers) + Hind 400/600 (body) | Noto Sans Devanagari (system) → Roboto | 1.0 (baseline scale in 02 §3.2) | Unchanged |
 | Bengali, Assamese | Noto Sans Bengali | system Noto Sans Bengali | 1.05 | Assamese ৰ ৱ are in the font |
 | Telugu | Noto Sans Telugu | system | 1.15 | Tall vowel signs above and below |
 | Tamil | Noto Sans Tamil | system | 1.05 | Longest strings (§3) |
@@ -62,8 +62,8 @@ Rules:
   (02 §3.2). This matters most for Telugu, Kannada and Urdu, where marks extend far above or below the line.
 - Letter-spacing 0 for every non-Latin script. No ALL-CAPS, no italics (Indic and Arabic scripts have no true italic).
 - Mixed lines (Tamil UI + English exam name, Urdu UI + "SSC GD") use the script font for the UI words and fall back
-  per glyph to Mukta/Roboto for Latin. Noto families are designed to sit together, so mixed lines keep one baseline.
-- Weights: Noto Sans scripts use 400/500/600/700 like Mukta. Noto Nastaliq Urdu has 400–700; use 400 for body and
+  per glyph to Hind/Baloo 2 (then Roboto) for Latin. Noto families are designed to sit together, so mixed lines keep one baseline.
+- Weights: Noto Sans scripts use 400/600 like Hind (600 like Baloo 2 for headings). Noto Nastaliq Urdu has 400–700; use 400 for body and
   600 for titles. Bold Nastaliq at small sizes fills in, so labels ≤ 14 sp stay 400.
 - Test every new script with its longest real strings at font scale 1.0 and 2.0 on a 360 dp phone before enabling.
 
