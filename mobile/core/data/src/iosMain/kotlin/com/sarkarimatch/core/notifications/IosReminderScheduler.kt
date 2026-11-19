@@ -63,14 +63,14 @@ class IosReminderScheduler : ReminderScheduler {
 
     private fun add(r: LocalReminder) {
         val content = UNMutableNotificationContent()
-        content.title = r.title
-        content.body = r.body
-        content.threadIdentifier = r.channel.id
-        content.sound = UNNotificationSound.defaultSound
-        content.userInfo = buildMap<Any?, Any?> {
+        content.setTitle(r.title)
+        content.setBody(r.body)
+        content.setThreadIdentifier(r.channel.id)
+        content.setSound(UNNotificationSound.defaultSound)
+        content.setUserInfo(buildMap<Any?, Any?> {
             put("channel", r.channel.id)
             r.deepLink?.let { put("deepLink", it) }
-        }
+        })
         val ist = r.at.toLocalDateTime(Ist.ZONE)
         val components = NSDateComponents()
         components.timeZone = NSTimeZone.timeZoneWithName(IST_ZONE)
