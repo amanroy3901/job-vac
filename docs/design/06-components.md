@@ -71,7 +71,7 @@ All buttons: pill (`CircleShape`), `labelLarge` 16 sp/600, icon 22 dp + 8 gap, h
   5. Top `WhyRow` (C5 compact): one rule line, `bodyLarge`.
   6. Action row (*.acts*, top 14→16, gap 8): `SmPrimaryButton(compact, "फ़ॉर्म भर दिया", task_alt, Modifier.weight(1f))` + `SmTonalButton(compact, "बाद में", snooze)`.
 - **Variants:** `Full` (S20) · `Compact` (*.lr* — S20 "बाद में" group, S44 digest, S10: rows inside one shared card, `CategoryTile` 48, title `titleSmall`, meta line, chips; rows separated by 1 dp hairline; no actions) · `Skeleton` (sunken blocks with the same geometry, shimmer).
-- **States:** `isNew` → 8 dp `primary` dot before the title + a11y "नई" · `snoozedUntil` → meta line `snooze` "{date} को याद दिलाएँगे" · `isChanged` → `ChangeChip` (`update`, warning tinted) in the chip row · `Closed` → card alpha 0.6, no actions.
+- **States:** `isNew` → 8 dp `primary` dot before the title + a11y "नई" · `snoozedUntil` → meta line `snooze` "{date} को याद दिलाएँगे" · `isChanged` → `ChangeChip` (`update`, warning tinted) in the chip row · `Closed` → title/meta in `onSurfaceVariant` (no alpha), no actions.
 - **A11y:** `cardSemantics("आज आखिरी दिन, रात 11 बजे तक. UP Police Constable 2026. योग्य. फ़ीस ₹400 …", [Applied, Later, NotInterested, Open])`; inner buttons stay focusable.
 - **Removal animation:** caller uses `Modifier.animateItem()`.
 
@@ -129,7 +129,7 @@ All buttons: pill (`CircleShape`), `labelLarge` 16 sp/600, icon 22 dp + 8 gap, h
 
 ### C14 `KeyDateChips` *(.dts .dt)* — new
 - Horizontally scrolling `LazyRow` (content padding 16, gap 8) inside the "ज़रूरी तारीख़ें" `SmCard`. `DateChip`: min width 96, radius 16, padding 8×12, label `bodySmall` muted + value `titleLarge` Baloo 19 tnum ("21 नवं · रात 11").
-- States: `past` (alpha 0.6) · `key` (the last date: `today`/`onToday`, label at 90 %) · `next` (`sunken`). Scroll starts at the key chip. TalkBack reads each chip as "आखिरी तारीख: 21 नवंबर, रात 11 बजे".
+- States: `past` (`sunken` + `onSurfaceVariant` at full opacity — no alpha; `component.keyDateChip`) · `key` (the last date: `today`/`onToday`, label at 90 %) · `next` (`sunken`). Scroll starts at the key chip. TalkBack reads each chip as "आखिरी तारीख: 21 नवंबर, रात 11 बजे".
 
 ### C15 `GreetingCard` (S20 top) *(.greet, .pills)* — new
 - `SmCard` with background `Brush.linearGradient(135°, marigoldContainer → card at 70 %)`; decorative marigold sun (circle r26 @ 35 % + dashed ring r44 @ 25 %) top-end, `invisibleToUser`, mirrored position in RTL.

@@ -130,7 +130,7 @@ The only third-party brand colours remain those of the official **Sign in with G
 | deadline.urgent | **tinted ribbon** `urgentContainer/onUrgentContainer`, `timer`, "सिर्फ़ 2 दिन बाकी · 21 नवं तक" | `timer` chip tinted |
 | deadline.soon | no ribbon | `schedule` chip `warningContainer` |
 | deadline.calm | no ribbon | `event` chip `sunken` / `onSurface` |
-| deadline.closed | no ribbon, card at 60 % opacity in lists | `event_busy` chip `surfaceContainerHighest` |
+| deadline.closed | no ribbon, title and meta in `onSurfaceVariant` (no opacity), no actions | `event_busy` chip `surfaceContainerHighest` |
 | verdict.eligible / checkYourself / notEligible | — | tinted pill: `successContainer` `check_circle` · `warningContainer` `help` · `errorContainer` `cancel` |
 | stage.done / current(next) / upcoming / locked | journey path (06 §D2) | node `primary`+`check` · `marigold` + 4 dp `marigoldContainer` halo · `card` + 2 dp hairline ring · same + "Pro" lock pill |
 | pro | Pro card / strip | fill `tertiary`, container `tertiaryContainer`, icons `marigoldIcon` |
@@ -326,7 +326,8 @@ Prototype normalisation: CSS 15 px (fact strip, compact buttons, segmented tabs)
 - **Wrapping:** display/headline/title styles use `lineBreak = LineBreak.Heading` (balanced lines, no one-word orphans like "हैं"); body/label styles `LineBreak.Paragraph` (06 §M1).
 - No ALL-CAPS (the calendar band "NOV" is the CLDR short month, not uppercased; Hindi shows "नवं").
 - **Figures:** `fontFeatureSettings = "tnum"` on countdowns, prices, dates and counts (borrowed from direction B). Western digits in every locale, Indian grouping (`39,481`). Formatting rules: 07 §5.
-- **Font scale to 200 %:** text in `sp`; containers grow; buttons wrap to 2 lines then stack at `fontScale ≥ 1.5`; the calendar tile grows in height, never clips. Previews at 1.0 / 1.3 / 2.0.
+- **Font scale to 200 %** (Android 14 non-linear: 14→28, 16→30, 19→34, 28→47 sp): text in `sp`, icons stay in `dp`; titles and ribbons wrap; the fact strip and two-button rows stack full width; chips wrap; nothing truncates; the calendar tile grows in height. On S21 the sticky bar would take ~26 % of the screen, so at `fontScale ≥ 1.5` "रुचि नहीं" moves into the overflow menu. **Two caps** (`tokens.json → layout.fontScale`): bottom-nav labels are capped at **1.5×** (`fontSize = 14.sp * min(fontScale, 1.5f) / fontScale` via a local `Density` override) and the **wordmark "Sarkari Match" is not scaled** (treated as a logo; its text is also the content description). ⚠ Both caps are common Android practice but **need WCAG 1.4.4 sign-off** before release. Previews at 1.0 / 1.3 / 1.5 / 2.0.
+- **No opacity for meaning.** Past/inactive states use `onSurfaceVariant` at full opacity (key-date "past" chip: 5.38 / 7.30:1); the prototype's 60 % opacity gave ≈ 3:1 in dark and was fixed in `v2/marigold.css` (`component.keyDateChip`). Closed cards in lists use muted text, not alpha.
 - Line length ≤ ~60 characters → content `widthIn(max = 600.dp)` on medium/expanded.
 
 ### 3.3 Compose — `Type.kt`
@@ -609,6 +610,7 @@ Tokens (ms): instant 0 · short1 50 · short2 100 · short3 150 · short4 200 ·
 - Contrast per §2.6 (text ≥ 4.5:1, icons/boundaries ≥ 3:1). Touch ≥ 48 dp. Focus order = visual order.
 - **Never colour alone:** ribbons carry icon + sentence; chips icon + word; journey nodes differ by icon *and* fill; locked stages carry a "Pro" lock pill; category tiles always sit beside the job title/org.
 - Every MatchCard is one TalkBack stop (`mergeDescendants`) with custom actions (फ़ॉर्म भर दिया / बाद में / रुचि नहीं / खोलें); the ribbon text is read first ("आज आखिरी दिन, रात 11 बजे तक. UP Police Constable 2026 …").
+- Weekdays are computed from the IST date (CLDR), never copied: `directions/direction-c.html` mislabels 21 Nov 2026 as "Friday" — it is a **Saturday** (fixed in v2 screens; the directions file is a frozen reference).
 - Calendar tile = one node ("आखिरी तारीख शनिवार 21 नवंबर"); decorative confetti and greeting glow are `invisibleToUser`.
 - Headings via `semantics { heading() }`; snackbars and result banners polite live regions; countdowns not live.
 - 200 % font scale and largest display size must not clip (`@PreviewFontScale`, `@PreviewScreenSizes`); pseudolocales `en-XA`, `ar-XB` in debug; `ta` and `ur` once strings exist.

@@ -20,6 +20,9 @@ type AccountPush struct {
 	// ExceptInstallation skips one install (N-47 goes to the installs that lose primary).
 	ExceptInstallation string `json:"except_installation,omitempty"`
 	MsgID              string `json:"msg_id"`
+	// OnlyIfSource drops the push when user_entitlement.source differs at send time (N-31 after a purchase).
+	OnlyIfSource string    `json:"only_if_source,omitempty"`
+	RunAt        time.Time `json:"-"`
 }
 
 // EnqueueAccountPush schedules an account push inside the caller's transaction (sent by the worker).
@@ -27,7 +30,7 @@ func EnqueueAccountPush(ctx context.Context, q db.Querier, p AccountPush) error 
 	if p.MsgID == "" {
 		p.MsgID = p.Template + ":" + p.UserID + ":" + time.Now().UTC().Format("20060102T150405.000")
 	}
-	return db.EnqueueJob(ctx, q, "account_push", p, "push:"+p.MsgID, time.Time{})
+	return db.EnqueueJob(ctx, q, "account_push", p, "push:"+p.MsgID, p.RunAt)
 }
 
 // AccountSender delivers AccountPush jobs.
@@ -39,6 +42,12 @@ type AccountSender struct {
 // Deliver sends p to the user's devices. Dead tokens are marked token_invalid_at; any retryable failure
 // returns an error so the job is retried.
 func (a *AccountSender) Deliver(ctx context.Context, p AccountPush) error {
+	if p.OnlyIfSource != "" {
+		var src *string
+		if err := a.Pool.QueryRow(ctx, `SELECT source::text FROM user_entitlement WHERE user_id = $1`, p.UserID).Scan(&src); err != nil || src == nil || *src != p.OnlyIfSource {
+			return nil
+		}
+	}
 	rows, err := a.Pool.Query(ctx, `SELECT installation_id, fcm_token, locale FROM device
 		WHERE user_id = $1 AND token_invalid_at IS NULL AND installation_id <> $2`, p.UserID, p.ExceptInstallation)
 	if err != nil {

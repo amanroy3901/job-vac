@@ -165,7 +165,9 @@ body.dir-c{background:#F1E7D8;color:#2A1E14;font-family:Hind,'Baloo 2',sans-seri
 .dir-c .dt.key{background:var(--tc);color:#fff}
 .dir-c .ph.dark .dt.key{color:#2A1205}
 .dir-c .dt.key .mut{color:inherit;opacity:.9}
-.dir-c .dt.past{opacity:.6}
+/* past date chip: muted colour at full opacity (was opacity:.6 ≈ 3:1 in dark). Token: component.keyDateChip.past */
+.dir-c .dt.past{background:var(--sunk);color:var(--mut)}
+.dir-c .dt.past b{color:var(--mut)}
 .dir-c .dt b{display:block;font-family:'Baloo 2';font-size:19px;line-height:26px;font-weight:600}
 .dir-c .chk{display:flex;gap:12px;align-items:center;padding:6px 0}
 .dir-c .cbx{width:28px;height:28px;border-radius:9px;box-shadow:inset 0 0 0 2px var(--hair);display:grid;place-items:center;flex-shrink:0}

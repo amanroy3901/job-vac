@@ -512,7 +512,7 @@ S01 reads Remote Config `min_version_code`. Below → S41 blocking ("ज़र�
 
 ```mermaid
 flowchart TD
-  S38 -->|'मेरा डेटा डाउनलोड करें'| EX[POST /export] --> D04[D04 'आपकी फ़ाइल तैयार है' → saves JSON to Downloads via SAF CreateDocument 'sarkari-match-data.json'] 
+  S38 -->|'मेरा डेटा डाउनलोड करें'| EX[exportLocal on the phone: profile, match statuses, applications, consents + getMe if signed in] --> D04[D04 'आपका डेटा तैयार है' → saves the local JSON via SAF CreateDocument 'sarkari-match-data.json'] 
   S38 -->|'अकाउंट हटाएँ'| W[Screen section explains: profile, forms, alerts history, family links and the Google sign-in link deleted in 7 days; Pro not refunded automatically; Play subscription must be cancelled in Play]
   W --> D03[D03 step 1 'क्या आप पक्का अकाउंट हटाना चाहते हैं?' → step 2 type 'हटाएँ' (guest) / re-confirm with Google via O11 (signed in)]
   D03 -->|confirmed| DEL[Server soft-delete → hard-delete ≤ 7 days; FCM token removed; local Room + DataStore cleared] --> S02[App returns to S02 with snackbar 'आपका अकाउंट हटा दिया गया']
@@ -523,7 +523,7 @@ Also: family links can be removed in S34/S49. Guests can delete too (local + ser
 
 ### SC-39 Sign out
 
-S38 "साइन आउट" (signed-in users only) → D02 "साइन आउट करने पर इस फ़ोन पर अलर्ट बंद हो जाएँगे। आपकी प्रोफ़ाइल आपके Google अकाउंट में सुरक्षित रहेगी।" → "साइन आउट" (destructive) → Credential Manager `clearCredentialState()`, Firebase sign-out, FCM token unbound, local data and on-device backup alarms cleared (language preference kept) → S03 with "Google से साइन इन करें" link. Server keeps the account; pending reminders for this device are cancelled. Guests have no sign-out (it would orphan the profile): S38 shows only "Google से साइन इन करें" and "अकाउंट हटाएँ".
+S38 "साइन आउट" (signed-in users only) → D02 (copy in 04: profile and jobs stay on this phone as a guest; Pro, family links and backup stay with the Google account) → "साइन आउट" (destructive) → final encrypted backup (if on) → `deleteDevice` → Credential Manager `clearCredentialState()` → Firebase sign-out → account state cleared (entitlement, family, account row). The **local profile, matches, applications and reminders are kept**; the user continues as a guest on S20 (frontend data-layer.md). Only if the user also ticks "इस फ़ोन से सब कुछ भी हटाएँ" does the D03 guest local wipe run (→ S02). Server keeps the account. Guests have no sign-out (it would orphan the profile): S38 shows only "Google से साइन इन करें" and "अकाउंट हटाएँ".
 
 ### SC-40 Multi-device
 

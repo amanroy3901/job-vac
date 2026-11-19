@@ -61,8 +61,7 @@ fun SmButton(
             if (icon != null) SmIcon(icon, size = if (compact) SmSize.iconMd else 22.dp)
             Text(
                 text = text,
-                style = if (compact) MaterialTheme.typography.labelLarge.copy(fontSize = MaterialTheme.typography.labelMedium.fontSize.times(15f / 14f))
-                else MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
             )
