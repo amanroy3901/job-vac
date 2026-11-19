@@ -9,7 +9,7 @@ Matching runs **on the phone** (`:core:eligibility`); the profile never leaves t
 
 ## Setup
 
-- JDK 17+ (CI uses Temurin 17), Android Studio with Android SDK platform 36.
+- JDK 17+ (CI uses Temurin 17), Android Studio with Android SDK platform 37 (compileSdk 37, targetSdk 36) and build-tools 36.
 - `local.properties` with `sdk.dir=/path/to/Android/sdk` (or `ANDROID_HOME`). Not committed.
 - Gradle comes from the wrapper (`./gradlew`, Gradle 9.9.1).
 

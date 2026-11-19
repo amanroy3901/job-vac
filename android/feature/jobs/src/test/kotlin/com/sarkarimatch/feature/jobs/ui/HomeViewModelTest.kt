@@ -4,8 +4,8 @@ import com.sarkarimatch.core.data.repository.SampleMatchRepository
 import com.sarkarimatch.core.model.Ist
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import org.junit.Test
 import java.time.LocalDate
-import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class HomeViewModelTest {

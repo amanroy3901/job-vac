@@ -36,22 +36,40 @@ class TokensParityTest {
         return if (alpha == 0xFFL) "#$rgb" else "#%02X%s".format(alpha, rgb)
     }
 
-    private fun schemeRoles(s: ColorScheme): Map<String, Color> = ColorScheme::class.java.methods
-        .filter { it.name.startsWith("get") && it.parameterCount == 0 && it.returnType == Long::class.javaPrimitiveType }
-        .associate { m -> m.name.removePrefix("get").replaceFirstChar(Char::lowercase).substringBefore('-') to Color(m.invoke(s) as Long) }
+    private fun schemeRoles(s: ColorScheme): Map<String, Color> = mapOf(
+        "primary" to s.primary, "onPrimary" to s.onPrimary,
+        "primaryContainer" to s.primaryContainer, "onPrimaryContainer" to s.onPrimaryContainer,
+        "secondary" to s.secondary, "onSecondary" to s.onSecondary,
+        "secondaryContainer" to s.secondaryContainer, "onSecondaryContainer" to s.onSecondaryContainer,
+        "tertiary" to s.tertiary, "onTertiary" to s.onTertiary,
+        "tertiaryContainer" to s.tertiaryContainer, "onTertiaryContainer" to s.onTertiaryContainer,
+        "error" to s.error, "onError" to s.onError, "errorContainer" to s.errorContainer, "onErrorContainer" to s.onErrorContainer,
+        "background" to s.background, "onBackground" to s.onBackground,
+        "surface" to s.surface, "onSurface" to s.onSurface,
+        "surfaceVariant" to s.surfaceVariant, "onSurfaceVariant" to s.onSurfaceVariant,
+        "surfaceContainerLowest" to s.surfaceContainerLowest, "surfaceContainerLow" to s.surfaceContainerLow,
+        "surfaceContainer" to s.surfaceContainer, "surfaceContainerHigh" to s.surfaceContainerHigh,
+        "surfaceContainerHighest" to s.surfaceContainerHighest,
+        "outline" to s.outline, "outlineVariant" to s.outlineVariant,
+        "inverseSurface" to s.inverseSurface, "inverseOnSurface" to s.inverseOnSurface,
+        "inversePrimary" to s.inversePrimary, "scrim" to s.scrim,
+    )
 
-    private fun extRoles(s: SarkariColors): Map<String, Color> = buildMap {
-        SarkariColors::class.java.methods
-            .filter { it.name.startsWith("get") && it.parameterCount == 0 && it.returnType == Long::class.javaPrimitiveType }
-            .forEach { m ->
-                put(m.name.removePrefix("get").replaceFirstChar(Char::lowercase).substringBefore('-'), Color(m.invoke(s) as Long))
-            }
-        listOf("police" to s.police, "ssc" to s.ssc, "railway" to s.railway, "bank" to s.bank, "state" to s.state)
-            .forEach { (name, c) ->
-                put("category.$name.container", c.container)
-                put("category.$name.icon", c.icon)
-            }
-    }
+    private fun extRoles(s: SarkariColors): Map<String, Color> = mapOf(
+        "success" to s.success, "onSuccess" to s.onSuccess,
+        "successContainer" to s.successContainer, "onSuccessContainer" to s.onSuccessContainer,
+        "warning" to s.warning, "onWarning" to s.onWarning,
+        "warningContainer" to s.warningContainer, "onWarningContainer" to s.onWarningContainer,
+        "urgent" to s.urgent, "onUrgent" to s.onUrgent, "urgentContainer" to s.urgentContainer, "onUrgentContainer" to s.onUrgentContainer,
+        "today" to s.today, "onToday" to s.onToday,
+        "marigold" to s.marigold, "onMarigold" to s.onMarigold,
+        "marigoldContainer" to s.marigoldContainer, "onMarigoldContainer" to s.onMarigoldContainer,
+        "marigoldIcon" to s.marigoldIcon, "snackbarAction" to s.snackbarAction,
+        "terracotta" to s.terracotta, "onTerracotta" to s.onTerracotta,
+        "terracottaContainer" to s.terracottaContainer, "onTerracottaContainer" to s.onTerracottaContainer,
+        "card" to s.card, "sunken" to s.sunken, "hairline" to s.hairline, "glass" to s.glass, "shadowTint" to s.shadowTint,
+    ) + listOf("police" to s.police, "ssc" to s.ssc, "railway" to s.railway, "bank" to s.bank, "state" to s.state)
+        .flatMap { (name, c) -> listOf("category.$name.container" to c.container, "category.$name.icon" to c.icon) }
 
     private fun check(mode: String, scheme: ColorScheme, ext: SarkariColors) {
         val json = tokens

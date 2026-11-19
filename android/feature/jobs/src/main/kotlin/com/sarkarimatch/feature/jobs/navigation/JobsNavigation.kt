@@ -21,6 +21,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class Archive(val tab: ArchiveTab = ArchiveTab.NotInterested) // S25 (P1)
 @Serializable data class Digest(val date: String) // S44 (P1)
 
+@Suppress("UnusedParameter") // onEditProfileField is used by S21 (FE-17)
 fun NavGraphBuilder.jobsGraph(
     onOpenJob: (matchId: String) -> Unit,
     onOpenPaywall: (PaywallSource) -> Unit,

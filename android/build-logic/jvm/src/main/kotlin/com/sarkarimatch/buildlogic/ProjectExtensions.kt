@@ -17,7 +17,7 @@ fun VersionCatalog.pluginId(alias: String): String = findPlugin(alias).get().get
 
 /** Shared SDK levels for every Android module. */
 object SmSdk {
-    const val COMPILE = 36
+    const val COMPILE = 37 // current AndroidX (Compose 1.12, core 1.19, Hilt 1.4) requires compileSdk 37
     const val TARGET = 36
     const val MIN = 26
 }

@@ -3,7 +3,7 @@
 ## 1. Gradle setup
 
 - **AGP 9.5.1** (built-in Kotlin support: no `org.jetbrains.kotlin.android` plugin needed), **Gradle 9.9.1** wrapper (AGP 9.5 needs ≥ 9.6), JDK 17 toolchain, Kotlin **2.4.21**, KSP **2.3.14** (KSP2, own version line).
-- `compileSdk = 36`, `targetSdk = 36`, `minSdk = 26`. (Raise target to 37 when Play requires it; AGP 9.5 supports API 37.)
+- `compileSdk = 37`, `targetSdk = 36`, `minSdk = 26`. (Current AndroidX — Compose 1.12, core 1.19, Hilt-navigation 1.4 — requires compileSdk 37; raise target to 37 when Play requires it.)
 - `build-logic/` included build with convention plugins: `sm.android.application`, `sm.android.library`, `sm.android.compose`, `sm.android.feature` (library + compose + hilt + common feature deps), `sm.android.room`, `sm.hilt`, `sm.jvm.library`. Configuration cache + build cache on.
 - As built (2026-11-19, `android/`): `build-logic` has two projects, `:jvm` (`sm.jvm.library` + detekt, no Android deps) and `:convention` (Android plugins). Third-party Gradle plugins sit on the root buildscript classpath (one shared copy of KGP/AGP); AGP/KSP/Hilt/Room are added there only when the Android modules are included. `:core:model` and `:core:eligibility` (on-device rule evaluator) are plain Kotlin/JVM modules, so `./gradlew -Psm.jvmOnly=true :core:eligibility:test` works without the Android SDK or Google Maven (settings.gradle.kts also switches to JVM-only automatically when no SDK is found). Code packages are `com.sarkarimatch.*` (`in` is a Kotlin keyword and would need back-ticks in every file); only the applicationId uses the `in.` domain. `:baselineprofile` and the `prod`/`staging` Firebase wiring are not created yet.
 - Product flavours: `env` = `prod` / `staging` (base URL, Firebase project). No payment flavours: Play Billing is the only payment path; the validation test is the Play closed-testing track of the `prod` build. Build types: `debug` (fake backend switch, StrictMode, LeakCanary), `release` (R8 full, shrink resources), `benchmark` (release-like, debug-signed).
@@ -18,12 +18,12 @@ Sources: developer.android.com AndroidX versions table (updated 2026-11-18), Com
 agp = "9.5.1"
 kotlin = "2.4.21"
 ksp = "2.3.14"
-composeBom = "2026.11.01"            # → compose ui/foundation 1.13.0, material3 1.5.0
+composeBom = "2026.09.00"            # → compose ui/foundation 1.12.1, material3 1.4.0 (2026.11.01 is not published)
 activity = "1.13.0"
 appcompat = "1.8.0"                   # per-app locales on API < 33
 coreKtx = "1.19.1"
 coreSplashscreen = "1.2.0"            # verify
-lifecycle = "2.11.1"
+lifecycle = "2.11.0"
 navigation = "2.10.2"
 room = "2.8.5"
 work = "2.12.0"
@@ -154,7 +154,7 @@ plugins {
 }
 android {
     namespace = "com.sarkarimatch.app"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig { applicationId = "in.sarkarimatch.app" /* placeholder */; minSdk = 26; targetSdk = 36; versionCode = 1; versionName = "0.1.0" }
     androidResources { localeFilters += enabledLocales /* gradle.properties: en,hi at launch */; generateLocaleConfig = false } // locales_config.xml lists the same enabled locales
     buildTypes {
