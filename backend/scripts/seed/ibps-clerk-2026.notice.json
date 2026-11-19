@@ -1,0 +1,19 @@
+{
+  "kind": "original",
+  "org_code": "ibps",
+  "advt_no": "DEV-SEED/CRP-CSA-XVI",
+  "exam_type": "banking",
+  "scope": "all_india",
+  "state": null,
+  "status": "open",
+  "content": {
+    "title": {"en": "IBPS Clerk (CRP CSA-XVI) 2026", "hi": "IBPS क्लर्क (CRP CSA-XVI) 2026"},
+    "short_title": {"en": "IBPS Clerk 2026", "hi": "IBPS क्लर्क 2026"},
+    "org": {"en": "Institute of Banking Personnel Selection", "hi": "बैंकिंग कार्मिक चयन संस्थान (IBPS)"},
+    "key_dates": [{"kind": "apply_start", "date": "2026-11-01"}, {"kind": "apply_end", "date": "2026-11-28"}],
+    "links": [{"kind": "official_pdf", "url": "https://www.ibps.in"}, {"kind": "apply", "url": "https://www.ibps.in"}],
+    "source": {"url": "https://www.ibps.in"}
+  },
+  "provenance": {"dev_seed": true},
+  "posts": [{"code": "CSA", "name": {"en": "Customer Service Associate (Clerk) in Public Sector Banks", "hi": "सरकारी बैंकों में ग्राहक सेवा सहयोगी (क्लर्क)"}, "short_name": {"en": "IBPS Clerk 2026", "hi": "IBPS क्लर्क 2026"}, "exam_tags": ["banking"], "vacancies": {"total": 10277}}]
+}

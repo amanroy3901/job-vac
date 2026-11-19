@@ -1,0 +1,19 @@
+{
+  "kind": "original",
+  "org_code": "ssc",
+  "advt_no": "DEV-SEED/HQ-C-3301/2/2026",
+  "exam_type": "ssc",
+  "scope": "all_india",
+  "state": null,
+  "status": "open",
+  "content": {
+    "title": {"en": "SSC Constable (GD) Examination 2027", "hi": "SSC कांस्टेबल (GD) परीक्षा 2027"},
+    "short_title": {"en": "SSC GD 2027", "hi": "SSC GD 2027"},
+    "org": {"en": "Staff Selection Commission", "hi": "कर्मचारी चयन आयोग"},
+    "key_dates": [{"kind": "apply_start", "date": "2026-11-05"}, {"kind": "apply_end", "date": "2026-12-04", "time": "23:00"}],
+    "links": [{"kind": "official_pdf", "url": "https://ssc.gov.in"}, {"kind": "apply", "url": "https://ssc.gov.in"}],
+    "source": {"url": "https://ssc.gov.in"}
+  },
+  "provenance": {"dev_seed": true, "note": "DEV SEED DATA (backend/scripts/seed-dev.sh): realistic but not verified against a real notice"},
+  "posts": [{"code": "CAPF-CT-GD", "name": {"en": "Constable (GD) in CAPFs, SSF and Rifleman (GD) in Assam Rifles", "hi": "कांस्टेबल (GD) — CAPFs, SSF, असम राइफल्स में राइफलमैन (GD)"}, "short_name": {"en": "SSC GD 2027", "hi": "SSC GD 2027"}, "exam_tags": ["ssc", "police", "defence"], "vacancies": {"total": 39481}}]
+}

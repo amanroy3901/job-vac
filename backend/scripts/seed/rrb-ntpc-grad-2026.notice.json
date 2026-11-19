@@ -1,0 +1,19 @@
+{
+  "kind": "original",
+  "org_code": "rrb",
+  "advt_no": "DEV-SEED/CEN-05/2026",
+  "exam_type": "railway",
+  "scope": "all_india",
+  "state": null,
+  "status": "open",
+  "content": {
+    "title": {"en": "RRB NTPC (Graduate Level) 2026", "hi": "RRB NTPC (स्नातक स्तर) 2026"},
+    "short_title": {"en": "RRB NTPC Graduate 2026", "hi": "RRB NTPC स्नातक 2026"},
+    "org": {"en": "Railway Recruitment Boards", "hi": "रेलवे भर्ती बोर्ड"},
+    "key_dates": [{"kind": "apply_start", "date": "2026-11-15"}, {"kind": "apply_end", "date": "2026-12-14", "time": "23:59"}],
+    "links": [{"kind": "official_pdf", "url": "https://indianrailways.gov.in"}, {"kind": "apply", "url": "https://www.rrbapply.gov.in"}],
+    "source": {"url": "https://indianrailways.gov.in"}
+  },
+  "provenance": {"dev_seed": true},
+  "posts": [{"code": "NTPC-GRAD", "name": {"en": "Station Master, Goods Train Manager, Clerk-cum-Typist and other graduate posts", "hi": "स्टेशन मास्टर, गुड्स ट्रेन मैनेजर, क्लर्क-कम-टाइपिस्ट व अन्य स्नातक पद"}, "short_name": {"en": "RRB NTPC Graduate", "hi": "RRB NTPC स्नातक"}, "exam_tags": ["railway"], "vacancies": {"total": 8850}}]
+}

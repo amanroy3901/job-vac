@@ -1,0 +1,54 @@
+{
+  "schema_version": "1",
+  "evaluator_min_version": 1,
+  "post": {
+    "code": "CAPF-CT-GD",
+    "name": { "hi": "कांस्टेबल (GD) — CAPFs, SSF, असम राइफल्स में राइफलमैन (GD)", "en": "Constable (GD) in CAPFs, SSF and Rifleman (GD) in Assam Rifles" },
+    "short_name": { "hi": "SSC GD 2027", "en": "SSC GD 2027" },
+    "pay_level": "Level-3",
+    "vacancies": { "total": 39481, "allocation_basis": "domicile_state", "source": { "doc": "dev-seed:ssc_gd_2027", "page": 4 } }
+  },
+  "exam_tags": ["ssc", "police", "defence"],
+  "scope": { "kind": "all_india", "state": null },
+  "age": {
+    "cutoff_date": "2027-01-01",
+    "max_convention": "not_attained",
+    "limits": [ { "min_years": 18, "max_years": 23 } ],
+    "general_extension_years": 0,
+    "relaxations": [
+      { "id": "obc", "when": { "category": ["obc"] }, "years": 3, "mode": "add_to_max", "label": { "hi": "OBC", "en": "OBC" }, "source": { "doc": "dev-seed:ssc_gd_2027", "page": 9, "para": "age relaxation table" } },
+      { "id": "sc_st", "when": { "category": ["sc", "st"] }, "years": 5, "mode": "add_to_max", "label": { "hi": "SC/ST", "en": "SC/ST" }, "source": { "doc": "dev-seed:ssc_gd_2027", "page": 9, "para": "age relaxation table" } },
+      { "id": "esm_ur_ews", "when": { "esm": true, "category": ["gen", "ews"] }, "years": 3, "mode": "after_service_deduction", "needs_profile": ["esm_service_months"], "label": { "hi": "पूर्व सैनिक", "en": "Ex-Servicemen" }, "source": { "doc": "dev-seed:ssc_gd_2027", "page": 9, "para": "age relaxation table" } }
+    ],
+    "printed_dob_window": { "born_on_or_after": "2004-01-02", "born_on_or_before": "2009-01-01" },
+    "source": { "doc": "dev-seed:ssc_gd_2027", "page": 8, "quote": "18-23 years as on 01.01.2027: not born before 02.01.2004 and not later than 01.01.2009" }
+  },
+  "qualification": {
+    "any_of": [ { "codes": ["class10"], "include_higher": true } ],
+    "must_complete_by": "2027-01-01",
+    "appearing_policy": "if_passed_by_date",
+    "equivalence": "check_yourself_same_level",
+    "text": { "hi": "मान्यता प्राप्त बोर्ड से 10वीं (मैट्रिक) पास, 01-01-2027 तक", "en": "Matriculation (10th) from a recognised board on or before 01-01-2027" },
+    "source": { "doc": "dev-seed:ssc_gd_2027", "page": 10, "para": "essential qualification" }
+  },
+  "required_attributes": [],
+  "domicile": null,
+  "gender": { "allowed": ["male", "female"] },
+  "category": null,
+  "pwd": { "eligible": false, "source": { "doc": "dev-seed:ssc_gd_2027", "page": 11 } },
+  "ex_serviceman": { "eligible": true },
+  "marital_status": null,
+  "physical": {
+    "text": { "hi": "शारीरिक मानक (ऊँचाई/सीना) और दौड़ (PST/PET) — वर्ग और क्षेत्र के अनुसार अलग। नोटिस की तालिका देखें।", "en": "Physical standards (height/chest) and race (PST/PET) differ by category and region. See the notice table." },
+    "source": { "doc": "dev-seed:ssc_gd_2027", "page": 14, "para": "PST/PET" }
+  },
+  "other_conditions": [
+    { "text": { "hi": "आपके निवास (domicile) राज्य की रिक्तियों पर ही चयन होगा; निवास प्रमाण पत्र ज़रूरी", "en": "Vacancies are allotted by state of domicile; a domicile certificate is required" }, "severity": "advisory" }
+  ],
+  "fees": [
+    { "when": { "any": [ { "gender": ["female"] }, { "category": ["sc", "st"] }, { "esm": true } ] }, "amount_paise": 0, "note": { "hi": "महिलाओं, SC/ST और पूर्व सैनिकों के लिए निःशुल्क", "en": "Free for women, SC/ST and ex-servicemen" }, "source": { "doc": "dev-seed:ssc_gd_2027", "page": 12 } },
+    { "amount_paise": 10000, "source": { "doc": "dev-seed:ssc_gd_2027", "page": 12 } }
+  ],
+  "review": { "risk_flags": ["esm_relaxation"], "notes": "DEV SEED DATA (backend/scripts/seed-dev.sh). Page numbers are placeholders, not checked against a PDF." },
+  "source": { "doc": "dev-seed:ssc_gd_2027 (https://ssc.gov.in)" }
+}

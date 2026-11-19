@@ -14,6 +14,8 @@ import com.sarkarimatch.core.model.ArchiveTab
 import com.sarkarimatch.core.model.PaywallSource
 import com.sarkarimatch.core.model.ProfileField
 import com.sarkarimatch.feature.jobs.ui.HomeRoute
+import com.sarkarimatch.feature.jobs.ui.JobDetailRoute
+import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.stringResource
 
@@ -24,10 +26,12 @@ import org.jetbrains.compose.resources.stringResource
 @Serializable data object Inbox // S24 (P1)
 @Serializable data class Archive(val tab: ArchiveTab = ArchiveTab.NotInterested) // S25 (P1)
 @Serializable data class Digest(val date: String) // S44 (P1)
+@Serializable data class AppliedMoment(val matchId: String) // B02 (Applied ✓ + trial offer)
 
 @Suppress("UnusedParameter") // onEditProfileField is used by S21 (FE-17)
 fun NavGraphBuilder.jobsGraph(
     onOpenJob: (matchId: String) -> Unit,
+    onAppliedMoment: (matchId: String) -> Unit,
     onOpenPaywall: (PaywallSource) -> Unit,
     onOpenDeliveryHealth: () -> Unit,
     onEditProfileField: (ProfileField) -> Unit,
@@ -35,7 +39,7 @@ fun NavGraphBuilder.jobsGraph(
 ) {
     navigation<JobsGraph>(startDestination = Home) {
         composable<Home>(deepLinks = listOf(navDeepLink<Home>(basePath = "sarkarimatch://home"))) {
-            HomeRoute(onOpenJob = onOpenJob, onOpenPaywall = onOpenPaywall, onOpenDeliveryHealth = onOpenDeliveryHealth)
+            HomeRoute(onOpenJob = onOpenJob, onAppliedMoment = onAppliedMoment, onOpenDeliveryHealth = onOpenDeliveryHealth)
         }
         composable<JobDetail>(
             deepLinks = listOf(
@@ -43,8 +47,8 @@ fun NavGraphBuilder.jobsGraph(
                 navDeepLink<JobDetail>(basePath = "sarkarimatch://job"),
                 navDeepLink<JobDetail>(basePath = "sarkarimatch://match"),
             ),
-        ) {
-            PlaceholderScreen("S21", stringResource(Res.string.jobs_job_detail), onBack = onBack)
+        ) { entry ->
+            JobDetailRoute(matchId = entry.toRoute<JobDetail>().matchId, onBack = onBack, onApplied = onAppliedMoment)
         }
         composable<SharedPost>(deepLinks = listOf(navDeepLink<SharedPost>(basePath = "https://sarkarimatch.in/p"))) {
             PlaceholderScreen("S21", stringResource(Res.string.jobs_job_detail), onBack = onBack)

@@ -8,8 +8,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.sarkarimatch.core.model.AppLanguage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import okio.Path.Companion.toPath
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /** File name of the DataStore `app_prefs` (data-layer.md §4); the directory is platform-specific. */
 const val APP_PREFS_FILE = "app_prefs.preferences_pb"
@@ -23,6 +26,8 @@ class UserPreferencesRepository(private val store: DataStore<Preferences>) {
     private object Keys {
         val appLanguage = stringPreferencesKey("app_language")
         val onboardingDone = booleanPreferencesKey("onboarding_done")
+        val installationId = stringPreferencesKey("installation_id")
+        val devUid = stringPreferencesKey("dev_uid")
     }
 
     /** The chosen app language (Hindi until the user picks another, i18n A1). */
@@ -41,5 +46,22 @@ class UserPreferencesRepository(private val store: DataStore<Preferences>) {
 
     suspend fun setOnboardingDone(done: Boolean) {
         store.edit { it[Keys.onboardingDone] = done }
+    }
+
+    /**
+     * Stable per-install id sent as `installation_id` on `/v1/session` (stand-in for the Firebase Installations ID
+     * until FE-06 wires Firebase).
+     */
+    suspend fun installationId(): String = getOrCreate(Keys.installationId, "i_")
+
+    /** Dev-auth only: the uid behind `Bearer dev:<uid>` (one anonymous dev account per install). */
+    suspend fun devUid(): String = getOrCreate(Keys.devUid, "dev_")
+
+    @OptIn(ExperimentalUuidApi::class)
+    private suspend fun getOrCreate(key: Preferences.Key<String>, prefix: String): String {
+        store.data.first()[key]?.let { return it }
+        var value = ""
+        store.edit { prefs -> value = prefs[key] ?: (prefix + Uuid.random().toHexString()).also { prefs[key] = it } }
+        return value
     }
 }

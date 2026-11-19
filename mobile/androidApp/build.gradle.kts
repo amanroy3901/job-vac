@@ -32,12 +32,24 @@ android {
         create("prod") {
             dimension = "env"
             buildConfigField("String", "API_BASE_URL", "\"${providers.gradleProperty("sm.apiBaseUrl.prod").get()}\"")
+            buildConfigField("boolean", "DEV_AUTH", "false")
+        }
+        // Local development against `backend/` (`make run` on the host): the emulator reaches the host's
+        // localhost:8080 at 10.0.2.2. Override for a phone on the LAN: -Psm.apiBaseUrl.dev=http://192.168.1.10:8080/
+        // Cleartext HTTP and the backend's dev token auth are enabled ONLY in this flavour (src/dev/).
+        create("dev") {
+            dimension = "env"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            buildConfigField("String", "API_BASE_URL", "\"${providers.gradleProperty("sm.apiBaseUrl.dev").get()}\"")
+            buildConfigField("boolean", "DEV_AUTH", "true")
         }
         create("staging") {
             dimension = "env"
             applicationIdSuffix = ".staging"
             versionNameSuffix = "-staging"
             buildConfigField("String", "API_BASE_URL", "\"${providers.gradleProperty("sm.apiBaseUrl.staging").get()}\"")
+            buildConfigField("boolean", "DEV_AUTH", "false")
         }
     }
 

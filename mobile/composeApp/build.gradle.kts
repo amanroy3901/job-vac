@@ -8,6 +8,9 @@ plugins {
 }
 
 kotlin {
+    // Dev-only desktop (JVM) target: runs the shared UI + data layer on Linux/macOS against a local backend
+    // (`./gradlew :composeApp:run`), and hosts the end-to-end test + headless screenshots (desktopTest). Not shipped.
+    jvm("desktop")
     listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
         target.binaries.framework {
             baseName = "ComposeApp"
@@ -36,10 +39,36 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlinx.coroutines.test)
         }
+        getByName("desktopMain").dependencies {
+            implementation(compose.desktop.currentOs)
+            implementation(libs.kotlinx.coroutines.swing)
+        }
+        getByName("desktopTest").dependencies {
+            implementation(libs.compose.ui.test)
+            implementation(libs.kotlinx.coroutines.test)
+        }
     }
 }
 
 compose.resources {
     packageOfResClass = "com.sarkarimatch.app.resources"
     generateResClass = always
+}
+
+compose.desktop {
+    application {
+        mainClass = "com.sarkarimatch.app.DesktopMainKt"
+    }
+}
+
+// The end-to-end test talks to a running local backend; it is skipped unless -Psm.e2e=true (see mobile/README.md).
+tasks.named<Test>("desktopTest") {
+    val e2e = providers.gradleProperty("sm.e2e").orElse("false")
+    val baseUrl = providers.gradleProperty("sm.e2e.baseUrl").orElse("http://localhost:8080/")
+    systemProperty("sm.e2e", e2e.get())
+    systemProperty("sm.e2e.baseUrl", baseUrl.get())
+    systemProperty("sm.screenshots.dir", rootProject.layout.projectDirectory.dir("docs/screenshots/e2e").asFile.absolutePath)
+    systemProperty("java.awt.headless", "true")
+    outputs.upToDateWhen { false }
+    testLogging { showStandardStreams = true; events("passed", "skipped", "failed") }
 }

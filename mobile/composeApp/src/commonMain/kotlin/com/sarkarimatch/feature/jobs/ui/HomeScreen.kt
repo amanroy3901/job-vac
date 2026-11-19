@@ -57,7 +57,6 @@ import com.sarkarimatch.core.designsystem.theme.SmRadius
 import com.sarkarimatch.core.designsystem.theme.SmTheme
 import com.sarkarimatch.core.designsystem.theme.tabular
 import com.sarkarimatch.core.model.MatchCardUi
-import com.sarkarimatch.core.model.PaywallSource
 import com.sarkarimatch.core.model.SmFormat
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
@@ -68,7 +67,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeRoute(
     onOpenJob: (String) -> Unit,
-    onOpenPaywall: (PaywallSource) -> Unit,
+    onAppliedMoment: (String) -> Unit,
     onOpenDeliveryHealth: () -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
@@ -76,8 +75,8 @@ fun HomeRoute(
     HomeScreen(
         state = state,
         onOpenJob = onOpenJob,
-        // B01 (confirm applied) → B02 paywall moment arrive with FE-18 / FE-24.
-        onApplied = { onOpenPaywall(PaywallSource.APPLIED_MOMENT) },
+        // Applied is a local write, then the B02 moment (Applied ✓ + trial offer). B01 confirm sheet: FE-18.
+        onApplied = { id -> viewModel.onApplied(id) { onAppliedMoment(id) } },
         onLater = {},
         onOpenAlerts = onOpenDeliveryHealth,
     )
