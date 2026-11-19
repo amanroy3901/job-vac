@@ -66,11 +66,12 @@ fun NavGraphBuilder.alertSettingsDestinations(navController: NavController) {
 @androidx.compose.runtime.Composable
 private fun SetupStep(id: String, title: Int, mode: SetupMode, navController: NavController, onNext: () -> Unit) {
     val onboarding = mode == SetupMode.ONBOARDING
+    val pop: () -> Unit = { navController.popBackStack() }
     PlaceholderScreen(
         screenId = id,
         title = stringResource(title),
         onBack = navController::popBackStack,
         primaryLabel = if (onboarding) continueLabel() else stringResource(R.string.alerts_done),
-        onPrimary = if (onboarding) onNext else ({ navController.popBackStack() }),
+        onPrimary = if (onboarding) onNext else pop,
     )
 }

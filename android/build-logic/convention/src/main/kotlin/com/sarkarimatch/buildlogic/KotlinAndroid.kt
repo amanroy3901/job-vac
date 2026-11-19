@@ -13,10 +13,7 @@ internal fun Project.configureKotlinAndroid() {
     tasks.withType<KotlinJvmCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
-            freeCompilerArgs.addAll(
-                "-opt-in=kotlin.RequiresOptIn",
-                "-Xcontext-parameters",
-            )
+            freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
         }
     }
     configureDetekt()

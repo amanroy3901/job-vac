@@ -80,7 +80,7 @@ flowchart LR
 
   subgraph GCP["Google Cloud, asia-south1"]
     HOST["Firebase Hosting<br/>CDN · catalog files · App Links"]
-    API["Cloud Run: api<br/>Ktor REST /v1 (accounts)"]
+    API["Cloud Run: api<br/>Go REST /v1 (accounts)"]
     WRK["Cloud Run: worker<br/>watch · extract · catalog build ·<br/>topic send"]
     ADM["Cloud Run: admin<br/>review console (IAP)"]
     SCH["Cloud Scheduler<br/>1-min ticks"]
@@ -132,7 +132,7 @@ preferences, rendering in 13 languages.
 | --- | --- | --- |
 | Founder decisions 2026-11-19 | Override everything below where they conflict; change set recorded in [contract-alignment.md](contract-alignment.md) #42–#63 | [PRD.md](PRD.md) |
 | Android stack | Kotlin 2.4, Jetpack Compose (Material 3), Navigation Compose (type-safe), Hilt, Room, DataStore, WorkManager, Retrofit 3 + OkHttp 5 + kotlinx.serialization, KMP `:matching-core`/`:reminder-core`, Firebase (Auth, FCM, App Check, Crashlytics opt-in — **no Analytics**), Credential Manager, Block Store, Play Billing 9.1, GMA Next-Gen + UMP; minSdk 26, target 36; 18 modules; download ≤ 10 MB with ads | [frontend/README.md](frontend/README.md), [project-skeleton.md](frontend/project-skeleton.md) |
-| Backend stack | Kotlin + Ktor, one image with `api` / `worker` / `admin` roles on Cloud Run (asia-south1); Cloud SQL PostgreSQL 16 (catalog source, accounts, purchases, job queue); Cloud Scheduler 1-minute ticks; Firebase Hosting as CDN for the catalog | [backend/README.md](backend/README.md) ADR-01/04/09 |
+| Backend stack | **Go 1.24 + PostgreSQL 16** (founder decision 2026-11-19, ADR-13): one binary/distroless image with `api` / `worker` / `admin` roles on Cloud Run (asia-south1); stdlib `net/http`, pgx v5, goose migrations, slog; Cloud SQL (catalog source, accounts, purchases, job queue); Cloud Scheduler 1-minute ticks; Firebase Hosting as CDN for the catalog. Code in [`backend/`](../backend/) | [backend/README.md](backend/README.md) ADR-01/04/09/13, [backend/ (code)](../backend/README.md) |
 | **Data & matching** | **Privacy-first (ADR-11):** profile and matching **on the device** against a public CDN catalog (snapshot + immutable batches, `evaluator_min_version`); server stores no DOB/category/PwD/phone; minimal consent log for account features only; **minor mode** (< 18: no account, ads, telemetry) instead of parental consent | [matching-engine.md](backend/matching-engine.md) §0/§4, [data-model.md](backend/data-model.md), [security-privacy.md](backend/security-privacy.md) §6 |
 | Extraction | Claude API with native PDF input and structured output against `rule.schema.json`; a person reviews and publishes every rule; second reviewer for risk-flagged posts | [ingestion-pipeline.md](backend/ingestion-pipeline.md), ADR-07 |
 | Auth | **Google Sign-In** (Credential Manager → Firebase Auth Google provider) or **guest**. Guests have no server account until trial/purchase/family; then Firebase anonymous, linkable to Google (same uid). No phone, no OTP. Cost $0 without the Identity Platform upgrade; worst case 50K MAU free then ~$0.0055/MAU | [api/README.md](api/README.md) §3, ADR-02 |

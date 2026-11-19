@@ -193,9 +193,12 @@ onProfileEdit():  matchChanged(allOpenPosts)          -- synchronous on save; S1
 
 ### 4.3 Server-side use of the same evaluator
 
-`:matching-core` is a Kotlin Multiplatform module (JVM + Android) with no I/O. The server uses it only for review
-tooling: the boundary-test table, the publish-time validators, the synthetic impact preview (§7) and to check a
-wrong-match report against the snapshot the user chose to send. It never stores or receives user profiles.
+`:matching-core` is a Kotlin Multiplatform module (JVM + Android) with no I/O. The design used it on the server only
+for review tooling: the boundary-test table, the synthetic impact preview (§7) and to check a wrong-match report
+against the snapshot the user chose to send. It never stores or receives user profiles. **Since the backend is Go
+(ADR-13)** the server cannot load the KMP module; the publish-time validators (schema, printed DOB window, codes,
+launch locales, risk flags, `evaluator_min_version`) are implemented in Go (`backend/internal/rules`), and verdict
+previews wait for a Go evaluator port checked against shared golden fixtures (ADR-13 option a).
 
 **Evaluator versioning.** `EVALUATOR_VERSION` is bumped when the semantics or the rule schema grow (new `Condition`
 field, new rule kind). The publish validator computes the lowest version that understands a rule and writes it into
@@ -268,8 +271,9 @@ and which optional profile field to ask for.
    flag `new_match_paused`; reminders to existing matches continue) and page the founder.
 6. **Kill switch per post:** "retract" publishes a batch that marks the post `retracted`; every device sets its open
    match to `withdrawn` with a correction notification. Audited.
-7. **Shared evaluator:** the evaluator is a pure Kotlin Multiplatform module (`:matching-core`). The same code runs in
-   the app (the only place verdicts are made for users) and in the admin console's previews. Property-based tests
+7. **Shared evaluator:** the evaluator is a pure Kotlin Multiplatform module (`:matching-core`). It runs in the app
+   (the only place verdicts are made for users); the console's previews need the Go port kept equal by shared golden
+   fixtures (ADR-13). Property-based tests
    (kotest) assert monotonicity: adding a relaxation never removes eligibility, and a higher qualification never
    flips pass to fail when `include_higher`.
 

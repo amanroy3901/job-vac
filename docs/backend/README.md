@@ -1,6 +1,6 @@
 # Sarkari Match: backend architecture
 
-Status: design, 2026-11-19. Author: backend architecture pass. Inputs: [PRD](../PRD.md),
+Status: design + first Go implementation, 2026-11-19 ([`backend/`](../../backend/)). Author: backend architecture pass. Inputs: [PRD](../PRD.md),
 [screen inventory](../design/01-screen-inventory.md), [frontend notifications](../frontend/notifications.md),
 `memory/ideas/sarkari-match-pro/*`.
 
@@ -45,7 +45,7 @@ The mobile contract is in [`../api/openapi.yaml`](../api/openapi.yaml), with con
 
 | Concern | Choice |
 |---|---|
-| Language/runtime | **Kotlin + Ktor** (JVM 21), one Gradle multi-module repo, one container image with three entrypoints: `api`, `worker`, `admin` |
+| Language/runtime | **Go 1.24** (founder decision 2026-11-19, ADR-13): one module in [`backend/`](../../backend/), one static binary and one distroless image whose `ROLE` env selects `api`, `worker` or `admin` |
 | Compute | **Cloud Run** (`asia-south1`): `api` (min 1), `admin` (min 0, behind IAP), `worker` (tick-driven; always-on above about 300K users) |
 | Database | **Cloud SQL for PostgreSQL 16** (`asia-south1`): db-f1-micro during the test, then db-g1-small → custom 2 vCPU + HA at ~1M installs. Holds the catalog source, accounts, purchases; also the job queue (`FOR UPDATE SKIP LOCKED`) |
 | Matching | **On the device** with the shared KMP module `:matching-core` against the public **catalog** (CDN files); the server never sees profiles ([matching-engine.md](./matching-engine.md)) |
@@ -57,9 +57,9 @@ The mobile contract is in [`../api/openapi.yaml`](../api/openapi.yaml), with con
 | Front door | **Firebase Hosting** custom domain with rewrites to Cloud Run and GCS. Free TLS and CDN caching for `Cache-Control: public` GETs (`/v1/catalog/*`, `/v1/reference`, `/v1/config`, `/v1/health`) |
 | LLM extraction | **Claude API** (`claude-opus-5-5`, structured outputs, native PDF input) + a cheap classifier pass; human review always |
 | OCR fallback | Native PDF/vision input to the LLM; Cloud Vision OCR only for re-checks of scans or legacy-font Hindi PDFs |
-| Admin console | Server-rendered Ktor + htmx + pdf.js, behind **Identity-Aware Proxy** (Google accounts allowlist) |
+| Admin console | Server-rendered Go `html/template` pages + a JSON API (htmx + pdf.js to come), behind **Identity-Aware Proxy** (Google accounts allowlist; the IAP JWT is verified again in-app) |
 | Observability | Cloud Logging (structured JSON), Cloud Monitoring and OpenTelemetry metrics, Sentry free tier, uptime checks, alerts to the founder's phone |
-| CI/CD | GitHub Actions → Jib image → Artifact Registry → Cloud Run (gradual traffic), Flyway migrations, Workload Identity Federation |
+| CI/CD | GitHub Actions (gofmt, vet, staticcheck, `go test -race` with a Postgres 16 service, distroless Docker build) → Artifact Registry → Cloud Run (gradual traffic), **goose** SQL migrations (`sarkari migrate up`), Workload Identity Federation |
 
 ## 3. Component diagram
 
@@ -76,7 +76,7 @@ flowchart LR
   end
 
   subgraph GCP["GCP asia-south1"]
-    API["Cloud Run: api<br/>Ktor (REST /v1)"]
+    API["Cloud Run: api<br/>Go net/http (REST /v1)"]
     WRK["Cloud Run: worker<br/>tick handlers:<br/>watch · extract · catalog build ·<br/>topic send · housekeep"]
     ADM["Cloud Run: admin<br/>review console (IAP)"]
     SCH["Cloud Scheduler<br/>1-min ticks"]
@@ -126,24 +126,24 @@ soon as each phone runs (NFR < 6 h).
 Costs in this section are for **compute + DB only**. The full cost table is in §5. 10K / 100K / 1M = registered users
 (about 30% monthly active).
 
-### ADR-01: Platform: Cloud Run + Cloud SQL Postgres (Kotlin/Ktor)
+### ADR-01: Platform: Cloud Run + Cloud SQL Postgres
 
-_Unchanged choice; with ADR-11 the database no longer holds profiles or matches, so the load numbers below are
+_Platform unchanged; the language changed from Kotlin/Ktor to **Go** on 2026-11-19 (ADR-13). Unchanged choice; with ADR-11 the database no longer holds profiles or matches, so the load numbers below are
 upper bounds from the earlier server-matching design._
 
 | Option | 10K | 100K | 1M | Matching fit | Ops for 1 dev | Notes |
 |---|---|---|---|---|---|---|
 | A. Firebase (Auth + Firestore + Functions) | ~$5 | ~$150–300 | ~$1.5–3K | Weak: no joins or range+equality on many fields; matching means scanning all users per post (1M reads ≈ $0.6 per post per pass) and fanning out writes. Reminder state updates are about 5 writes per match | Very low at first, then painful (indexes, cost surprises, Functions cold starts) | Reads scale with app opens × documents; offline sync is great, but we already use Room |
-| B. Supabase Pro (Postgres in ap-south-1 Mumbai, Edge Functions) | ~$35 | ~$135–235 | ~$450–700 | Good (Postgres) | Low; but Deno/TS backend instead of Kotlin, and FCM/Pub/Sub/Play stay on GCP → two clouds | $25/org + compute add-ons; strong option if you prefer TS |
-| **C. Cloud Run (Ktor) + Cloud SQL (chosen)** | **~$25–45** | **~$200** | **~$900–1.1K** | **Good: SQL range joins + Kotlin evaluator** | Low: all managed, one IAM/billing, Pub/Sub for RTDN and FCM in the same project | JVM cold start mitigated by min-instances=1 and startup CPU boost |
-| D. Ktor monolith + self-hosted Postgres on one VM (e.g. e2-small/DO BLR) | ~$15 | ~$80 | ~$400 (bigger VM) | Good | Highest: you own backups, patching, failover, disk alarms | Cheapest floor; a single point of failure during the last-date rush |
+| B. Supabase Pro (Postgres in ap-south-1 Mumbai, Edge Functions) | ~$35 | ~$135–235 | ~$450–700 | Good (Postgres) | Low; but a Deno/TS backend, and FCM/Pub/Sub/Play stay on GCP → two clouds | $25/org + compute add-ons; strong option if you prefer TS |
+| **C. Cloud Run (Go) + Cloud SQL (chosen)** | **~$25–45** | **~$200** | **~$900–1.1K** | **Good: SQL + the catalog publisher (matching runs on the device, ADR-11)** | Low: all managed, one IAM/billing, Pub/Sub for RTDN and FCM in the same project | Go starts in milliseconds with ~20 MB RSS, so min-instances can stay 0 for `admin`/`worker` and 1 only for `api` |
+| D. Monolith + self-hosted Postgres on one VM (e.g. e2-small/DO BLR) | ~$15 | ~$80 | ~$400 (bigger VM) | Good | Highest: you own backups, patching, failover, disk alarms | Cheapest floor; a single point of failure during the last-date rush |
 | (Neon serverless Postgres) | n/a | | | | | No ap-south-1 region found, so latency/locality rules it out ([Neon regions](https://neon.com/docs/introduction/regions)) |
 
 **Why C.** It has relational matching, it is managed end to end, and it stays in one Google project with FCM, Firebase
 Auth, Play RTDN (which requires Pub/Sub anyway), Cloud Scheduler and IAP. It is near-free at test scale on
 db-f1-micro (~$8–10/mo) and request-billed Cloud Run (free tier: 180K vCPU-s, 360K GiB-s and 2M requests a month,
-[Cloud Run pricing](https://cloud.google.com/run/pricing)). Kotlin is shared with Android: DTOs and the
-rule-evaluator KMP module, which is the on-device matcher (ADR-11). **Exit ramps:** plain Postgres plus a
+[Cloud Run pricing](https://cloud.google.com/run/pricing)). The rule evaluator is the Android app's KMP module
+(ADR-11); the server only publishes rules, so it no longer needs to share a runtime with the app (ADR-13). **Exit ramps:** plain Postgres plus a
 container means a move to Supabase, a VM or AWS is a weekend, not a rewrite.
 
 ### ADR-02: Auth: Google Sign-In (Credential Manager + Firebase Auth) or guest; no phone, no OTP
@@ -230,8 +230,10 @@ ads-free build flavour stays possible.
 
 ### ADR-09: Single deployable, three roles
 
-`api`, `worker` and `admin` are the same image with a different `ROLE` env. This means one build and shared code
-(rule evaluator, templates). They are separate Cloud Run services, so admin can be IAP-protected and the worker can
+`api`, `worker` and `admin` are the same image (one Go binary, `sarkari serve`) with a different `ROLE` env. This
+means one build and shared code (rule validators, catalog builder, templates); `ROLE=all` runs everything in one
+process for local development. One-off tasks are subcommands of the same binary (`sarkari migrate up`,
+`sarkari tick housekeep`, `sarkari catalog rebuild`, `sarkari admin add`). They are separate Cloud Run services, so admin can be IAP-protected and the worker can
 scale and time out differently.
 
 ### ADR-11: Privacy-first: profile and matching on the device
@@ -253,6 +255,33 @@ draft + human review queue (`translation_task`) and shipped as `translation` cat
 requested per locale set (`?locales=ta,en`). Device and account carry `locale`; `Accept-Language` selects the
 `Problem.message` language and the default catalog locales. Notification text is composed on the device from
 per-app-locale string resources; the server holds per-locale text only for account pushes (`notification_text`).
+
+### ADR-13: Backend language: Go + PostgreSQL (founder decision 2026-11-19)
+
+Supersedes the Kotlin/Ktor part of ADR-01. Platform (Cloud Run + Cloud SQL Postgres 16, Firebase, FCM, Play, Pub/Sub,
+Cloud Scheduler, GCS + Firebase Hosting CDN) is unchanged.
+
+| Concern | Library / approach | Why |
+|---|---|---|
+| HTTP | stdlib `net/http` with Go 1.22+ method/wildcard patterns; AIP `{id}:verb` paths routed by splitting the last segment | No framework to upgrade; the API is ~40 routes |
+| Errors | RFC 9457 `application/problem+json`, stable `code`s from openapi `Problem`, `message` as LocalizedText (hi/en) | Contract |
+| Logging | `log/slog` JSON with Cloud Logging keys (`severity`, `message`); request ids; no bodies, tokens or client IPs | security-privacy §4 |
+| DB | `jackc/pgx/v5` pool with hand-written typed queries per package (no ORM); sqlc can be added later without schema changes | Small schema, explicit SQL, `FOR UPDATE SKIP LOCKED` queues |
+| Migrations | `pressly/goose/v3`, SQL files embedded in the binary; `00001_baseline.sql` is `schema.sql` verbatim (a test fails on drift), `00002` holds the Go-backend deltas | Plain SQL, reversible |
+| Rule validation | `santhosh-tekuri/jsonschema/v6` (draft 2020-12) on the embedded `rule.schema.json` + Go semantic validators incl. the blocking printed-DOB-window check (matching-engine §3.1) | The schema is the contract between extractor, console and app |
+| Tokens | `golang-jwt/jwt/v5`; Firebase ID tokens (securetoken x509 certs), App Check (JWKS), Google OIDC (RTDN, Scheduler), IAP (ES256) verified locally with cached key sets; ES256 entitlement token signer | No Admin SDK needed for verification |
+| Google APIs | `golang.org/x/oauth2/google` (ADC) + small REST clients for FCM HTTP v1, Android Publisher (subscriptionsv2 + acknowledge) and GCS JSON upload | Avoids the large generated SDKs; each behind an interface with a fake |
+| IDs | `oklog/ulid/v2` with the schema's prefixes (`u_`, `n_`, `p_`, `f_`, ...) | data-model conventions |
+| Tests | `go test` unit tests; integration tests against a real Postgres (`TEST_DATABASE_URL`, one throwaway database per test; skipped when unset); contract tests validate live responses against `openapi.yaml` component schemas and assert every documented operation is routed | No Testcontainers dependency |
+
+**Consequence: the evaluator is no longer shared with the server.** The design had the server run the KMP
+`:matching-core` for review tooling (boundary-test tables, the synthetic-population impact preview, re-checking a
+wrong-match report). Options: (a) a Go port of the evaluator kept honest by **shared golden fixtures** (rule +
+profile → verdict + reason codes) that both the KMP and the Go test suites execute in CI; (b) run the KMP module as a
+small JVM CLI/sidecar for the console only. Recommendation: (a), because the console needs only verdicts and the
+fixture set doubles as the app's regression suite; until then the console shows validator findings and the printed
+DOB window check, not verdict tables. Status of the implementation and the stub list:
+[`backend/README.md`](../../backend/README.md).
 
 ## 5. Cost table (monthly, USD, **estimates**)
 

@@ -130,7 +130,7 @@ Pricing used: Opus 5.5 $4/$20 per MTok, Haiku 5.5 $0.10/$0.50 (Anthropic model t
 
 ## 7. Review console (admin)
 
-A server-rendered Ktor + htmx app at `admin.sarkarimatch.in` behind IAP. The pages are:
+A server-rendered Go app (`html/template` + a JSON API under `/admin/api/`; htmx and pdf.js to come) at `admin.sarkarimatch.in` behind IAP. The first implementation (`backend/internal/admin`) covers create draft → attach rule JSON per post (validators) → approve (second reviewer for risk flags) → publish. The full design:
 
 1. **Queue:** sorted by urgency (`apply_end` soonest, then org priority), showing source, class, risk flags, age of
    the task, and validator status.

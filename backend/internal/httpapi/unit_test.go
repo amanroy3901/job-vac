@@ -10,8 +10,10 @@ func TestLimiter(t *testing.T) {
 	now := time.Unix(0, 0)
 	l := newLimiter(func() time.Time { return now })
 	r := rate{per: time.Minute, n: 60, burst: 2}
-	if l.allow("k", r) != 0 || l.allow("k", r) != 0 {
-		t.Fatal("burst denied")
+	for i := 0; i < 2; i++ {
+		if l.allow("k", r) != 0 {
+			t.Fatal("burst denied")
+		}
 	}
 	if l.allow("k", r) == 0 {
 		t.Fatal("over burst allowed")

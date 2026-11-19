@@ -250,3 +250,19 @@ export + `GET /v1/me`), `/v1/me/purchases/upi-link/**`, `/v1/me/whatsapp/**`, `/
 **Deferred (PRD priorities):** age countdown S43 (P2, needs attempt rules in the catalog); age-crossed B14/N-43 (P1,
 local); digest S44/N-30 (P1, local); certificate validity S36 (P1, local); browse all notices (P1, from the local
 catalog).
+
+## 17. Server implementation notes (Go backend, 2026-11-19)
+
+The contract is implemented in [`backend/`](../../backend/) (Go + PostgreSQL, backend ADR-13). Contract tests validate
+live responses against this file's component schemas and fail if any of the 36 paths is not routed.
+
+| Topic | Behaviour the app can rely on |
+|---|---|
+| Coverage | Every operation is implemented except `redeemReferral` (`501 not_implemented`); `SessionRequest.referral_code` is accepted and ignored until then |
+| Account calls before `POST /v1/session` | `403 forbidden` (detail "no account"); call `/v1/session` first |
+| `Idempotency-Key` | Required (UUID) where the spec lists it; missing → `422 validation_failed`; a duplicate still in flight → `409 conflict` with `retryable=true` and `Retry-After: 1`; 5xx responses are not stored, so a retry re-executes |
+| `merge_anonymous_id_token` | Must be a currently valid ID token of the anonymous account (fetch it just before signing in with Google) |
+| Catalog `?locales=` | Normalised (sorted, `en` added). Each language's chain is pre-rendered and listed in `CatalogHead.sha256`; other sets are rendered on demand (not listed in `sha256`, verify with the response `ETag`) |
+| `ETag`s | Catalog files: the body's sha256 (quoted); backup and family watch-list: the version number (quoted) |
+| Family invite | `FamilyInviteView.state=declined` after `:decline`; tokens are 128-bit, single use, 7 days |
+| Open question | Topic names: the spec says `p_{post_id}` / `n_{notice_id}` while ids already carry `p_` / `n_` prefixes, so the server currently sends to `p_p_…` / `n_n_…`. Decide (keep literal, or use the id itself as the topic) before the app ships topic subscriptions |

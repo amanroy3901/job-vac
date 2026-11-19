@@ -17,24 +17,29 @@ server-side.
 
 ## 2. Repository and CI/CD
 
+Go backend (ADR-13; `matching-core`/`reminder-core` are KMP modules of the Android repo, not of the server):
+
 ```
 backend/
-  app/            # Ktor: ROLE=api|worker|admin entrypoints
-  matching-core/  # KMP rule evaluator + explain templates — the same artifact the Android app ships
-  reminder-core/  # KMP pure reminder schedule (slots, caps, quiet hours) — shared with the app
-  ingestion/      # watchers, PDF text layer, LLM clients, validators, translation drafts
-  catalog/        # catalog batch/snapshot builder, topic_send scheduler, FCM sender
-  db/             # Flyway migrations (V1 = docs/backend/schema.sql)
-  contract/       # openapi.yaml copy + generated DTOs + contract tests
+  cmd/sarkari/        # one binary: serve (ROLE=api|worker|admin|all), migrate, tick, catalog rebuild, admin add
+  migrations/         # goose SQL (00001 = docs/backend/schema.sql verbatim, 00002 = Go-backend deltas + seeds)
+  internal/httpapi/   # /v1 REST (openapi.yaml), problem+json, idempotency, rate limits, RTDN hook, ticks
+  internal/auth/      # Firebase ID token, App Check, Google OIDC, IAP verification (cached key sets)
+  internal/catalog/   # catalog batch/snapshot builder, locale sets, head; internal/blob = local dir | GCS
+  internal/rules/     # rule.schema.json validation + printed-DOB-window and semantic validators
+  internal/ingest/    # curation workflow (draft → rules → approve → publish); extractor interface
+  internal/billing/   # Play verification, RTDN, trial, entitlement + ES256 token
+  internal/push/      # FCM HTTP v1 sender, topic_send dispatcher, account pushes
+  internal/{account,family,admin,worker,config,db}/
 ```
 
 **GitHub Actions:**
-- **PR:** ktlint/detekt → unit tests (matching-core golden tests: SSC GD 2026, UP Police 2025 v1/v2, boundary
-  generators, property tests; reminder-core slot tests) → Testcontainers Postgres integration tests (migrations,
-  catalog build, topic scheduling) → catalog compatibility test (current app evaluator versions parse the new
-  batch) →
-  OpenAPI lint (spectral) + response validation of integration tests against `openapi.yaml` → Jib image build.
-- **main:** deploy to staging (Flyway migrate → `gcloud run deploy --no-traffic` → smoke tests → 100%).
+- **PR** (`.github/workflows/backend.yml`, implemented): gofmt → go vet → staticcheck → `go test -race` (unit tests;
+  integration tests against a Postgres 16 service container: migrations, session/devices/entitlements/family,
+  curation publish → catalog build, topic scheduling; contract tests validating responses against `openapi.yaml`)
+  → migrations on a clean DB → distroless Docker build. To add: catalog compatibility test (current app evaluator
+  versions parse the new batch), golden evaluator fixtures shared with the app.
+- **main:** deploy to staging (`sarkari migrate up` → `gcloud run deploy --no-traffic` → smoke tests → 100%).
 - **tag `v*` (manual approval):** prod migrate (expand/contract: migrations must be compatible with the previous
   revision) → deploy api/worker/admin revisions with no traffic → smoke → 10% for 15 min with a 5xx-rate check →
   100%. **Rollback** = shift traffic to the previous revision (seconds). Destructive "contract" migrations ship one

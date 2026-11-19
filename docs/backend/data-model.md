@@ -1,7 +1,10 @@
 # Data model
 
 The DDL is in [`schema.sql`](./schema.sql) (PostgreSQL 16; it loads cleanly into a fresh database, verified
-2026-11-19). This document explains the shape, the personal-data inventory and the retention rules.
+2026-11-19). The Go backend applies it verbatim as migration `00001_baseline.sql`; its additions (app_config table,
+family `relation`/`declined`, catalog file digests, nullable `review_task.source_document_id`, purchase base plan,
+seeds) are in `backend/migrations/00002_go_backend.sql` and listed in `backend/README.md`; fold them in here at the
+next design pass. This document explains the shape, the personal-data inventory and the retention rules.
 
 **Privacy model (founder decisions 2026-11-19, ADR-11).** The eligibility profile, matches, reminder schedule,
 actions, applications and inbox exist **only on the user's phone** (Room, [frontend data-layer.md](../frontend/data-layer.md)).
