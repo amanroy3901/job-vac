@@ -1,0 +1,33 @@
+{
+  "natural_usage_frequency": "weekly",
+  "natural_usage_frequency_rationale": "v2 adds a post-application layer that v1 lacked. Evidence (SSC CGL 2025 cycle, Careers360): Tier 1 Sept 12-26 -> provisional key Oct 16 with objections to Oct 19 -> final key/marks -> 1,39,395 of ~28 lakh applicants qualified for Tier 2 (Jan 18-19) -> Tier 2 key objections to Feb 3 -> DV/preferences later. For the ~95% who stop at stage 1, one application yields ~5-7 trackable events (correction window, city slip, admit card, exam, answer key/objection, result) over ~3-5 months; only ~5% get the further 4-6 events. So the task's '6-10 events per application' holds only for the minority who progress; ~5-7 is the realistic median (estimate). With 6-10 applications/yr per active aspirant (estimate), that is ~30-60 events/yr = roughly weekly, clustered. Before applying, persistent reminders add a few opens per match. Still not daily; also ~half of SSC CGL applicants did not sit Tier 1, so many applications go cold quickly.",
+  "external_trigger": "Exam-calendar events pushed by the app (strong, real-world, high-stakes); persistent 'not yet applied' reminders; for Pro, WhatsApp/SMS fallback improves trigger delivery on Xiaomi/Oppo/Vivo where push is suppressed (well documented by push vendors; India delivery rates not found). Free users remain exposed to OEM push-killing.",
+  "habit_formation_factors": {
+    "usage_frequency": 2,
+    "external_trigger": 4,
+    "progress_reward_loop": 3,
+    "network_effects": 1,
+    "data_lock_in": 3,
+    "habit_stack": 4
+  },
+  "habit_formation_score": 3,
+  "habit_formation_score_rationale": "Mean 2.8 -> 3/5 (v1: 2). Gains: progress loop (an application ledger moving through stages), data lock-in (detailed profile + ledger + doc vault — though DigiLocker and re-entry in ~5 min limit it), habit stack (fits the existing ritual of checking for admit cards/results). Still weak: frequency (weekly at best), network effects (none beyond family mode).",
+  "churn_risk_factors": [
+    "Event sparsity for most users: ~95% of applicants exit after stage 1 of each exam; between application seasons the app is silent",
+    "Commodity substitution: admit cards/answer keys/results are broadcast free by Telegram, YouTube, boards' own SMS/email",
+    "Persistent reminders can backfire: nagging until 'applied' trains users to tap 'not interested' or revoke notification permission (Android 13+ runtime permission)",
+    "Trust collapse on one wrong match or one missed event — the core promise is completeness/accuracy",
+    "OEM battery optimizers suppress push for free users (Pro fallback only helps payers)",
+    "Lifecycle churn: selection, age-out, quitting after a failed cycle",
+    "Payment churn for Pro: ~20M UPI AutoPay revocations/month on low balance nationally; season passes need re-purchase"
+  ],
+  "estimated_retention": {
+    "d1": 0.30,
+    "d7": 0.16,
+    "d30": 0.10,
+    "basis": "Estimates, not measured. v1: 28/14/8. Lift from persistent pre-apply reminders and post-apply events for users who mark applications. Framework Education D30 median 6-12%, Productivity 8-15%. 'Installed with push enabled' D30 plausibly 2-3x higher. Users who mark >=1 application as applied are the retained core (est. D30 ~20-25% for that cohort)."
+  },
+  "churn_risk": "medium",
+  "retention_verdict": "moderate",
+  "retention_verdict_rationale": "Lifecycle tracking genuinely improves retention structure (more triggers per user, a ledger to lose) — the clearest improvement v2 makes over v1. It does not make the app sticky: usage stays weekly-and-clustered, the information is substitutable, and most applications die at stage 1. desire_scores (control 4, survival 4, moderate) support install-retention more than open-retention. user_extraction.json missing; frequency inferred from exam-calendar structure."
+}

@@ -1,0 +1,50 @@
+{
+  "organic_reach_potential": "medium",
+  "viral_loop_exists": true,
+  "viral_loop_type": "word-of-mouth",
+  "viral_loop_description": "Two weak loops. (1) Share card: 'You're eligible for <exam> — last date <x> — check yours' deep-linking to an eligibility check; rides the existing habit of forwarding notifications into WhatsApp/Telegram groups, but recipients can read the info without installing. (2) Family mode: a parent/sibling is added as a critical-reminder recipient — usually via WhatsApp/SMS (Pro), so it rarely produces an install; it may, however, create a second payer persona (parents) — unvalidated.",
+  "k_factor_estimate": 0.14,
+  "k_factor_calculation": "Share card: i ~2.0 shares per user lifetime x c ~0.06 = 0.12. Family mode: ~10% of users add a family member x ~0.2 of those install and themselves become aspirant-referrers = ~0.02. k ~0.14 (directional, unvalidated). v1 was 0.12.",
+  "k_factor_classification": "marginal",
+  "paid_feasibility": "not-viable",
+  "minimum_paid_budget_monthly": 15000,
+  "paid_feasibility_rationale": "India median CPI ~INR 20, EdTech ~INR 68 (Linkrunner 2026 vendor sample, v1 file). Modelled LTV per install ~INR 2-6 (cac.json) -> every paid install is cash burn. ~INR 15K/mo is only a learning budget. Founder budget unknown (no user_profile.md) -> treated as Bootstrap.",
+  "platform_advantage": {
+    "aso_opportunity": "medium",
+    "aso_score_breakdown": {
+      "category_competition": 1,
+      "keyword_opportunity": 2,
+      "search_intent_match": 3,
+      "review_velocity_potential": 2,
+      "visual_differentiation": 2,
+      "total": 10
+    },
+    "aso_rationale": "Unchanged from v1 except review velocity: 'Mark as applied' and 'admit card ready' moments are natural review prompts, but the score stays 2 as moments are spread out. Head terms owned by Testbook/clones; long-tail Hindi/state terms ('<state> police bharti', 'patwari form', 'admit card kab aayega') are winnable. Search intent for 'eligibility check' and 'admit card' is real.",
+    "featured_potential": false,
+    "featured_criteria_met": ["Serves an underrepresented audience (vernacular state aspirants) — 1 of 5"]
+  },
+  "creator_economy_fit": "low",
+  "creator_fit_rationale": "Audience alignment high (govt-job YouTube is huge), but creators are themselves the alert channel and sell their own batches; the product is invisible on camera; INR 199/yr supports no meaningful affiliate commission (~INR 40-60 per sale at 25-30% would need ~1-3% of viewers to buy). Micro-creators (10-100K) doing 'form kaise bhare' videos are the only plausible fit — pre-submit check content is more demo-able than alerts.",
+  "creator_fit_breakdown": {
+    "content_generation": "low",
+    "audience_alignment": "high",
+    "demo_ability": "medium",
+    "authenticity": "medium",
+    "affiliate_fit": "low"
+  },
+  "user_distribution_advantage": "None identified. No memory/user_profile.md; founder is a solo Android developer with no audience, community presence or vernacular content operation (idea.md).",
+  "user_advantage_type": "none",
+  "recommended_first_channel": "Telegram/WhatsApp aspirant-group seeding with a free web eligibility checker + share cards, timed to one open state recruitment window; Hindi long-tail ASO in parallel",
+  "recommended_first_channel_rationale": "Zero-cash, executable by a solo dev in days, and it doubles as the RAT vehicle. Admin-paid posts (INR 500-2,000 per 10-20K-member state channel, from v1 pivot memo) are the scalable variant if WTP is proven.",
+  "channels_ranked": [
+    {"channel": "Telegram/WhatsApp group seeding + share cards", "viability": "medium", "time_to_first_100_users": "1-2 weeks"},
+    {"channel": "ASO (Hindi, state long-tail, 'eligibility'/'admit card' terms)", "viability": "medium", "time_to_first_100_users": "3-6 weeks"},
+    {"channel": "SEO long-tail web companion (eligibility pages per notification)", "viability": "low", "time_to_first_100_users": "3-6 months"},
+    {"channel": "Micro-creator 'form kaise bhare' collaborations", "viability": "low", "time_to_first_100_users": "1-2 months if any partner agrees"},
+    {"channel": "Shorts/Reels by founder", "viability": "low", "time_to_first_100_users": "1-3 months, uncertain"},
+    {"channel": "Paid (Meta/Google App Campaigns)", "viability": "low", "time_to_first_100_users": "days, at INR 20-68+ per install vs INR 2-6 LTV"}
+  ],
+  "distribution_verdict": "weak",
+  "tier_adjustment_applied": "None — user_profile.md missing; tier adjustment skipped and flagged (builder assumed). Raw verdict weak: k 0.14 < 0.2, creator fit low, paid not viable, no founder audience; ASO medium is the only medium dimension. Not paid-only: free organic channels exist but are slow and contested.",
+  "distribution_verdict_rationale": "v2 does not change who owns the distribution surfaces (SEO, Play head terms, YouTube, Telegram — all incumbents giving the same information away). Precision matching makes the share card slightly more compelling and family mode adds a sliver of k, but the founder still has no audience. Same verdict as v1 (weak), marginally better (k 0.12 -> 0.14)."
+}

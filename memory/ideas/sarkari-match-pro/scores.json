@@ -1,0 +1,81 @@
+{
+  "dimension_scores": {
+    "demand": 53,
+    "competition": 30,
+    "monetization": 16,
+    "distribution": 32,
+    "retention": 47,
+    "founder_market_fit": 48
+  },
+  "dimension_score_rationale": {
+    "demand": "Band 40-59 (desire 'moderate' 3.3 + signal validation): base 42 +10 cross-platform resonance (same audience evidence as v1) +1 for documented post-application loss cases (DV 'no further opportunity', reschedules) that make the survival framing concrete. No +5 (monetization_validated not set). trend_velocity stable. v1 52, Form Pakka 54.",
+    "competition": "market_saturation high (15/15) but differentiation opportunities exist -> band 25-49. v2's exact combination (true eligibility matching + persistent until-applied reminders + in-app per-application lifecycle tracking) was not found in any app; post-application tracking exists only as a free TrueJobs web tool. Held low in band: feature-level gap (low defensibility), >=5 indie entrants on eligibility/autofill in 2025-26 (Sarkari Scan, GovFitAI, India Govt Job Finder, Naukri Alert, SarkariFilled), edtechs could ship a tracker in a sprint, boards SMS registered candidates. No +10 (no direct review mining). v1 22, Form Pakka 33.",
+    "monetization": "cac.json not-viable: base LTV ~INR 1.6/install (optimistic ~INR 5.1); best executable channel 0.4:1 (1.28:1 optimistic); WTP target ~INR 16/mo (~$0.18). Band 10-34. Scored 16 (v1 15): better value gate ('Mark as applied'), sensible INR 199/yr + INR 49 season pass, cheap Pro delivery (~INR 0.12-0.15/WhatsApp msg) — offset by an ad-free free tier that lowers base LTV below v1's, and zero observed payers for any paid govt-job utility. Truecaller India (~2M subs, daily utility) implies sub-1% paid share even for the best case. No +10 (conversion 1.2% < 5%). v1 15, Form Pakka 32 (which rests on observed per-form WTP).",
+    "distribution": "verdict weak (k ~0.14, ASO medium 10/15, creator fit low, paid not viable, no founder audience) but free organic channels exist -> upper-middle of 15-39: 32. v1 30 (k 0.12). Form Pakka 34.",
+    "retention": "verdict moderate, D30 10% (estimate) -> band 40-59 -> 47. Habit score 3 (v1 2): ledger + lifecycle events (~5-7 per application, ~30-60/yr for active applicants) + data lock-in. No +5 (not daily); no -10 (strong external trigger). v1 42, Form Pakka 43.",
+    "founder_market_fit": "user_profile.md missing -> neutral 50, minus 2: v2 demands continuous multi-board rules curation in Hindi (operationally the hardest part) with no evidence the founder has that capacity. Same as Form Pakka (48)."
+  },
+  "weights_applied": {"demand": 0.20, "competition": 0.10, "monetization": 0.20, "distribution": 0.20, "retention": 0.15, "founder_market_fit": 0.15},
+  "floor_penalty": 0.64,
+  "floor_penalty_calc": "monetization 16 < 25 -> x(16/25) = 0.64. Competition (30) no longer below the floor (v1 had two floors: 0.528).",
+  "base_score": 37.45,
+  "base_score_calc": "53x0.20 + 30x0.10 + 16x0.20 + 32x0.20 + 47x0.15 + 48x0.15 = 10.6 + 3.0 + 3.2 + 6.4 + 7.05 + 7.2 = 37.45",
+  "missing_discount": 0.714,
+  "missing_discount_calc": "5 of 7 source dimensions (missing user_profile.md -> FMF defaulted; market_size.json not run). Same basis as v1 and Form Pakka, so comparisons are like-for-like.",
+  "final_score": 17,
+  "final_score_calc": "37.45 x 0.64 x 0.714 = 17.1 -> 17",
+  "final_score_range": {"low": 13, "high": 24, "basis": "monetization 12-22 (penalty 0.48-0.88), other dims +/-2"},
+  "undiscounted_score": 24,
+  "score_without_floor_or_discount": 37.5,
+  "comparison": {
+    "v1_govt_exam_reminders": {"final": 13, "undiscounted": 18.7, "base": 35.4, "floor_penalty": 0.528},
+    "v2_sarkari_match_pro": {"final": 17, "undiscounted": 24.0, "base": 37.45, "floor_penalty": 0.64},
+    "pivot_form_pakka": {"final": 29, "range": "26-33", "undiscounted": 41, "base": 41.0, "floor_penalty": 1.0, "note": "projection, low confidence"},
+    "read": "v2 is +4 over v1 (removes the competition floor; better retention). It scores BELOW Form Pakka by ~12 because Form Pakka's paid unit sits on observed WTP (cafés INR 30-150/form) and clears the monetization floor; v2's subscription does not."
+  },
+  "sensitivity": "If the RAT passes (monetization ~35, distribution ~35): base 41.9, no floor -> 30 discounted / 42 undiscounted ('pivot' band). Completing user_profile.md + market_size.json removes the discount. Reaching 'test' (55) would need roughly M55 D45 R55 FMF60 Dem60 — i.e., proven WTP plus a founder distribution edge; no desk-research change gets there.",
+  "verdict": "drop",
+  "score_confidence": "medium",
+  "missing_inputs": [
+    "memory/user_profile.md (FMF defaulted; budget tier assumed Bootstrap)",
+    "memory/ideas/sarkari-match-pro/market_size.json (tam-sam-som-builder not part of this workflow)",
+    "weighted_signals.json, user_extraction.json (not produced by this workflow)",
+    "Direct Play/App Store review mining and listing verification (appgoblin.info, truejobs.co.in, GovFitAI blocked)",
+    "Any behavioral WTP evidence for a paid govt-job utility"
+  ],
+  "top_strengths": [
+    {"dimension": "demand", "score": 53, "reason": "Enormous, durable, high-stakes audience (RRB NTPC 2025 ~1.22 crore applications; SSC CGL ~28 lakh); v2 targets real loss events (missed DV/objection windows, rejections)."},
+    {"dimension": "founder_market_fit", "score": 48, "reason": "Neutral default — Android build is within reach; nothing more is known."},
+    {"dimension": "retention", "score": 47, "reason": "Lifecycle tracking adds ~5-7 events per application (~30-60/yr for active applicants) and a ledger to lose; habit score 3/5 vs v1's 2/5."}
+  ],
+  "top_weaknesses": [
+    {"dimension": "monetization", "score": 16, "reason": "Base LTV ~INR 1.6/install vs Telegram-seeding CAC ~INR 4 and ASO ~INR 10; no observed payers in the category; India ~0.7% download-to-paid."},
+    {"dimension": "competition", "score": 30, "reason": "15/15 saturation; feature-level gap with low defensibility; indie entrants multiplying; incumbents can copy."},
+    {"dimension": "distribution", "score": 32, "reason": "k ~0.14, no founder audience, creators are competitors, paid is cash burn."}
+  ],
+  "killer_dimensions": ["monetization (16)"],
+  "riskiest_assumption_test": {
+    "assumption": "Aspirants who have just applied to a matched exam will pay INR 49 (season) or INR 199 (year) for lifecycle tracking + a pre-submit check + reliable WhatsApp delivery, instead of relying on free Telegram/YouTube/board SMS.",
+    "category": "monetization",
+    "criticality": 5,
+    "uncertainty": 5,
+    "rat_score": 25,
+    "experiment": {
+      "type": "Concierge WTP test with real UPI payment (behavioral), WhatsApp-only, no app",
+      "description": "Pick central exams + ONE Hindi-belt state with application windows open in the next 3 weeks. Days 1-3: Hindi web eligibility checker (DOB, category, qualification, domicile) built on hand-curated, LLM-assisted rules for 10-20 live notifications; log curation minutes per notification. Users opt in on WhatsApp Business. Free: matched alerts with the complete what-you-need card; reminder repeats every 2-3 days until they reply APPLIED or NO. On APPLIED: offer 'Pakka Pro' — Season pass INR 49 (lifecycle tracking for this application + one pre-submit check of their preview/registration + WhatsApp/SMS fallback) and Year INR 199 — via a real UPI/Razorpay link with refund promise; deliver manually. Traffic: 20-30 state aspirant Telegram/WhatsApp groups (with admin permission) + 2 paid channel posts (INR 500-2,000 each) + <= INR 3,000 Meta ads in Hindi.",
+      "duration": "14 days",
+      "estimated_cost": "~INR 6,000-8,000 (~$70-90) cash + ~30-40 founder hours",
+      "pass_threshold": "All must hold within 14 days: (1) >= 300 completed eligibility profiles; (2) >= 100 users reply APPLIED to at least one match; (3) >= 8% of APPLIED users pay AND >= 10 total payments; (4) >= 50% of opted-in users have not blocked/STOPped by day 14 (persistent reminders tolerated); (5) median curation <= 30 min per notification with zero wrong eligibility verdicts in a 20-notification self-audit against the official PDFs.",
+      "fail_action": "drop"
+    },
+    "kill_criteria": "Any of: < 3% of APPLIED users pay or < 5 payments; > 30% STOP/block rate; median curation > 60 min per notification or any wrong 'eligible' verdict found in audit. Then drop the subscription idea; if pre-submit checks alone sold, fall back to Form Pakka's per-check model.",
+    "all_assumptions_ranked": [
+      {"assumption": "Applied users pay INR 49-199 for Pro (lifecycle + check + fallback)", "criticality": 5, "uncertainty": 5, "rat_score": 25},
+      {"assumption": "A solo dev can keep structured eligibility rules (age-on-cutoff, relaxations, domicile, corrigenda) accurate for central + one state at <= 30 min/notification", "criticality": 5, "uncertainty": 4, "rat_score": 20},
+      {"assumption": "Persistent until-applied reminders are welcomed, not muted/uninstalled", "criticality": 4, "uncertainty": 4, "rat_score": 16},
+      {"assumption": "No-audience founder can acquire aspirants at <= INR 5/install via Telegram seeding + Hindi ASO", "criticality": 4, "uncertainty": 4, "rat_score": 16},
+      {"assumption": "Lifecycle tracking materially raises retention (opens >= 3/month for applied users)", "criticality": 3, "uncertainty": 3, "rat_score": 9},
+      {"assumption": "Aspirants genuinely miss deadlines/post-application windows", "criticality": 4, "uncertainty": 2, "rat_score": 8}
+    ]
+  }
+}

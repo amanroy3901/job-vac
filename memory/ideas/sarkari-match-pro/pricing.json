@@ -1,0 +1,77 @@
+{
+  "wtp_range": {
+    "low": 8,
+    "target": 16,
+    "aspirational": 25,
+    "currency": "INR",
+    "period": "monthly",
+    "usd_equivalent_monthly": {"low": 0.09, "target": 0.18, "aspirational": 0.28},
+    "annualized_inr": {"low": 99, "target": 199, "aspirational": 299},
+    "note": "Expressed monthly for comparability; sold as INR 199/yr or INR 49/season. The idea's INR 20/month list price sits between target and aspirational. FX ~INR 88/USD (estimate)."
+  },
+  "van_westendorp": {
+    "too_cheap": 0,
+    "cheap_but_acceptable": 8,
+    "getting_expensive": 16,
+    "too_expensive": 40,
+    "currency": "INR/month",
+    "derivation": "too_cheap 0: alerts are free everywhere; post-application info is free on Telegram/YouTube/TrueJobs. cheap_but_acceptable INR 8 (~INR 99/yr): impulse-annual level in Indian edtech promos. getting_expensive: modal competitor price is INR 0; anchored to ~20% of the nearest paid bundle (Testbook ~INR 749/yr = ~INR 62/mo -> INR 12.5) x desire multiplier 1.32 = ~INR 16.5/mo. Cross-check vs Indian utility analogues: Truecaller ad-free ~INR 39/mo or INR 399/yr and Premium INR 75-99/mo for a DAILY utility; JioHotstar Mobile INR 79/mo or INR 149/quarter for daily entertainment. An event-driven govt-job tool should sit well below those -> INR 16-25. too_expensive INR 40 (~INR 499/yr): ~2/3 of a full mock-test pass, and Truecaller ad-free monthly level."
+  },
+  "desire_premium_multiplier": 1.32,
+  "desire_premium_rationale": "Primary control (1.2-1.5x); label moderate -> low end 1.2x; secondary survival scores 4 -> +10% => 1.32. Same as v1. On a ~zero base the premium is a few rupees.",
+  "recommended_pricing_model": "Freemium (no ads; matched alerts + persistent reminders free) -> Pro as (a) INR 199/yr auto-renewing via Play Billing/UPI AutoPay and (b) INR 49 non-renewing 'season pass' (prepaid, ~90 days around an application window). Lead with the season pass at the moment of 'Mark as applied' — that is when the lifecycle value becomes concrete. Strongly consider bundling one human/automated pre-submit Form Check (Form Pakka's paid unit) into the season pass, because that is the only step with observed WTP.",
+  "pricing_models_considered": [
+    {"model": "Freemium -> annual subscription (INR 199/yr)", "fit_rationale": "Aspirants apply year-round across exams; annual fits multi-year prep.", "risk": "India D35 download-to-paid ~0.7%; event-driven use gives weak felt value between events; UPI AutoPay sees ~20M revocations/month for low balance."},
+    {"model": "Season pass INR 49 (prepaid, non-renewing)", "fit_rationale": "Matches cash-flow and episodic need; Google Play supports prepaid subscriptions in India; quarter passes normal (JioHotstar INR 149/qtr).", "risk": "No recurring revenue; must re-sell each season; INR 49 net ~INR 41 after Play fee."},
+    {"model": "Per-transaction Form Check INR 49 (Form Pakka)", "fit_rationale": "Only observed WTP in the category (cafés INR 30-150/form).", "risk": "Human-review ops; liability; a service, not an app."},
+    {"model": "Ads in free tier", "fit_rationale": "Category norm.", "risk": "Destroys the 'quiet, trustworthy' core promise; CPC ~$0.01 means tiny yield."},
+    {"model": "Monthly INR 20", "fit_rationale": "Lowest headline price.", "risk": "Monthly churn + payment friction; INR 20 x 0.85 = INR 17 net — Play/UPI failure rates make monthly the worst option."}
+  ],
+  "recommended_price": {
+    "monthly": 20,
+    "annual": 199,
+    "annual_discount_pct": 17,
+    "one_time": 49,
+    "one_time_note": "INR 49 = season pass (~90 days), prepaid.",
+    "launch_tactic": "Founding-member 2-year pass INR 349 capped at 500 buyers (cash + reviews only).",
+    "currency": "INR",
+    "net_after_store_fee": {"annual": 169, "season_pass": 42, "note": "Google Play 15% service fee on subscriptions (estimate; UPI/Razorpay web checkout ~2% would net more but loses in-app convenience)."}
+  },
+  "freemium_conversion_estimate": 0.012,
+  "freemium_conversion_rationale": "Base: framework 'utility' typical 1-4% is US-calibrated; India/SEA download-to-paid ~0.7% (RevenueCat via secondary sources). Truecaller — India's most successful utility subscription — has ~2M India subscribers on a user base reported at ~350M (unverified), i.e. ~0.6%, for a daily-use product. v2 improvements over v1's 0.8%: (1) no ads, so the free tier is good — that cuts both ways; (2) clear value gate at 'Mark as applied' (free stops at applying; Pro tracks what comes next), which is better gating than v1's 'ad-free/WhatsApp'; (3) a INR 49 sachet lowers the barrier. Estimate 1.2% of installs (~2.5-4% of users who mark at least one application as applied). Kept below 2% because desire is moderate, the pain is episodic, and free substitutes cover post-application news. UNVALIDATED — no product in the category shows paying users.",
+  "competitive_pricing_range": {
+    "min": 0,
+    "max": 62,
+    "modal": 0,
+    "currency": "INR/month",
+    "notes": "Alerts and trackers: INR 0 (modal). India Govt Job Finder lists $2.99/mo / $4.99/yr IAP (iOS, contradictory listing; no evidence of payers). Max = Testbook pass ~INR 56-62/mo equivalent. Transactional: cafés INR 30-150/form."
+  },
+  "category_benchmark_range": {
+    "min": 1,
+    "max": 4,
+    "currency": "USD/month (framework Utility, Western-calibrated)",
+    "india_adjusted_note": "Target ~$0.18/mo is far below the framework's $1 minimum -> per skill rule 'may struggle to sustain development'. Truecaller India's ~$0.50-1.10/mo is the realistic Indian utility ceiling for a daily product."
+  },
+  "b2b2c_potential": {
+    "exists": true,
+    "b2b_price_estimate": 2000,
+    "rationale": "Speculative: verified structured eligibility feed licensed to coaching institutes, café/CSC operators or edtechs (INR ~2,000-10,000/mo, no evidence). The structured-rules database built for matching is the asset most likely to have B2B value. Future only."
+  },
+  "pro_unit_costs": {
+    "whatsapp_utility_per_msg_inr": "0.115-0.145 (BSP-reported 2026, estimate)",
+    "sms_transactional_per_msg_inr": "0.10-0.25 + 18% GST + DLT",
+    "est_messages_per_pro_user_per_year": "60-120 (estimate)",
+    "est_messaging_cost_per_pro_user_per_year_inr": "8-20 (~5-12% of net annual revenue)",
+    "note": "Fallback channels are affordable for payers only; offering them free would cost more than the free tier earns."
+  },
+  "market_insights_pricing_signals": [
+    "pro-tier-economics: Truecaller ~2M India subs (daily utility) -> sub-1% paid share even for the best Indian utility",
+    "pro-tier-economics: JioHotstar Mobile INR 79/mo, 149/qtr, 499/yr -> sachet/quarter norms",
+    "pro-tier-economics: UPI AutoPay mandates doubling YoY but ~20M revocations/month on low balance",
+    "pro-tier-economics: WhatsApp utility ~INR 0.12-0.15/msg -> Pro delivery margin OK",
+    "apps: Testbook pass ~INR 674-749/yr; cafés INR 30-150/form",
+    "web-search: 'sarkari result' CPC ~$0.01",
+    "trend_velocity stable"
+  ],
+  "pricing_rationale": "v2 fixes the v1 pricing logic problem (what does Pro sell?) with a coherent loss-avoidance bundle gated at the right moment ('Mark as applied'), and INR 199/yr + INR 49 season pass are sensible Indian price points. It does NOT fix the evidence problem: monetization_evidence for paid govt-job utilities is still empty — no competitor visibly earns subscription revenue, and the one with listed IAP contradicts itself. Pricing remains UNVALIDATED. The INR 16-20/mo target means even at 3% conversion revenue per install is ~INR 5/yr. The single highest-leverage pricing move is to put a pre-submit Form Check inside the season pass, attaching Pro to the one step aspirants already pay for."
+}

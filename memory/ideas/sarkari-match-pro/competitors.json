@@ -1,0 +1,144 @@
+{
+  "_meta": {
+    "skill": "competitor-mapper v0.2.0",
+    "analyzed_at": "2026-11-19",
+    "basis": "Reuses ../govt-exam-reminders/competitors.json and core_loop_competitors.md (same audience/category) and adds a v2-specific check of Pro features (post-application tracking, persistent reminders, paid tiers).",
+    "data_caveats": "Play Store, AppGoblin, TrueJobs and GovFitAI pages could not be fetched (DNS-blocked in this environment). Feature/price claims come from search snippets of store listings. Step-3 review mining (20x1-star, 20x3-star, 10x5-star per competitor) was NOT possible — complaint themes are secondary/inferred, same gap as v1.",
+    "currency_note": "INR; ~INR 88 = USD 1 (estimate)"
+  },
+  "direct_competitors": [
+    {
+      "name": "Sarkari Scan (Android)",
+      "platform": "Android",
+      "estimated_users": "Small (not quantified; tracker page blocked)",
+      "app_store_rating": 0,
+      "review_count": 0,
+      "last_updated": "2025-2026 (listing active)",
+      "pricing": "Free; no premium tier found",
+      "pricing_model": "free",
+      "top_features": ["Matches education, age, category, experience to central + state recruitments", "Explains eligibility status per job", "Sources from official notification sites"],
+      "top_complaints": ["Not mined (data gap)"],
+      "complaint_themes": [],
+      "distribution_channels_observed": ["ASO"]
+    },
+    {
+      "name": "India Govt Job Finder (iOS)",
+      "platform": "iOS",
+      "estimated_users": "Small",
+      "app_store_rating": 0,
+      "review_count": 0,
+      "last_updated": "2025-2026",
+      "pricing": "Listing shows IAP $2.99/mo and $4.99/yr while text claims '100% free, no subscriptions' — contradictory",
+      "pricing_model": "freemium (unclear)",
+      "top_features": ["Real-time alerts SSC/UPSC/IBPS", "Location/qualification/category filters", "Eligibility details in job pages"],
+      "top_complaints": ["Not mined"],
+      "complaint_themes": [],
+      "distribution_channels_observed": ["ASO (US/IN App Store)"]
+    },
+    {
+      "name": "Naukri Alert: Govt Job App (iOS, Sep 2025)",
+      "platform": "iOS",
+      "estimated_users": "Small",
+      "app_store_rating": 0,
+      "review_count": 0,
+      "last_updated": "2025-2026",
+      "pricing": "Free with In-App Purchases (price not visible)",
+      "pricing_model": "freemium",
+      "top_features": ["Live alerts SSC/Railway/Bank/Police", "Save jobs + deadline reminders", "Filters"],
+      "top_complaints": ["Not mined"],
+      "complaint_themes": [],
+      "distribution_channels_observed": ["ASO"]
+    },
+    {
+      "name": "Sarkari Job Alert (NaukriLatest) / FreeJobAlert app (~2.4-2.5M installs) / EasyShiksha",
+      "platform": "Android (+iOS for EasyShiksha)",
+      "estimated_users": "FreeJobAlert ~2.4-2.5M installs (AppGoblin est.); others small-medium",
+      "app_store_rating": 0,
+      "review_count": 5200,
+      "last_updated": "Active",
+      "pricing": "Free, ad-supported",
+      "pricing_model": "ads",
+      "top_features": ["Qualification/state filters", "Repeated last-date reminders (NaukriLatest listing)", "Admit card / result lists"],
+      "top_complaints": ["Noise/ads; no age-on-cutoff or category-relaxation matching (inferred)"],
+      "complaint_themes": ["noise", "no true personalization"],
+      "distribution_channels_observed": ["SEO (freejobalert.com)", "ASO keyword stuffing"]
+    },
+    {
+      "name": "TrueJobs (web tools incl. Application Status Tracker, eligibility checker, rejection guides)",
+      "platform": "Web",
+      "estimated_users": "Unknown",
+      "app_store_rating": 0,
+      "review_count": 0,
+      "last_updated": "2026 (blog active)",
+      "pricing": "Free as far as visible; any premium pricing not found",
+      "pricing_model": "free/ads",
+      "top_features": ["Application status tracker (web)", "Eligibility checker", "Form-mistake / fee-failed guides"],
+      "top_complaints": ["Not mined"],
+      "complaint_themes": [],
+      "distribution_channels_observed": ["SEO long-tail (rejection, fee-failed, age-limit queries)"]
+    },
+    {
+      "name": "Testbook / Adda247 / PW (incumbent edtechs)",
+      "platform": "Android, iOS, web",
+      "estimated_users": "Testbook 50M+ installs (~879K ratings); Adda247 10M+",
+      "app_store_rating": 4.34,
+      "review_count": 879105,
+      "last_updated": "Active",
+      "pricing": "Alerts free; passes ~INR 674-749/yr (Testbook), batches INR 399-1,999 (PW)",
+      "pricing_model": "free alerts -> paid prep",
+      "top_features": ["Notification pages + push for target exams", "Mock tests", "Live classes"],
+      "top_complaints": ["Sales calls/upsell", "Bugs (8.7% of 3,000 Testbook reviews per Quash)", "Refunds"],
+      "complaint_themes": ["sales pressure", "reliability", "refunds"],
+      "distribution_channels_observed": ["SEO", "YouTube", "Telegram", "ASO", "paid"]
+    }
+  ],
+  "indirect_competitors": [
+    {"name": "SarkariFilled (Chrome extension; Android in testing)", "approach": "Free eligibility check + stores details and autofills official forms; flags unfilled fields", "why_users_choose_it": "Removes form-filling effort and some errors for free; solo-built — proves the pre-submit space is being entered by other indies"},
+    {"name": "Official portals/apps (mySSC with OTR + in-app application since June 2025; board SMS/email)", "approach": "Boards themselves SMS/email admit-card and status updates to registered candidates", "why_users_choose_it": "Authoritative; free; already registered. Weakens the 'post-application tracker' value for boards that notify well"},
+    {"name": "YouTube job-news creators / Telegram-WhatsApp channels", "approach": "Broadcast every admit card, answer key, result", "why_users_choose_it": "Free, habitual, social; cover post-application events too (noisily)"},
+    {"name": "DigiLocker (govt)", "approach": "Free official document vault", "why_users_choose_it": "Official, trusted, free — makes the Pro doc vault a commodity"}
+  ],
+  "substitutes": [
+    {"description": "5-10 Telegram/WhatsApp channels + Googling '<exam> admit card'", "cost": "Free", "friction_level": "low", "switching_cost_to_app": "Must fill a detailed profile; benefit felt only when a match or event arrives"},
+    {"description": "Cyber café/CSC operator who fills the form (INR 30-150) and often tells the candidate about admit cards", "cost": "INR 30-150/form", "friction_level": "medium", "switching_cost_to_app": "Café does the act; app only informs/checks"},
+    {"description": "Board SMS/email + checking the portal before exam season", "cost": "Free", "friction_level": "medium", "switching_cost_to_app": "Low urgency until something is actually missed"},
+    {"description": "Doing nothing", "cost": "Free", "friction_level": "low", "switching_cost_to_app": "Pain is episodic; most users never experience a missed DV slot"}
+  ],
+  "emerging_threats": [
+    {"name": "Edtech incumbents adding 'My applications' tracking", "stage": "announced", "funded": true, "threat_level": "high", "notes": "Not observed yet, but they already hold target-exam profiles for tens of millions; a tracker is a sprint-sized feature. Stage = hypothetical, labelled 'announced' only for schema."},
+    {"name": "Indie entrants (SarkariFilled, GovFitAI, Sarkari Scan, India Govt Job Finder, Naukri Alert)", "stage": "launched", "funded": false, "threat_level": "medium", "notes": "At least 5 small indie products launched 2025-2026 around eligibility/autofill — the angle is obvious to builders; expect copycats of any working feature."},
+    {"name": "Official app consolidation (mySSC; other boards may follow)", "stage": "launched", "funded": true, "threat_level": "medium", "notes": "Board-native status notifications erode lifecycle-tracker value board by board."}
+  ],
+  "review_mining_summary": {
+    "most_common_complaint_across_competitors": "Noise + untrustworthiness (ads, upsell, clone sites, irrelevant alerts) — inferred from secondary sources; no systematic star-bucket mining possible.",
+    "strongest_gap_signal": "No product found combines true eligibility matching (age-on-cutoff with relaxations, domicile) + persistent until-applied reminders + per-application lifecycle tracking. Post-application tracking exists only as a free web tool (TrueJobs).",
+    "competitors_mined": 0
+  },
+  "positioning_gaps": [
+    {"gap_type": "feature", "description": "Per-application lifecycle tracker (city slip -> DV) tied to the user's own applications", "defensibility": "low", "evidence": "Not found in any app; TrueJobs web tracker exists free; incumbents could add it quickly."},
+    {"gap_type": "experience", "description": "Zero-noise feed: only true matches, reminder persists until 'applied'/'not interested', complete what-you-need card", "defensibility": "medium", "evidence": "core_loop_competitors.md: each piece exists separately, not combined; accuracy of per-notification rules is the real moat (operationally hard to copy well, easy to copy badly)."},
+    {"gap_type": "trust", "description": "No ads/upsell/sales calls; every rule linked to official PDF page", "defensibility": "medium", "evidence": "Testbook Trustpilot sales-call complaints; clone-site and fake-notice warnings (v1 file)."},
+    {"gap_type": "price", "description": "Only paid tier in category would be INR 199/yr vs free everything", "defensibility": "low", "evidence": "No competitor visibly monetizes alerts; the gap may exist because there is no WTP."}
+  ],
+  "saturation_score": {
+    "direct_competitor_count": 3,
+    "incumbent_dominance": 3,
+    "funding_in_space": 3,
+    "keyword_saturation": 3,
+    "content_saturation": 3,
+    "total": 15
+  },
+  "market_saturation": "high",
+  "v2_vs_v1_note": "Category saturation is unchanged (15/15). What improved: v2's exact combination (matching + persistence + lifecycle) has no direct app occupant, which lifts competition from 'high, no differentiation' toward 'high but differentiation opportunities exist'. What did not: the differentiation is feature-level (low defensibility) and at least five indie builders entered the eligibility/autofill angle in 2025-26.",
+  "differentiation_opportunities": [
+    "Accuracy as the product: per-notification structured rules with a source link for every rule, versioned for corrigenda",
+    "Lifecycle tracker + clash detector across the user's own applications (nobody does this in-app)",
+    "Hindi-first, one-state depth before all-India",
+    "Fold Form Pakka's pre-submit check into Pro (the only step with observed WTP)"
+  ],
+  "market_insights_sources_used": [
+    "memory/market_insights/govt-exam-alerts-india-apps-2026-11.md",
+    "memory/market_insights/govt-exam-alerts-india-web-search-2026-11.md",
+    "memory/market_insights/govt-exam-alerts-india-pro-tier-economics-2026-11.md"
+  ]
+}
