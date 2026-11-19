@@ -23,7 +23,7 @@ class RuleParsingTest {
         val age = Fixtures.sscGd.age
         val (after, before) = evaluator.baseDobWindow(age, age.limits.single())
         assertEquals(LocalDate.parse(age.printedDobWindow!!.bornOnOrAfter), after)
-        assertEquals(LocalDate.parse(age.printedDobWindow!!.bornOnOrBefore), before)
+        assertEquals(LocalDate.parse(age.printedDobWindow.bornOnOrBefore), before)
         assertEquals(LocalDate.parse("2003-01-02"), after)
         assertEquals(LocalDate.parse("2008-01-01"), before)
     }
