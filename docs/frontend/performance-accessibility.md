@@ -17,11 +17,11 @@ Target devices: Android 8–15, **2 GB RAM**, slow eMMC storage, Mali/PowerVR GP
 ## 2. Size strategy
 
 - **R8 full mode** (AGP default), `isMinifyEnabled = true`, `isShrinkResources = true`; keep rules only for kotlinx.serialization (`@Serializable` generated serializers are handled by the bundled rules), Retrofit (bundled), Firebase (bundled).
-- **Locale filtering:** `androidResources { localeFilters += listOf("en", "hi") }` drops hundreds of KB of library translations (AppCompat, Play services, Material).
+- **Locale filtering:** `androidResources { localeFilters += <enabled locales> }` (en, hi at launch) drops hundreds of KB of library translations; App Bundle language splits deliver only the user's languages as more are enabled. Script fonts are downloadable (0 KB).
 - **No native libraries** (no SQLCipher, no ML Kit) → no ABI splits needed; App Bundle still splits density/language.
 - **No raster images in the app:** vector drawables for ~60 icons and the 2-colour illustrations; no `material-icons-extended`; no Coil/Glide (nothing to load).
 - **Fonts:** Mukta via downloadable fonts (0 KB).
-- **Firebase à la carte:** Auth, Messaging, App Check (Play Integrity), Installations, Crashlytics, Analytics. **Not** Remote Config (we use `/v1/config`), **not** Firestore/Realtime DB, **not** Performance Monitoring (heavy, bytecode instrumentation).
+- **Firebase à la carte:** Auth, Messaging, App Check (Play Integrity), Installations, Crashlytics (opt-in). No Analytics. **Not** Remote Config (we use `/v1/config`), **not** Firestore/Realtime DB, **not** Performance Monitoring (heavy, bytecode instrumentation).
 - **Ads SDK** (free-tier native ad, ads.md) is the largest single dependency: lazy-initialised on first slot scroll-in, never for Pro, excluded from the baseline profile; `AD_ID` permission removed.
 - Track per-dependency cost with `./gradlew :app:dependencies` + `apkanalyzer dex packages` in a monthly check; any new dependency PR must state its size delta.
 
@@ -40,12 +40,12 @@ Target devices: Android 8–15, **2 GB RAM**, slow eMMC storage, Mali/PowerVR GP
   - Avoid `IntrinsicSize`, deep `Box→Column→Box` nesting; flat card layouts.
   - Debug builds enable Compose compiler reports (`composeCompiler { reportsDestination }`) and Layout Inspector recomposition counts; CI fails on new unstable classes in `:core:designsystem`.
 - **Room on the main thread is forbidden** (default); DAO `Flow`s are distinct-until-changed; JSON blobs decoded off-main in mappers.
-- **Low-RAM devices** (`ActivityManager.isLowRamDevice()`): prefetch only 10 match details per sync instead of 20, disable shimmer, OkHttp cache 2 MB.
-- **Background work** is batched and constrained: one unique `sync` job, periodic 12 h; all workers network-constrained except the reminder mirror. No foreground services except WorkManager's expedited fallback on API < 31.
+- **Low-RAM devices** (`ActivityManager.isLowRamDevice()`): apply catalog batches in smaller transactions, stream the snapshot with `JsonReader` (never one big string), disable shimmer, OkHttp cache 2 MB.
+- **Background work** is batched and constrained: one unique `catalog-sync` job (topic-triggered + daily reconcile, which also re-arms reminders and needs no network), on-device backup alarms only for the next 3 R1/R-last slots. No foreground services except WorkManager's expedited fallback on API < 31. Matching a batch costs < 10 ms of CPU.
 
 ## 4. Network resilience
 
-Gzip, ETags, small pages (`limit=100` sync, 20 lists), timeouts tuned for 2G (connect 15 s / read 30 s), exponential backoff with jitter honouring `Retry-After`, never auto-retry non-idempotent calls without the persisted `Idempotency-Key`. Notice bodies (~10–30 KB) only for open matches. Offline UX: cached content + O01 banner, queued actions with a small pending clock icon, pull-to-refresh disabled offline with explanation.
+Gzip, ETags, immutable CDN-cached catalog batches (2–10 KB) and one snapshot on first run (≤ 1 MB gzipped, streamed), timeouts tuned for 2G (connect 15 s / read 30 s), exponential backoff with jitter honouring `Retry-After`, never auto-retry non-idempotent calls without the persisted `Idempotency-Key`. Notice bodies (~10–30 KB) only for open matches. Offline UX: cached content + O01 banner, queued actions with a small pending clock icon, pull-to-refresh disabled offline with explanation.
 
 ## 5. Accessibility
 
@@ -66,36 +66,37 @@ Gzip, ETags, small pages (`limit=100` sync, 20 lists), timeouts tuned for 2G (co
 
 Automated: `composeTestRule` with `enableAccessibilityChecks()` (Accessibility Test Framework) in Compose UI tests for every screen; Android Lint accessibility checks as errors.
 
-## 6. Analytics and crash reporting
+## 6. Metrics and crash reporting (minimal data)
 
-- **Crashlytics** (with NDK off) for crashes and non-fatals (sync failures, verify failures, OEM intent failures). Custom keys: `app_lang`, `oem`, `api_level`, `is_pro` — **no** user id beyond the opaque Firebase UID, no profile fields.
-- **Firebase Analytics**, collection **disabled by default** (`firebase_analytics_collection_enabled=false` in manifest) and enabled only after the `analytics` consent purpose is granted (S03/S11 consent sheet, `recordConsent`). No ad id (`google_analytics_adid_collection_enabled=false`), no automatic screen reporting with PII.
-- Events map 1:1 to PRD metrics:
+- **No Firebase/Google Analytics SDK** (founder decision 5: minimise what leaves the device).
+- **Crashlytics** (NDK off) only after the user opts in on S47/S38 (`setCrashlyticsCollectionEnabled(false)` in the manifest by default); never in minor mode. Custom keys: `app_lang`, `oem`, `api_level`, `is_pro` — no user id, no profile fields, no post ids.
+- **Usage counters** (opt-in, never in minor mode): `UsageCounters.increment(name)` in Room; `TelemetryWorker` sends one identifier-free aggregate per IST day (`postUsageCounters`) and clears it. Counter names map to PRD metrics:
 
-| PRD metric | Events |
+| PRD metric | Counters (per day, no identifiers) + other source |
 | --- | --- |
-| Profile completion ≥ 60 % | `onb_step_view{step}`, `onb_complete{secs}`, `profile_saved{completeness_band}` |
-| Alerts acted on ≥ 50 % | `match_action{type, source: feed/detail/notification_action/whatsapp}` (server also measures) |
-| Notification disable < 15 % | `notif_permission{result}`, `notif_channel_blocked{channel}` |
-| Matches unknown before ≥ 30 % | `job_detail_view{src}` + in-app one-tap survey "क्या आपको पहले से पता था?" (P1) |
-| Wrong verdicts < 1 % | `report_wrong_match{reason}` |
-| 30-day active, paying share | `app_open`, `paywall_view{source}`, `purchase_result{status, plan}`, `trial_started` |
-| Delivery | `self_test_result{status, oem}`, `oem_guide_open{brand, resolved}` |
+| Profile completion ≥ 60 % | `onb_step_{n}`, `onb_complete`, `profile_saved_band_{b}`; Play Console installs as the denominator |
+| Alerts acted on ≥ 50 % | `applied_{src}`, `not_interested_{src}`, `reminder_shown_{push\|backup\|local}` |
+| Notification disable < 15 % | `notif_permission_{granted\|denied}`, `notif_blocked` |
+| Matches unknown before ≥ 30 % | in-app one-tap survey "क्या आपको पहले से पता था?" → `knew_before_{yes\|no}` (P1) |
+| Wrong verdicts < 1 % | `match_shown` vs server-side count of anonymous `reports` |
+| 30-day active, paying share | Play Console retention + server `purchase` rows / `user_entitlement` |
+| Delivery | `self_test_{pass\|timeout}_{oem}`, `backup_fired_without_push` |
 
-Server-side metrics (delivery receipts, actions) are the source of truth; client analytics is for funnels only.
+The server keeps only aggregates (`usage_counter`); nothing is joinable to a person.
 
 ## 7. Feature flags, kill switches, force update
 
-- Source: `getAppConfig` (`features`, `kill_switches`, `maintenance`, `update`, `min_supported_version`, `latest_version`, `oem_guides`, `self_test_interval_days`, `disclaimer`, `support`) — ETag-cached in Room, refreshed every cold start and every 6 h. **No Firebase Remote Config SDK.**
+- Source: `getAppConfig` (`features`, `kill_switches`, `maintenance`, `update`, `min_supported_version`, `latest_version`, `oem_guides`, `self_test_interval_days`, `privacy_notice_version`, `reminder_backup`, `entitlement_token_jwks`, `disclaimer`, `support`) — ETag-cached in Room, refreshed every cold start and every 6 h. **No Firebase Remote Config SDK.**
 - `FeatureFlags` interface in `:core:data` (`isEnabled(Flag.FamilyAlerts)`) combines remote flags with a local debug override screen (debug builds only).
 - Force update: `update = force` or any `426 upgrade_required` → S41 with Play In-App Updates **IMMEDIATE**; `update = soft` → D09 with **FLEXIBLE** update once per 3 days. S41 falls back to a Play Store link when in-app updates are unavailable (sideload, old Play).
 - Maintenance / outage: `config.maintenance` or `getHealth = down` → O03 banner (cache stays usable) or S42 when nothing is cached.
 
 ## 8. Privacy (DPDP Act 2023) and trust
 
-- **Data minimisation:** profile fields only (DOB, category, state, qualification, gender, PwD/ex-serviceman flags, optional phone). No Aadhaar, no documents, no contacts, no location, no ad id. Data Safety form reflects exactly this.
-- **Consent:** purpose-based (`terms_privacy`, `eligibility_processing`, `push_alerts`, `whatsapp_alerts`, `family_alerts`, `analytics`) recorded via `recordConsent` with version + language; `startSession.required_consents` → blocking consent sheet when a policy version changes. Consent text in simple Hindi with English toggle.
-- **Rights:** S38 "मेरा डेटा डाउनलोड करें" (`requestExport` → `getExport` signed URL → `DownloadManager`), "अकाउंट हटाएँ" (D03, 7-day grace with cancel), consent history, withdraw analytics/WhatsApp at any time.
+- **Data minimisation (founder decision 5, ADR-11):** the profile (DOB, category, state, qualification, gender, PwD/ex-serviceman flags) is entered and **kept on the phone**; matching runs locally. No phone number, Aadhaar, documents, contacts, location or ad id. The server gets nothing about a guest; accounts hold only Google uid, purchases, encrypted backup/watch-list. Data safety form: backend security-privacy.md §6.1.
+- **Notice and consent (minimal):** S47 privacy notice before any profile question (one "समझ गया" button, no checkbox wall); `privacy_notice_ack{version, at}` in DataStore, re-shown when `config.privacy_notice_version` changes; account features record `privacy_notice`, `cloud_backup`, `family_link_*` via `recordConsent`. Optional toggles on S47/S38: crash reports, usage counters (both off by default). S13 is our own notification-permission explanation before the system dialog; B17 explains the ad.
+- **Minor mode:** DOB < 18 → no account, sign-in, purchase, trial, backup, family owner, ads, crash reports or counters; everything else works.
+- **Rights:** S38 "मेरा डेटा डाउनलोड करें" (local JSON via SAF + `getMe` summary for accounts), "सब कुछ हटाएँ" (local wipe; + `deleteAccount` with 7-day grace when signed in), backup off, consent withdrawal.
 - **On device:** app-private storage (FBE), backup rules exclude DB and auth state, no logs of PII (Timber trees stripped in release), `HttpLoggingInterceptor` debug-only, screenshots allowed (users share them; no secrets on screen).
 - **Trust UI:** `DisclaimerNote` ("Sarkari Match एक निजी ऐप है, कोई सरकारी ऐप नहीं…") on S03, S21, S39, and the official PDF/source link on every match (PRD NFR). No government emblems/tricolour (Play impersonation policy).
-- **Network security:** HTTPS only (`usesCleartextTraffic=false`), App Check (Play Integrity) on every call; no certificate pinning (operational risk with CDN rotation outweighs benefit for this data).
+- **Network security:** HTTPS only (`usesCleartextTraffic=false`), App Check (Play Integrity) on every non-public call; catalog files verified by `sha256` from `catalog/head`; no certificate pinning (operational risk with CDN rotation outweighs benefit for this data).

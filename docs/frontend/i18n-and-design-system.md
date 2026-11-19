@@ -1,21 +1,33 @@
 # i18n and the design system in code
 
-Sources: `docs/design/02-design-system.md`, `docs/design/tokens.json` (W3C DTCG), component catalogue `docs/design/06-components.md` (when published; until then the "Key components" column of `01-screen-inventory.md`).
+Sources: `docs/design/02-design-system.md`, `docs/design/07-localization.md` (languages, scripts, expansion, RTL), `docs/design/tokens.json` (W3C DTCG; `font.script.*`, `layout.i18n`), component catalogue `docs/design/06-components.md` (when published; until then the "Key components" column of `01-screen-inventory.md`).
 
 ## Part A — Internationalisation
 
-### A1. Languages and resources
+### A1. Languages and resources (13 languages, launch hi + en)
+
+Founder decision 1 (2026-11-19): the architecture supports all major Indian languages; Hindi + English ship first.
 
 | Item | Decision |
 | --- | --- |
-| Languages | Hindi (default for every new user) + English |
-| Resource folders | `values/` = **English** (safe system fallback), `values-hi/` = **Hindi**. On first run, S02 is preselected to Hindi and we call `setApplicationLocales(hi)` — so Hindi is the product default without making Hindi the fallback for unknown locales (design §7). |
-| Per-app language | `AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("hi"))`; `res/xml/locales_config.xml` (`hi`, `en`) + `android:localeConfig` in the manifest so Android 13+ shows the app in system *Settings → App languages*; for API 26–32 the `AppLocalesMetadataHolderService` with `autoStoreLocales=true` persists the choice. `MainActivity` extends `AppCompatActivity` (needed for pre-33 locale switching). |
-| Change at runtime (S40) | Applies instantly (activity recreated by AppCompat); `LanguageController` mirrors the value into DataStore for workers, `FirebaseMessagingService` and notification channel names (no Activity there), then re-creates channels and calls `upsertDevice` (+ `startSession` locale) so server-rendered WhatsApp text follows. |
-| Server content | Every user-visible field is `LocalizedText {hi, en}`; `LocalizedText.pick(lang) = if (lang == EN) en.ifBlank { hi } else hi`. Because both languages are cached in Room, a language switch works offline. |
-| Plurals | `<plurals>` (Hindi: `one`/`other`). E.g. `days_left`: "%d दिन बाकी" — Hindi uses the same form for 1 and many in this phrase, but we still go through plurals for English. |
-| Strings rules | Simple spoken Hindi per design §7 (word list in a lint baseline: "अंतिम तिथि" → "आखिरी तारीख"); no string concatenation — always placeholders (`%1$s`) because word order differs; exam names (SSC CGL, RRB NTPC, DV) are not translated. Lint `MissingTranslation` = error. |
-| Pseudo-locales | `pseudoLocalesEnabled = true` in debug to catch truncation (en-XA) |
+| Languages | `hi` (default for every new user), `en` enabled at launch. Ready in code and resources: `bn`, `mr`, `te`, `ta`, `gu`, `kn`, `or`, `ml`, `pa`, `as`, `ur` (RTL). Which ones are selectable comes from `ReferenceBundle.languages[].status` (`enabled` / `coming_soon`) **∩** the locales compiled into this build; S02/S40 list enabled ones and a non-selectable "जल्द आ रही हैं" list (design 07). |
+| Resource folders | `values/` = **English** (safe system fallback), `values-hi/`, and one folder per language as it is translated: `values-bn/`, `values-mr/`, `values-te/`, `values-ta/`, `values-gu/`, `values-kn/`, `values-or/`, `values-ml/`, `values-pa/`, `values-as/`, `values-ur/`. Strings live per feature module; plurals in `<plurals>`; no concatenation, only positional placeholders (`%1$s`) because word order differs (SOV vs SVO, Urdu RTL). Exam names (SSC CGL, RRB NTPC, DV) are never translated. |
+| Translation workflow | Source of truth = `values/` (en) + `values-hi/` (authored). Other languages: export XLIFF from the string resources → TMS (tool open: Crowdin/Weblate/Tolgee) with LLM draft + native reviewer → import. A language is shipped only when 100 % of strings are reviewed; `MissingTranslation` lint = error for enabled locales only (non-enabled folders may be partial in debug). |
+| Build packaging | `androidResources { localeFilters += listOf(<enabled locales>) }` and `res/xml/locales_config.xml` list **only enabled locales**, so a half-translated language never ships and library translations for other locales are stripped. Enabling a language = add it to both + flip its server status. App Bundle language splits keep each user's download to their languages. |
+| Per-app language | `AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))`; `android:localeConfig` so Android 13+ shows the app in *Settings → App languages*; for API 26–32 `AppLocalesMetadataHolderService` with `autoStoreLocales=true`. `MainActivity` extends `AppCompatActivity`. First run: S02 preselects Hindi (or the device language if it is enabled). |
+| Change at runtime (S40) | Applies instantly (activity recreated); `LanguageController` mirrors the code into DataStore for workers, `FirebaseMessagingService` and notification channel names (no Activity there), re-creates channels with the same ids, triggers a catalog snapshot fetch for the new locale set, and (accounts only) `upsertDevice(locale)` so server-composed account pushes follow. |
+| Server content | `LocalizedText` = `Map<LanguageCode, String>`. `pick(lang)` walks `[lang] + languages[lang].fallback + en` (e.g. mr → hi → en; ta → en → hi; ur → en → hi). The catalog is fetched with `?locales=<that chain>`, so a language switch works offline only for languages already fetched. |
+| Notifications | All push/backup text is built on the device from string resources in the app language (design 05: titles ≤ 45, actions ≤ 15 characters per language); server sends ids only. |
+| Plurals and numbers | `<plurals>` per language (Hindi `one`/`other`; Urdu/Bengali same CLDR sets via ICU). **Western digits everywhere** (design 07), via `-u-nu-latn` locales. |
+| Pseudo-locales | `pseudoLocalesEnabled = true` in debug: `en-XA` (accented, +30 % length) and `ar-XB` (bidi/RTL mirror). Both run in screenshot tests on every PR (testing-ci.md), plus the longest real locale (`ta`) and `ur` once their folders exist. |
+
+### A1a. RTL (Urdu) readiness
+
+- `android:supportsRtl="true"`; Compose uses `LocalLayoutDirection` from the locale automatically. Only `start`/`end` paddings and alignments (lint `RtlHardcoded`, `RtlSymmetry` = error); `Arrangement.Start`, never `Left`.
+- Directional icons use `ImageVector` with `autoMirror = true` (back arrow, chevrons, "open" arrows); non-directional ones (check, bell, Google "G") never mirror (design 06 L4 `MirrorableIcon`).
+- Mixed text: dates, ₹ amounts, exam codes ("SSC CGL 2026") and URLs inside Urdu text are wrapped with `BidiFormatter.unicodeWrap` / Unicode isolates (U+2066…U+2069) so they keep LTR order (design 06 L3 `localizedAnnotatedString`).
+- Number keyboards, progress bars and swipe actions mirror; timelines (S23) run right-to-left.
+- Screenshot tests in `ar-XB` catch any hard-coded left/right before Urdu strings exist.
 
 ### A2. Dates, numbers, money — always IST
 
@@ -53,16 +65,32 @@ fun deadlineTone(daysLeft: Long) = when {
 
 - API calendar dates (`last_date`, `dob`, key dates) are parsed directly as `LocalDate` (IST) and **never** converted through UTC (API README §8). Instants are parsed with `OffsetDateTime` and displayed in IST.
 - `java.time` is available natively from API 26 (our minSdk), so no core-library desugaring and no ThreeTen.
-- Age display ("आपकी उम्र आज: 23 साल 4 महीने") uses `Period.between(dob, todayIst)`. Eligibility itself is computed server-side; the app only formats `RuleExplanation.text` (authoritative) and uses `params` for analytics.
+- Age display ("आपकी उम्र आज: 23 साल 4 महीने") uses `Period.between(dob, todayIst)`. Eligibility is computed **on the device** by `:matching-core`; its `RuleExplanation` lines are rendered from per-language string templates with computed `params` (dates and numbers formatted by `SmFormat` for the app language).
+- `SmFormat.locale(lang)` maps every `LanguageCode` to `Locale.forLanguageTag("<code>-IN-u-nu-latn")` (Urdu: `ur-IN-u-nu-latn`); month names come from CLDR for that language.
 
-### A3. Devanagari fonts and text rendering
+### A3. Fonts per script and text rendering
 
-- **Mukta** via Downloadable Fonts (`androidx.compose.ui:ui-text-google-fonts`, provider `com.google.android.gms.fonts`, certs in `res/values/font_certs.xml`): **0 KB in the APK**. Weights 400/500/600/700 only.
-- Fallback chain: until downloaded, or without GMS, `FontFamily.Default` (Roboto + system Noto Sans Devanagari, present on all Android 8+ devices). Layouts are screenshot-tested with both (testing-ci.md).
-- Warm-up: `MainApplication` calls `FontFamily.Resolver.preload(MuktaFamily)` on a background dispatcher after first frame, so the second screen already has the font; the first frame may use the fallback (no FOIT blocking).
-- We do **not** bundle a subset: a 4-weight Devanagari+Latin subset still costs ~400–600 KB, and the system Noto fallback is good enough for the rare no-GMS phone.
-- Every `TextStyle`: `PlatformTextStyle(includeFontPadding = false)`, `LineHeightStyle(Alignment.Center, Trim.None)`, `letterSpacing = 0.sp`; line heights ≈ 1.5× (matras need room); no fixed text container heights; no ALL CAPS.
-- Notification text and WhatsApp text use the system font (we can't control it) — another reason to keep copy short.
+The family chain per script comes from `tokens.json` `font.script.*` (design 07):
+
+| Script (locales) | Family chain | Line-height × |
+| --- | --- | --- |
+| Latin (en), Devanagari (hi, mr) | Mukta → Noto Sans Devanagari / Roboto | 1.0 |
+| Bengali (bn, as) | Noto Sans Bengali | 1.05 |
+| Telugu (te) | Noto Sans Telugu | 1.15 |
+| Tamil (ta) | Noto Sans Tamil | 1.05 |
+| Gujarati (gu) | Noto Sans Gujarati | 1.0 |
+| Kannada (kn) | Noto Sans Kannada | 1.15 |
+| Odia (or) | Noto Sans Oriya | 1.15 |
+| Malayalam (ml) | Noto Sans Malayalam | 1.1 |
+| Gurmukhi (pa) | Noto Sans Gurmukhi | 1.0 |
+| Arabic/Urdu (ur, RTL) | Noto Nastaliq Urdu → Noto Naskh Arabic | 1.6 |
+
+- All fonts via **Downloadable Fonts** (`androidx.compose.ui:ui-text-google-fonts`, provider `com.google.android.gms.fonts`): **0 KB in the APK**. Only the **active language's** script is requested (plus Latin for exam codes), lazily after the first frame with `FontFamily.Resolver.preload`; switching language triggers the new script's download. Weights 400/500/600/700.
+- Fallback: until downloaded, or without GMS, the system font (Android 8+ ships Noto for every Indic script; Nastaliq may be missing on older phones → Naskh). Layouts are screenshot-tested with fallback and downloaded fonts.
+- `SarkariTheme(locale)` (design 06 L2) builds the `Typography` with the script's family and multiplies every token line height by the script's `lineHeightMultiplier`; sizes stay the same.
+- Every `TextStyle`: `PlatformTextStyle(includeFontPadding = false)`, `LineHeightStyle(Alignment.Center, Trim.None)`, `letterSpacing = 0.sp`; no fixed text container heights; no ALL CAPS; wrap, don't truncate (titles ≤ 3 lines, buttons ≤ 2, chips 1 with tooltip; button rows stack at fontScale ≥ 1.5 or when any label needs 2 lines — `layout.i18n`).
+- Expansion budgets vs English (`layout.i18n.expansionVsEnglish`): up to +60 % for ta/ml, +40 % kn, +35 % te. `en-XA` (+30 %) and `ta` must pass the screenshot suite before a language is enabled.
+- Notification text uses the system font (we can't control it) — another reason for the per-language length limits.
 
 ## Part B — Design tokens → Compose theme
 
@@ -71,7 +99,7 @@ fun deadlineTone(daysLeft: Long) = when {
 | tokens.json | Compose | File (`:core:designsystem/theme`) |
 | --- | --- | --- |
 | `color.light/dark.*` (M3 roles) | `lightColorScheme(...)` / `darkColorScheme(...)` | `Color.kt` |
-| `color.*.ext.*` (success, warning, urgent, today, whatsappBrand) | `@Immutable data class SarkariColors` via `staticCompositionLocalOf` | `SarkariColors.kt` |
+| `color.*.ext.*` (success, warning, urgent, today) | `@Immutable data class SarkariColors` via `staticCompositionLocalOf` | `SarkariColors.kt` |
 | `semantic.*` (verdict, deadline, stage, pro) | `VerdictStyle`, `DeadlineStyle`, `StageStyle` lookups returning container/content/icon | `Semantic.kt` |
 | `font.family` + `font.scale` | `Typography` (12 M3 roles) with Mukta + Devanagari-safe style | `Type.kt` |
 | `space.*` | `@Immutable data class Spacing(xxs=2.dp … sectionGap=24.dp)` via `LocalSpacing` | `Spacing.kt` |
@@ -127,7 +155,7 @@ Two layers: `component/` (generic, model-free — previews and screenshot tests 
 | `SelectableTile`, `RadioListItem`, `ChipGroup`, `SegmentedChoice`, `YesNoToggle`, `ExpandableSection`, `SearchField` | component | S04–S09, S27 | ≥ 48 dp targets, `selectableGroup()` |
 | `StepProgressHeader` | component | S04–S09 | "1/6" announced as "चरण 1, कुल 6" |
 | `DobInputRow` | component | S06 | 3 numeric fields + live age helper |
-| `PhoneField`, `OtpField` | component | S11, S12, S33 | `+91` prefix; OTP single field, `ContentType.SmsOtpCode` |
+| `GoogleSignInButton`, `AccountHeader`, `SignInOfferContent` (design 06 K1–K3) | component | S03, S10, S26, S38, B08, B16 | official Google button colours (`component.googleSignInButton`), never restyled; label from our strings |
 | `SwitchRow`, `SettingsRow`, `InfoRow`, `TimeRangeRow` | component | S26, S28, S32, S38 | |
 | `LanguageOptionCard` | component | S02, S40 | each label in its own script |
 | `IllustrationHeader`, `BulletRow`, `ResultIllustration` | component | S03, S13, S31 | vector only |
@@ -144,7 +172,7 @@ Two layers: `component/` (generic, model-free — previews and screenshot tests 
 | `LifecycleTimeline` / `TimelineStep`, `StageActionCard`, `RescheduleNotice` | domain | S23 | stage tones from `semantic.stage.*` |
 | `ProStatusCard`, `PlanOptionCard`, `BenefitRow`, `PaymentMethodRow`, `PlanSummaryCard` | domain | S26, S30, S32 | prices from Play |
 | `OemStepCard`, `SelfTestStepper`, `HealthCheckRow` | domain | S15, S16, S29 | |
-| `WhatsAppPreviewBubble` | domain | S33 | WhatsApp glyph is the only `whatsappBrand` use |
+| `PrivacyNoticeItem`, `InviteShareCard`, `FamilyLinkRow`, `FamilyFollowingCard`, `ProfileConflictDialog`, `AdNoticeSheet` (design 06 K4–K8, J2) | domain | S47, S48, S34, S49, D10, B17 | QR rendered with a tiny pure-Kotlin encoder (no image loader) |
 | `FamilyMemberRow`, `CertificateRow`, `ValidityBadge`, `ClashCompareCard`, `InboxRow`, `ArchiveRow`, `AgeChanceRow`, `DigestHeader` | domain | P1/P2 screens | built when their screen is built |
 
 Icons: ~60 Material Symbols Rounded glyphs imported as vector drawables (`res/drawable/ic_*.xml`) — **no** `material-icons-extended` (multi-MB). Reference with `ImageVector.vectorResource`.

@@ -32,7 +32,7 @@ Rules (from the Compose stack guidelines we adopted):
 sealed interface UiText {
     data class Res(@StringRes val id: Int, val args: ImmutableList<Any> = persistentListOf()) : UiText
     data class Plural(@PluralsRes val id: Int, val count: Int, val args: ImmutableList<Any> = persistentListOf()) : UiText
-    data class Server(val text: LocalizedText) : UiText        // {hi, en}, falls back to hi
+    data class Server(val text: LocalizedText) : UiText        // map over 13 languages; resolved via languages[].fallback, then en
     data class Raw(val value: String) : UiText
 }
 
@@ -86,7 +86,7 @@ data class MatchCardUi(
     val vacancyLabel: String?,
     val headline: String?,                // "उम्र 24 (सीमा 27, OBC +3)"
     val badges: ImmutableList<BadgeUi>,
-    val pendingSync: Boolean,             // small "सेव हो रहा है" clock icon while action is queued
+    val catalogStale: Boolean,            // catalog not synced for > 24 h (O01 variant); actions are local and never pending
 )
 
 sealed interface HomeAction {
@@ -119,7 +119,7 @@ class HomeViewModel @Inject constructor(
     banners: BannerProvider,
     clock: IstClock,
     private val actions: MatchActionRepository,
-    private val sync: SyncScheduler,
+    private val sync: CatalogSyncScheduler,
     private val paywallMoment: PaywallMomentController,
     private val mapper: MatchCardMapper,           // formatting lives here, unit-tested
     private val savedState: SavedStateHandle,
@@ -145,12 +145,12 @@ class HomeViewModel @Inject constructor(
 
     fun onAction(a: HomeAction) {
         when (a) {
-            HomeAction.Refresh -> viewModelScope.launch { refreshing.value = true; sync.syncNow(SyncReason.PullToRefresh); refreshing.value = false }
+            HomeAction.Refresh -> viewModelScope.launch { refreshing.value = true; sync.syncNow(SyncReason.PullToRefresh) /* catalog head → batches → local matching */; refreshing.value = false }
             is HomeAction.Open -> send(HomeEffect.OpenJob(a.matchId))
             is HomeAction.TapApplied -> sheet.value = HomeSheet.ConfirmApplied(a.matchId)
             is HomeAction.ConfirmApplied -> viewModelScope.launch {
                 sheet.value = null
-                val rec = actions.record(a.matchId, UserAction.Applied(a.feePaid), ActionSource.Feed)   // optimistic, card animates out
+                val rec = actions.record(a.matchId, UserAction.Applied(a.feePaid), ActionSource.Feed)   // local Room write, card animates out
                 send(HomeEffect.ShowUndo(UiText.Res(R.string.applied_saved), rec))
                 paywallMoment.afterApplied()?.let { sheet.value = HomeSheet.PaywallMoment(it) }     // B02 (trial/plans), max 1/7 days
             }
@@ -172,12 +172,12 @@ Screen-level states for S20:
 
 | State | Trigger | UI |
 | --- | --- | --- |
-| `Loading` | first launch after onboarding, Room empty, sync running | 3 skeleton `MatchCard`s (static when reduced motion) |
+| `Loading` | first launch, catalog snapshot still downloading | 3 skeleton `MatchCard`s (static when reduced motion) |
 | `Content` | ≥ 1 open match | `FeedItem`s in `LazyColumn`, `key = item.key`, `contentType = item class`; free tier: one `FeedItem.Ad` last (before footer) when `AdsGate.shouldShow(FeedBottom)` |
 | `Empty(NoMatchesYet)` | profile saved, 0 matches ever | "अभी कोई नौकरी नहीं — नई आते ही बताएँगे" + delivery-health CTA |
 | `Empty(AllCaughtUp)` | matches exist but none open | "सब का जवाब दे दिया ✓" + link to S22 |
 | `Empty(ProfileIncomplete)` | `profile.missing_optional` blocks verdicts | CTA → S27 |
-| `Error` | Room empty and sync failed | retry; never shown when cache exists |
+| `Error` | no catalog yet and the download failed | retry; never shown when cache exists |
 | + `Offline` banner | no network | content stays interactive; actions queue (card shows pending clock) |
 
 ## 3. Example — S21 Job detail (MatchDetail)
@@ -236,7 +236,7 @@ class JobDetailViewModel @Inject constructor(
 }
 ```
 
-S21 states: `Loading` (only if no Room row — e.g. WhatsApp link before first sync) · `Content` with partial sections (summary from `matches` row is enough to render the hero + actions immediately; "What you need" shows a section skeleton until `match_detail` arrives) · `Content` + `Offline` banner · `ReadOnlyEvaluation` · `NotFound` · `Error`. Status variants change the action bar: Applied → "✓ फ़ॉर्म भर दिया · 3 दिसं" + "फ़ॉर्म की टाइमलाइन" (→ S23); Expired → actions hidden; Withdrawn → explanation from the corrigendum + "मेरी प्रोफ़ाइल देखें".
+S21 states: `Loading` (only for a shared `/p/` post missing from the local catalog) · `Content` (everything — why-lines, fee for you, what you need — is computed locally from the catalog and the profile, so it renders fully offline) · `Content` + `Offline` banner · `ReadOnlyEvaluation` · `NotFound` · `Error`. Status variants change the action bar: Applied → "✓ फ़ॉर्म भर दिया · 3 दिसं" + "फ़ॉर्म की टाइमलाइन" (→ S23); Expired → actions hidden; Withdrawn → explanation from the corrigendum + "मेरी प्रोफ़ाइल देखें".
 
 ## 4. Example — S30 Paywall (+ B02)
 
@@ -248,9 +248,9 @@ data class PaywallUiState(
     val entitlement: EntitlementUi,                                     // Free / Trial(endsAt) / Pro(expires) / InGrace / OnHold
     val trialAvailable: Boolean,
     val purchase: PurchaseStep = PurchaseStep.Idle,
-    val upiEnabled: Boolean,                                            // config.features.upi_link_purchase && flavour
+    val isGuest: Boolean,                                               // B16 `pro` once before the Play sheet
     val source: PaywallSource,                                          // AfterApplied | LockedRow | TrialEnding | Profile | DeepLink
-    val billingAvailable: Boolean = true,                               // false: Play missing/unsupported → UPI only or "Play Store अपडेट करें"
+    val billingAvailable: Boolean = true,                               // false: Play missing/unsupported → "Play Store अपडेट करें" (Play Billing is the only path)
 )
 
 @Immutable data class PlanUi(val planId: String, val title: String, val price: String /* "₹199" from Play */,
@@ -261,45 +261,46 @@ sealed interface PurchaseStep {
     data object Idle : PurchaseStep
     data object LaunchingPlay : PurchaseStep          // button spinner; Play sheet O06 is on top
     data object Verifying : PurchaseStep              // server verify (→ S31)
-    data object Pending : PurchaseStep                // Play "pending" (UPI in Play) → S31 Pending
+    data object Pending : PurchaseStep                // Play PENDING (e.g. UPI inside Play) → S31 Pending
     data class Failed(val reason: UiText, val retryable: Boolean) : PurchaseStep
 }
 
 sealed interface PaywallAction {
     data class SelectPlan(val planId: String) : PaywallAction
     data object Buy : PaywallAction
-    data object PayWithUpi : PaywallAction            // B11
     data object Restore : PaywallAction               // → D08
     data object StartTrial : PaywallAction            // B02 trial CTA or S30 "14 दिन मुफ़्त आज़माएँ"; only when trialAvailable
 }
 
 sealed interface PaywallEffect {
     data class LaunchBilling(val params: BillingLaunch) : PaywallEffect   // Activity needed → handled by Route
-    data class OpenUpi(val url: String) : PaywallEffect
+    data class OfferSignIn(val variant: SignInVariant) : PaywallEffect    // B16 `pro` for guests
     data class GoToStatus(val ref: String) : PaywallEffect
 }
 ```
 
 The VM combines `EntitlementRepository.observe()` (Room), `BillingRepository.productDetails(products)` (Play, in-memory, re-queried on resume) and `listProducts` (plan → Play product/base-plan mapping). `Buy` emits `LaunchBilling` because `BillingClient.launchBillingFlow` needs an `Activity`; the Route calls it and the result arrives through `BillingRepository.purchaseUpdates` (a `SharedFlow` owned by the app-scoped billing client, so it survives the Paywall being recreated). See billing.md for the full flow.
 
-**B02 (paywall moment) is not a separate VM**: `PaywallMomentController` (in `:feature:pro`, injected into S20/S21 VMs through an interface in `:core:data`) decides the variant from the `MatchActionResult.paywall` hint and the entitlement:
+**B02 (paywall moment) is not a separate VM**: `PaywallMomentController` (in `:feature:pro`, injected into S20/S21 VMs through an interface in `:core:data`) decides the variant locally from the cached entitlement (`trial_available`; guests count as available), minor mode and the DataStore 7-day rule:
 
 | Situation | B02 variant |
 | --- | --- |
-| *भर दिया*, trial unused (`paywall.variant = trial_offer`); first Applied, or last shown > 7 days ago | "14 दिन मुफ़्त शुरू करें" → `startTrial` → B08 → S33 WhatsApp CTA; "अभी नहीं" → snackbar, S22 lock rows |
+| *भर दिया*, trial unused (`trial_offer`); first Applied, or last shown > 7 days ago | "14 दिन मुफ़्त शुरू करें" → (guest: B16 `pro` or anonymous account) → `startTrial` → B08 (guest: Google save CTA); "अभी नहीं" → snackbar, S22 lock rows |
+| Minor mode | nothing |
 | Trial used, free user (`variant = plans`), last shown > 7 days ago | plans summary → S30 |
 | Pro active | nothing |
 
 ## 5. Onboarding (S04–S10): one VM across steps
 
-`OnboardingViewModel` is scoped to the `OnboardingGraph` back-stack entry (`hiltViewModel(navController.getBackStackEntry<OnboardingGraph>())`), so S04–S09 share one draft. Every field change writes the draft to Room `profile_draft` (debounced 300 ms) → kill-safe. Validation is local (DOB plausible: age 14–60; at least one exam type; OBC → NCL question) and server-side `422 validation_failed.errors[]` are mapped back to the step that owns the field. S10 calls `putProfile` (the user is already an anonymous Firebase user) with a 3 s budget for the skeleton; on timeout/offline it shows `checkEligibilityPreview` result if that succeeds, else "इंटरनेट आने पर नतीजा दिखेगा" and schedules `ProfileSaveWorker`.
+`OnboardingViewModel` is scoped to the `OnboardingGraph` back-stack entry (`hiltViewModel(navController.getBackStackEntry<OnboardingGraph>())`), so S04–S09 share one draft. Every field change writes the draft to Room `profile_draft` (debounced 300 ms) → kill-safe. Validation is local (DOB plausible: age 14–60; at least one exam type; OBC → NCL question). S10 saves the profile to Room and runs `MatchEngine` over the local catalog (< 50 ms); no network and no account are involved. If the first catalog snapshot has not finished downloading (first launch on 2G), S10 shows the skeleton until it lands, then the result; offline with no catalog → "इंटरनेट आने पर नतीजा दिखेगा". A DOB under 18 switches on minor mode (S10 hides the Google save button).
 
 ## 6. Cross-screen state
 
 | Concern | Owner | Exposed as |
 | --- | --- | --- |
-| Pro entitlement | `EntitlementRepository` (Room) | `Flow<Entitlement>`; `isPro` + feature flags used by S22 lock rows, S23, S33–S37 |
-| App language | `LanguageController` (AppCompatDelegate + DataStore mirror) | `Flow<AppLanguage>` |
+| Pro entitlement | `EntitlementRepository` (Room + signed token) | `Flow<Entitlement>`; `isPro` + feature flags used by S22 lock rows, S23, S34–S37 |
+| Account / minor mode | `SessionRepository`, `ProfileRepository.observeIsMinor()` | `Flow<AccountState>` (Guest / Anonymous / Google), `Flow<Boolean>`; gate sign-in, purchase, ads, backup, family, counters |
+| App language | `LanguageController` (AppCompatDelegate + DataStore mirror) | `Flow<LanguageCode>` (13 codes; layout direction follows) |
 | Connectivity | `ConnectivityObserver` (`ConnectivityManager.registerDefaultNetworkCallback`) | `StateFlow<Boolean>` |
 | Remote flags / force update / maintenance | `ConfigRepository` | `StateFlow<AppConfig>` |
 | Global events (force update, signed out, outage) | `AppEvents` (`SharedFlow`, app-scoped) | collected by `MainActivity` → navigation |

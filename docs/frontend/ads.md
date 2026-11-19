@@ -1,8 +1,8 @@
 # Ads (free tier, light)
 
-PRD (Pricing, decided 2026-11-19): free tier shows **one small native ad** at the bottom of the matches feed (S20) and of the daily digest (S44). Pro (any source, including trial and referral) removes ads. Never in reminders, push/WhatsApp/SMS, match detail (S21), the "what you need" card, "why you match" lines, sheets, onboarding, paywall, S22/S23. No interstitial, app-open, rewarded or video ads.
+PRD (Pricing, decided 2026-11-19): free tier shows **one small native ad** at the bottom of the matches feed (S20) and of the daily digest (S44). Pro (any source, including trial and referral) removes ads. Never in reminders, pushes, match detail (S21), the "what you need" card, "why you match" lines, sheets, onboarding, paywall, S22/S23. No interstitial, app-open, rewarded or video ads.
 
-Design: `06-components.md §J1 NativeAdSlot`, inventory O10. API: `AppConfig.ads` + `Entitlement.ads_enabled` (API README §13).
+Design: `06-components.md §J1 NativeAdSlot`, inventory O10. API: `AppConfig.ads` + `Entitlement.ads_enabled` (API README §14). Founder decisions 2026-11-19: ads from day 1, **non-personalised only**, UMP integrated, **no ads in minor mode** (on-device DOB < 18), our own explanation sheet B17 ("विज्ञापन क्यों?", from the slot's "क्यों?" and S47).
 
 ## 1. SDK choice
 
@@ -42,8 +42,8 @@ class GmaNativeAdLoader @Inject constructor(
     }
     override suspend fun load(placement: AdPlacement): AdLoadResult {
         init.await()                                  // first call happens only when the slot is about to scroll in
-        /* NativeAdLoader with request config: non-personalised unless consented, max content rating "G" or "PG",
-           tagForUnderAgeOfConsent when profile age < 18 (we don't show ads then anyway) */
+        /* NativeAdRequest with Google extras Bundle().apply { putInt("npa", 1) } via setGoogleExtrasBundle
+           (Next-Gen migration guide) on EVERY request; max content rating "PG"; never called in minor mode */
         TODO()
     }
 }
@@ -68,14 +68,14 @@ class DefaultAdsGate @Inject constructor(
             e.adsEnabled &&                                        // server: false for Pro incl. trial/referral
             (ads.minAppVersion == null || BuildConfig.VERSION_CODE >= ads.minAppVersion) &&
             n > ads.frequency.hideOnFirstSessions &&               // default 3: no ads during first sessions
-            (age == null || age >= 18) &&
+            (age != null && age >= 18) &&                          // minor mode or no profile → never
             cs != AdConsent.Unknown                                // UMP resolved (NOT_REQUIRED counts)
     }.distinctUntilChanged()
 }
 ```
 
 - **Entitlement is the server's `Entitlement.ads_enabled`** (Room-cached), never a local `isPro` guess. Buying Pro or starting the trial flips it through the verify / action result / sync, and the slot disappears immediately (state recomputes → `AdSlotState.Hidden`).
-- **DPDP:** ads are served non-personalised by default; the app does not send any profile data (DOB, category, state, qualification) to the ad SDK — no custom targeting keys. The privacy policy and Data Safety form list "Advertising (Google AdMob)" with device identifiers as *collected by the SDK*. The consent purpose `ads_personalisation` is reserved in the API (`Consent.purpose`) but never requested in v1 — default stays off.
+- **DPDP:** ads are served non-personalised by default; the app does not send any profile data (DOB, category, state, qualification) to the ad SDK — no custom targeting keys. The privacy policy and Data Safety form list "Advertising (Google AdMob)" with device identifiers as *collected by the SDK*. There is no personalised-ads option and no ads consent purpose; S47 and B17 explain the ad, Pro removes it.
 - **Kill switch:** `AppConfig.ads.enabled = false` (fetched ≤ 15 min) hides every slot and stops loads; `min_app_version` disables a bad SDK build.
 
 ## 4. The ad slot as a feed item
@@ -140,4 +140,4 @@ AdMob console blocks (primary): coaching/test-prep, "sarkari result"-style sites
 - Roborazzi: `NativeAdSlot` Loading/Loaded (fake view) at font scale 1.0/2.0, light/dark.
 - `FakeNativeAdLoader` in `:core:testing`; real SDK only in a manual QA build with test ad unit ids (`ca-app-pub-3940256099942544/…` test units in debug).
 
-Analytics (consent-gated): `ad_slot_view{screen}`, `ad_loaded`, `ad_no_fill`, `ad_click`, `ad_remove_tap`.
+Metrics: AdMob console (impressions, fill, eCPM); with the usage-counter opt-in, daily counts `ad_slot_view`, `ad_remove_tap`, `ads_notice_open` (no identifiers).
