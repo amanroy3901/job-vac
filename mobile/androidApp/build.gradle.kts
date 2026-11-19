@@ -1,8 +1,7 @@
+// Android application shell: MainActivity, Application (Koin start), manifest, launcher icon, splash, flavours.
+// All UI and logic are in the KMP modules (:composeApp, :core:*).
 plugins {
     alias(libs.plugins.sm.android.application)
-    alias(libs.plugins.sm.android.compose)
-    alias(libs.plugins.sm.hilt)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 val enabledLocales = providers.gradleProperty("sm.enabledLocales").get().split(',').map(String::trim)
@@ -11,9 +10,11 @@ android {
     namespace = "com.sarkarimatch.app"
 
     defaultConfig {
-        applicationId = "in.sarkarimatch.app" // placeholder (domain not verified, PRD founder decision 3)
+        applicationId = "in.sarkarimatch.app" // placeholder (domain not verified, PRD founder decision 3); same as the iOS bundle id
         versionCode = 1
         versionName = "0.1.0"
+        // Backend OAuth web client id for Sign in with Google (empty → guest only until configured).
+        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"${providers.gradleProperty("sm.googleServerClientId").getOrElse("")}\"")
     }
 
     // Only enabled locales ship; must match res/xml/locales_config.xml (i18n-and-design-system.md A1).
@@ -56,31 +57,12 @@ android {
 }
 
 dependencies {
-    implementation(projects.core.model)
-    implementation(projects.core.designsystem)
-    implementation(projects.core.network)
-    implementation(projects.core.database)
-    implementation(projects.core.data)
-    implementation(projects.core.notifications)
-    implementation(projects.core.billing)
-    implementation(projects.core.ads)
-    implementation(projects.feature.onboarding)
-    implementation(projects.feature.alerts)
-    implementation(projects.feature.jobs)
-    implementation(projects.feature.applications)
-    implementation(projects.feature.pro)
-    implementation(projects.feature.profile)
-
+    implementation(projects.composeApp)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.splashscreen)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.hilt.navigation.compose)
-    implementation(libs.androidx.profileinstaller)
-    implementation(libs.kotlinx.serialization.json)
-
-    testImplementation(projects.core.testing)
+    implementation(libs.koin.android)
+    implementation(libs.koin.compose.viewmodel)
+    implementation(libs.jb.lifecycle.viewmodel.compose)
 }

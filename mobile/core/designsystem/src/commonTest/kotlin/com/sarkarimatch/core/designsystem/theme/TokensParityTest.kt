@@ -7,18 +7,17 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.junit.Assume.assumeTrue
-import org.junit.Test
-import java.io.File
+import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
  * Every colour role in docs/design/tokens.json must equal the Kotlin theme (i18n-and-design-system.md B1, D11).
  * A token change in design fails CI until Color.kt / SarkariColors.kt are updated, and vice versa.
+ * Common test: runs on the JVM (Android host test) and on the iOS simulator. [TOKENS_JSON] is generated from
+ * docs/design/tokens.json at build time (see build.gradle.kts).
  */
 class TokensParityTest {
-    private val tokens: JsonObject? = System.getProperty("sm.tokensJson")?.let(::File)?.takeIf { it.isFile }
-        ?.let { Json.parseToJsonElement(it.readText()).jsonObject }
+    private val tokens: JsonObject = Json.parseToJsonElement(TOKENS_JSON).jsonObject
 
     private fun flatten(obj: JsonObject, prefix: String = ""): Map<String, String> = buildMap {
         for ((k, v) in obj) {
@@ -32,8 +31,8 @@ class TokensParityTest {
     private fun hex(c: Color): String {
         val argb = c.toArgb().toLong() and 0xFFFFFFFFL
         val alpha = (argb shr 24) and 0xFF
-        val rgb = "%06X".format(argb and 0xFFFFFF)
-        return if (alpha == 0xFFL) "#$rgb" else "#%02X%s".format(alpha, rgb)
+        val rgb = (argb and 0xFFFFFF).toString(16).uppercase().padStart(6, '0')
+        return if (alpha == 0xFFL) "#$rgb" else "#" + alpha.toString(16).uppercase().padStart(2, '0') + rgb
     }
 
     private fun schemeRoles(s: ColorScheme): Map<String, Color> = mapOf(
@@ -72,9 +71,7 @@ class TokensParityTest {
         .flatMap { (name, c) -> listOf("category.$name.container" to c.container, "category.$name.icon" to c.icon) }
 
     private fun check(mode: String, scheme: ColorScheme, ext: SarkariColors) {
-        val json = tokens
-        assumeTrue("tokens.json not found", json != null)
-        val flat = flatten(json!!["color"]!!.jsonObject[mode]!!.jsonObject)
+        val flat = flatten(tokens.getValue("color").jsonObject.getValue(mode).jsonObject)
         val m3 = schemeRoles(scheme)
         val extKotlin = extRoles(ext)
         val mismatches = flat.mapNotNull { (key, value) ->

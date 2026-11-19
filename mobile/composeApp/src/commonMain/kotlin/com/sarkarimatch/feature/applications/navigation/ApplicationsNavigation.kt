@@ -1,13 +1,16 @@
 package com.sarkarimatch.feature.applications.navigation
 
-import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navDeepLink
+import com.sarkarimatch.app.resources.Res
+import com.sarkarimatch.app.resources.apps_applied
+import com.sarkarimatch.app.resources.apps_clash
+import com.sarkarimatch.app.resources.apps_timeline
 import com.sarkarimatch.core.designsystem.component.PlaceholderScreen
-import com.sarkarimatch.feature.applications.R
 import kotlinx.serialization.Serializable
+import org.jetbrains.compose.resources.stringResource
 
 @Serializable data object FormsGraph // tab 2
 @Serializable data object Applied // S22
@@ -18,13 +21,13 @@ import kotlinx.serialization.Serializable
 fun NavGraphBuilder.formsGraph(onBack: () -> Unit) {
     navigation<FormsGraph>(startDestination = Applied) {
         composable<Applied>(deepLinks = listOf(navDeepLink<Applied>(basePath = "sarkarimatch://forms"))) {
-            PlaceholderScreen("S22", stringResource(R.string.apps_applied))
+            PlaceholderScreen("S22", stringResource(Res.string.apps_applied))
         }
         composable<Timeline>(deepLinks = listOf(navDeepLink<Timeline>(basePath = "https://sarkarimatch.in/a"))) {
-            PlaceholderScreen("S23", stringResource(R.string.apps_timeline), onBack = onBack)
+            PlaceholderScreen("S23", stringResource(Res.string.apps_timeline), onBack = onBack)
         }
         composable<Clash>(deepLinks = listOf(navDeepLink<Clash>(basePath = "sarkarimatch://clash"))) {
-            PlaceholderScreen("S37", stringResource(R.string.apps_clash), onBack = onBack)
+            PlaceholderScreen("S37", stringResource(Res.string.apps_clash), onBack = onBack)
         }
     }
 }

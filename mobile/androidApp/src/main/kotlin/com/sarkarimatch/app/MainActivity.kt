@@ -4,48 +4,37 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.runtime.getValue
 import androidx.core.content.edit
 import androidx.core.os.LocaleListCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.sarkarimatch.core.designsystem.component.currentAppLanguage
-import com.sarkarimatch.core.designsystem.theme.SmTheme
+import androidx.lifecycle.lifecycleScope
+import com.sarkarimatch.core.data.prefs.AndroidLanguageController
 import com.sarkarimatch.core.model.AppLanguage
 import com.sarkarimatch.core.notifications.NotificationChannels
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
-/** Single activity. AppCompatActivity for per-app language on API < 33. Edge-to-edge, splash, Compose. */
-@AndroidEntryPoint
+/** Single activity. AppCompatActivity for per-app language on API < 33. Edge-to-edge, splash, shared Compose UI. */
 class MainActivity : AppCompatActivity() {
-    @Inject lateinit var notificationChannels: NotificationChannels
-
-    private val startViewModel: StartViewModel by viewModels()
+    private val notificationChannels: NotificationChannels by inject()
+    private val languageController: AndroidLanguageController by inject()
+    private val startViewModel: StartViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         applyDefaultLanguageOnFirstRun()
+        syncLanguageFromSystem()
         splash.setKeepOnScreenCondition { startViewModel.state.value == StartState.Deciding }
         // Channel names follow the app language; this Activity context carries it on every API level.
         notificationChannels.ensureCreated(this)
 
-        setContent {
-            val start by startViewModel.state.collectAsStateWithLifecycle()
-            SmTheme(script = currentAppLanguage().script) {
-                if (start != StartState.Deciding) {
-                    SmApp(
-                        startOnboarding = start == StartState.Onboarding,
-                        onOnboardingFinished = startViewModel::onOnboardingFinished,
-                    )
-                }
-            }
-        }
+        setContent { App(startViewModel) }
     }
 
     /**
@@ -58,6 +47,14 @@ class MainActivity : AppCompatActivity() {
         prefs.edit { putBoolean(KEY_LOCALE_INITIALISED, true) }
         if (AppCompatDelegate.getApplicationLocales().isEmpty) {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(AppLanguage.DEFAULT.tag))
+        }
+    }
+
+    /** The language may have been changed in system settings (Android 13+ per-app language); mirror it. */
+    private fun syncLanguageFromSystem() {
+        val system = languageController.appCompatLanguage() ?: return
+        lifecycleScope.launch {
+            if (languageController.language.first() != system) languageController.set(system)
         }
     }
 

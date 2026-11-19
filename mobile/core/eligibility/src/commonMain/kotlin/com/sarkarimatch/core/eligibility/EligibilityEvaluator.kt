@@ -6,8 +6,11 @@ import com.sarkarimatch.core.model.LocalizedText
 import com.sarkarimatch.core.model.PercentageBand
 import com.sarkarimatch.core.model.QualificationStatus
 import com.sarkarimatch.core.model.Verdict
-import java.time.LocalDate
-import java.time.Period
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+import kotlinx.datetime.yearsUntil
 
 /**
  * Deterministic on-device evaluator for rule.schema.json v1 (docs/backend/matching-engine.md §3).
@@ -89,14 +92,14 @@ class EligibilityEvaluator(
 
     private fun evaluateAgeFor(age: AgeRule, p: EligibilityProfile, category: Category): RuleLine {
         val cutoff = LocalDate.parse(age.cutoffDate)
-        val ageOnCutoff = Period.between(p.dob, cutoff).years
+        val ageOnCutoff = p.dob.yearsUntil(cutoff)
         val baseParams = mapOf("age" to ageOnCutoff.toString(), "cutoff" to age.cutoffDate)
         val limit = age.limits.firstOrNull { ConditionMatcher.matches(it.`when`, p, category) }
             ?: return RuleLine(RuleKind.AGE, LineResult.CHECK, ReasonCode.AGE_NO_LIMIT_FOR_PROFILE, baseParams)
 
         val g = age.generalExtensionYears
-        val latestDob = cutoff.minusYears(limit.minYears.toLong())
-        if (p.dob.isAfter(latestDob)) {
+        val latestDob = cutoff.minus(limit.minYears, DateTimeUnit.YEAR)
+        if (p.dob > latestDob) {
             return RuleLine(
                 RuleKind.AGE,
                 LineResult.FAIL,
@@ -132,7 +135,7 @@ class EligibilityEvaluator(
         ) + (best.relaxation?.let { mapOf("relaxation" to it.id, "relaxationYears" to it.years.toString()) } ?: emptyMap())
 
         return when {
-            !p.dob.isBefore(best.earliestDob) -> RuleLine(
+            p.dob >= best.earliestDob -> RuleLine(
                 RuleKind.AGE,
                 LineResult.PASS,
                 if (best.relaxation != null) ReasonCode.AGE_OK_WITH_RELAXATION else ReasonCode.AGE_OK,
@@ -156,19 +159,19 @@ class EligibilityEvaluator(
      */
     internal fun earliestDob(cutoff: LocalDate, maxYears: Int, serviceMonths: Int, convention: MaxConvention): LocalDate {
         val years = if (convention == MaxConvention.COMPLETED_YEARS) maxYears + 1 else maxYears
-        return cutoff.minusYears(years.toLong()).minusMonths(serviceMonths.toLong()).plusDays(1)
+        return cutoff.minus(years, DateTimeUnit.YEAR).minus(serviceMonths, DateTimeUnit.MONTH).plus(1, DateTimeUnit.DAY)
     }
 
     /** The unrelaxed window the notice prints ("born not before X and not later than Y"), for the publish validator. */
     fun baseDobWindow(age: AgeRule, limit: AgeLimit): Pair<LocalDate, LocalDate> {
         val cutoff = LocalDate.parse(age.cutoffDate)
-        return earliestDob(cutoff, limit.maxYears, 0, age.maxConvention) to cutoff.minusYears(limit.minYears.toLong())
+        return earliestDob(cutoff, limit.maxYears, 0, age.maxConvention) to cutoff.minus(limit.minYears, DateTimeUnit.YEAR)
     }
 
     // ---------------------------------------------------------------- qualification (§3.2)
 
     internal fun evaluateQualification(q: QualificationRule, p: EligibilityProfile): RuleLine {
-        val mustCompleteBy = q.mustCompleteBy?.let(LocalDate::parse)
+        val mustCompleteBy = q.mustCompleteBy?.let { LocalDate.parse(it) }
         val candidates = q.anyOf.filter { ConditionMatcher.matches(it.`when`, p) }.flatMap { alt ->
             p.qualifications.map { held -> evaluateAlternative(alt, held, q, mustCompleteBy) }
         }
@@ -214,7 +217,7 @@ class EligibilityEvaluator(
         val okCode = if (higher) ReasonCode.QUAL_OK_HIGHER else ReasonCode.QUAL_OK
         return when (held.status) {
             QualificationStatus.COMPLETED ->
-                if (mustCompleteBy != null && held.resultDate != null && held.resultDate.isAfter(mustCompleteBy)) {
+                if (mustCompleteBy != null && held.resultDate != null && held.resultDate > mustCompleteBy) {
                     fail(RuleKind.QUALIFICATION, ReasonCode.QUAL_RESULT_AFTER_DEADLINE, params)
                 } else {
                     RuleLine(RuleKind.QUALIFICATION, LineResult.PASS, okCode, params)
@@ -223,7 +226,7 @@ class EligibilityEvaluator(
                 AppearingPolicy.ALLOWED -> RuleLine(RuleKind.QUALIFICATION, LineResult.PASS, ReasonCode.QUAL_PROVISIONAL, params)
                 AppearingPolicy.NOT_ALLOWED -> fail(RuleKind.QUALIFICATION, ReasonCode.QUAL_APPEARING_NOT_ALLOWED, params)
                 AppearingPolicy.IF_PASSED_BY_DATE ->
-                    if (mustCompleteBy != null && held.resultDate != null && !held.resultDate.isAfter(mustCompleteBy)) {
+                    if (mustCompleteBy != null && held.resultDate != null && held.resultDate <= mustCompleteBy) {
                         RuleLine(RuleKind.QUALIFICATION, LineResult.PASS, ReasonCode.QUAL_PROVISIONAL, params)
                     } else {
                         RuleLine(RuleKind.QUALIFICATION, LineResult.CHECK, ReasonCode.QUAL_APPEARING_CHECK, params)

@@ -1,6 +1,6 @@
 package com.sarkarimatch.core.designsystem.component
 
-import androidx.annotation.DrawableRes
+import org.jetbrains.compose.resources.DrawableResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,7 +33,7 @@ import com.sarkarimatch.core.model.ExamCategoryTile
 @Composable
 fun SmChip(
     text: String,
-    @DrawableRes icon: Int?,
+    icon: DrawableResource?,
     colors: TonePair,
     modifier: Modifier = Modifier,
 ) {
@@ -52,7 +52,7 @@ fun SmChip(
 
 /** Full-width deadline ribbon at the top of an urgent card ("Last day today · until 11 pm"). */
 @Composable
-fun DeadlineRibbon(text: String, @DrawableRes icon: Int, colors: TonePair, modifier: Modifier = Modifier) {
+fun DeadlineRibbon(text: String, icon: DrawableResource, colors: TonePair, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -69,7 +69,7 @@ fun DeadlineRibbon(text: String, @DrawableRes icon: Int, colors: TonePair, modif
 
 /** Fact chip on the sunken background (fee, qualification). */
 @Composable
-fun RowScope.FactChip(text: String, @DrawableRes icon: Int, weight: Float = 1f) {
+fun RowScope.FactChip(text: String, icon: DrawableResource, weight: Float = 1f) {
     Row(
         modifier = Modifier
             .weight(weight)
@@ -109,7 +109,7 @@ fun CategoryTile(tile: ExamCategoryTile, modifier: Modifier = Modifier) {
 @Composable
 fun SectionHeader(
     title: String,
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     count: Int?,
     modifier: Modifier = Modifier,
     tint: Color = MaterialTheme.colorScheme.onSurface,

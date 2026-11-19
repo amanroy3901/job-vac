@@ -7,7 +7,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -16,6 +15,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.sarkarimatch.app.navigation.SmNavHost
+import com.sarkarimatch.app.resources.Res
+import com.sarkarimatch.app.resources.tab_forms
+import com.sarkarimatch.app.resources.tab_jobs
+import com.sarkarimatch.app.resources.tab_profile
 import com.sarkarimatch.core.designsystem.component.SmIcons
 import com.sarkarimatch.core.designsystem.component.SmNavigationBar
 import com.sarkarimatch.core.designsystem.component.SmNavigationItem
@@ -26,12 +29,21 @@ import com.sarkarimatch.feature.jobs.navigation.JobsGraph
 import com.sarkarimatch.feature.profile.navigation.Profile
 import com.sarkarimatch.feature.profile.navigation.ProfileGraph
 import kotlin.reflect.KClass
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /** The three bottom tabs (navigation.md §2): Jobs / My forms / Profile. */
-enum class TopLevelTab(val graph: Any, val graphClass: KClass<*>, val label: Int, val icon: Int, val selectedIcon: Int) {
-    JOBS(JobsGraph, JobsGraph::class, R.string.tab_jobs, SmIcons.WorkOutline, SmIcons.Work),
-    FORMS(FormsGraph, FormsGraph::class, R.string.tab_forms, SmIcons.FormsOutline, SmIcons.Forms),
-    PROFILE(ProfileGraph, ProfileGraph::class, R.string.tab_profile, SmIcons.ProfileOutline, SmIcons.Profile),
+enum class TopLevelTab(
+    val graph: Any,
+    val graphClass: KClass<*>,
+    val label: StringResource,
+    val icon: DrawableResource,
+    val selectedIcon: DrawableResource,
+) {
+    JOBS(JobsGraph, JobsGraph::class, Res.string.tab_jobs, SmIcons.WorkOutline, SmIcons.Work),
+    FORMS(FormsGraph, FormsGraph::class, Res.string.tab_forms, SmIcons.FormsOutline, SmIcons.Forms),
+    PROFILE(ProfileGraph, ProfileGraph::class, Res.string.tab_profile, SmIcons.ProfileOutline, SmIcons.Profile),
 }
 
 @Composable

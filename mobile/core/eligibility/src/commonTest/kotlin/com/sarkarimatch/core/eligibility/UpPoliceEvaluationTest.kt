@@ -19,7 +19,7 @@ class UpPoliceEvaluationTest {
     private val v1 = v2.copy(age = v2.age.copy(generalExtensionYears = 0))
 
     @Test
-    fun `Amit - male GEN UP, 23 on cutoff - not eligible on v1, eligible on v2`() {
+    fun amitMaleGENUP23OnCutoffNotEligibleOnV1EligibleOnV2() {
         val amit = profile("2001-09-15")
         assertEquals(Verdict.NOT_ELIGIBLE, evaluator.evaluate(v1, amit).verdict)
         val result = evaluator.evaluate(v2, amit)
@@ -29,7 +29,7 @@ class UpPoliceEvaluationTest {
     }
 
     @Test
-    fun `Pooja - female GEN Bihar, 26 on cutoff - v1 fail, v2 eligible with UP-domicile advisory`() {
+    fun poojaFemaleGENBihar26OnCutoffV1FailV2EligibleWithUPDomicileAdvisory() {
         val pooja = profile("1999-02-01", gender = Gender.FEMALE, domicile = "BR")
         assertEquals(Verdict.NOT_ELIGIBLE, evaluator.evaluate(v1, pooja).verdict)
         val result = evaluator.evaluate(v2, pooja)
@@ -38,14 +38,14 @@ class UpPoliceEvaluationTest {
     }
 
     @Test
-    fun `gender specific limits - female window is wider than male`() {
+    fun genderSpecificLimitsFemaleWindowIsWiderThanMale() {
         val dob = "1999-02-01" // 26 on cutoff
         assertEquals(Verdict.NOT_ELIGIBLE, evaluator.evaluate(v2, profile(dob, gender = Gender.MALE)).verdict)
         assertEquals(Verdict.ELIGIBLE, evaluator.evaluate(v2, profile(dob, gender = Gender.FEMALE)).verdict)
     }
 
     @Test
-    fun `domicile-conditional relaxation - OBC from UP gets +5, OBC from Bihar does not`() {
+    fun domicileConditionalRelaxationOBCFromUPGets5OBCFromBiharDoesNot() {
         val dob = "1996-01-01" // 29 on cutoff; male limit 22+3=25, +5 → 30
         val upObc = profile(dob, category = Category.OBC, domicile = "UP")
         val brObc = profile(dob, category = Category.OBC, domicile = "BR")
@@ -56,7 +56,7 @@ class UpPoliceEvaluationTest {
     }
 
     @Test
-    fun `male boundaries with the general extension`() {
+    fun maleBoundariesWithTheGeneralExtension() {
         // v2 male: 22 + 3 = 25 not attained → born on/after 2000-07-02; min 18 → on/before 2007-07-01.
         assertEquals(Verdict.ELIGIBLE, evaluator.evaluate(v2, profile("2000-07-02")).verdict)
         assertEquals(Verdict.NOT_ELIGIBLE, evaluator.evaluate(v2, profile("2000-07-01")).verdict)
@@ -65,7 +65,7 @@ class UpPoliceEvaluationTest {
     }
 
     @Test
-    fun `qualification - 12th appearing not allowed, 10th only fails, graduate passes`() {
+    fun qualification12thAppearingNotAllowed10thOnlyFailsGraduatePasses() {
         val appearing = profile("2003-01-01", quals = listOf(HeldQualification("class12", QualificationStatus.FINAL_YEAR)))
         val appearingResult = evaluator.evaluate(v2, appearing)
         assertEquals(Verdict.NOT_ELIGIBLE, appearingResult.verdict)
@@ -82,7 +82,7 @@ class UpPoliceEvaluationTest {
     }
 
     @Test
-    fun `targeting - state post reaches UP domicile or UP in job states only`() {
+    fun targetingStatePostReachesUPDomicileOrUPInJobStatesOnly() {
         val up = profile("2003-01-01", domicile = "UP")
         val br = profile("2003-01-01", domicile = "BR")
         assertTrue(evaluator.isTargeted(v2, up))
@@ -91,7 +91,7 @@ class UpPoliceEvaluationTest {
     }
 
     @Test
-    fun `physical standards are advisory and never change the verdict`() {
+    fun physicalStandardsAreAdvisoryAndNeverChangeTheVerdict() {
         val result = evaluator.evaluate(v2, profile("2003-01-01"))
         assertEquals(Verdict.ELIGIBLE, result.verdict)
         assertTrue(result.lines.any { it.rule == RuleKind.PHYSICAL && it.result == LineResult.INFO })

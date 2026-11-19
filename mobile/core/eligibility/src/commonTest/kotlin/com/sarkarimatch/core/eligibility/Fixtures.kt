@@ -3,12 +3,12 @@ package com.sarkarimatch.core.eligibility
 import com.sarkarimatch.core.model.Category
 import com.sarkarimatch.core.model.Gender
 import com.sarkarimatch.core.model.QualificationStatus
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
-/** The two worked examples from docs/backend/examples, copied as test resources. */
+/** The worked examples from docs/backend/examples, embedded at build time ([RuleFixtureSources], generated). */
 object Fixtures {
     fun rule(name: String): RuleDocument {
-        val text = checkNotNull(javaClass.getResource("/rules/$name.rule.json")) { "missing fixture $name" }.readText()
+        val text = checkNotNull(RuleFixtureSources.byName[name]) { "missing fixture $name" }
         return RuleJson.decode(text)
     }
 

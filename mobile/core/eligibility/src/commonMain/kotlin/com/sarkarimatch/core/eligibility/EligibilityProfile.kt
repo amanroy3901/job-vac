@@ -7,7 +7,7 @@ import com.sarkarimatch.core.model.GovtEmployee
 import com.sarkarimatch.core.model.MaritalStatus
 import com.sarkarimatch.core.model.PercentageBand
 import com.sarkarimatch.core.model.QualificationStatus
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /** One qualification the user holds or is studying for (S05). */
 data class HeldQualification(

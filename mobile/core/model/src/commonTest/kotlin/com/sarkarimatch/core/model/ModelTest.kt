@@ -1,11 +1,13 @@
 package com.sarkarimatch.core.model
 
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ModelTest {
     @Test
-    fun `localized text falls back along the chain then to English`() {
+    fun localizedTextFallsBackAlongTheChainThenToEnglish() {
         val text = LocalizedText.of("hi" to "नमस्ते", "en" to "Hello")
         assertEquals("नमस्ते", text.pick(AppLanguage.HI))
         assertEquals("नमस्ते", text.pick(AppLanguage.MR)) // mr → hi
@@ -13,7 +15,7 @@ class ModelTest {
     }
 
     @Test
-    fun `deadline tones`() {
+    fun deadlineTones() {
         assertEquals(DeadlineTone.Closed, deadlineTone(-1))
         assertEquals(DeadlineTone.Today, deadlineTone(0))
         assertEquals(DeadlineTone.Urgent, deadlineTone(3))
@@ -22,7 +24,7 @@ class ModelTest {
     }
 
     @Test
-    fun `only hindi and english launch, hindi is default`() {
+    fun onlyHindiAndEnglishLaunchHindiIsDefault() {
         assertEquals(listOf(AppLanguage.HI, AppLanguage.EN), AppLanguage.launched)
         assertEquals(AppLanguage.HI, AppLanguage.DEFAULT)
     }
@@ -30,16 +32,29 @@ class ModelTest {
 
 class SmFormatTest {
     @Test
-    fun `rupees use Indian grouping and western digits`() {
+    fun rupeesUseIndianGroupingAndWesternDigits() {
         assertEquals("₹100", SmFormat.rupees(10_000))
         assertEquals("₹1,00,000", SmFormat.rupees(10_000_000))
         assertEquals("39,481", SmFormat.count(39_481))
     }
 
     @Test
-    fun `hindi dates keep western digits`() {
-        val text = SmFormat.longDate(java.time.LocalDate.of(2026, 8, 24), AppLanguage.HI)
-        kotlin.test.assertTrue(text.startsWith("24 "), text)
-        kotlin.test.assertTrue(text.endsWith(" 2026"), text)
+    fun hindiDatesKeepWesternDigits() {
+        assertEquals("24 अगस्त 2026", SmFormat.longDate(LocalDate(2026, 8, 24), AppLanguage.HI))
+        assertEquals("24 Aug 2026", SmFormat.longDate(LocalDate(2026, 8, 24), AppLanguage.EN))
+        assertEquals("21 नवं", SmFormat.shortDate(LocalDate(2026, 11, 21), AppLanguage.HI))
+        assertEquals("21 Nov", SmFormat.shortDate(LocalDate(2026, 11, 21), AppLanguage.EN))
+    }
+
+    @Test
+    fun daysLeftUsesCalendarDays() {
+        assertEquals(2L, Ist.daysLeft(LocalDate(2026, 12, 30), LocalDate(2027, 1, 1)))
+        assertEquals(-1L, Ist.daysLeft(LocalDate(2026, 3, 1), LocalDate(2026, 2, 28)))
+    }
+
+    @Test
+    fun hour12() {
+        assertEquals(11, SmFormat.hour12(LocalTime(23, 0)))
+        assertEquals(12, SmFormat.hour12(LocalTime(0, 30)))
     }
 }

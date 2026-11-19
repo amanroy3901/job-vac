@@ -5,12 +5,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
-import com.sarkarimatch.app.R
+import com.sarkarimatch.app.resources.Res
+import com.sarkarimatch.app.resources.force_update
+import com.sarkarimatch.app.resources.outage
 import com.sarkarimatch.core.designsystem.component.PlaceholderScreen
 import com.sarkarimatch.core.model.SetupMode
 import com.sarkarimatch.feature.alerts.navigation.AlertSettings
@@ -34,6 +35,7 @@ import com.sarkarimatch.feature.pro.navigation.proDestinations
 import com.sarkarimatch.feature.profile.navigation.familyRootDestinations
 import com.sarkarimatch.feature.profile.navigation.profileGraph
 import kotlinx.serialization.Serializable
+import org.jetbrains.compose.resources.stringResource
 
 @Serializable data object MainGraph
 @Serializable data object ForceUpdate // S41
@@ -100,7 +102,7 @@ fun SmNavHost(
             proDestinations(onBack = back)
         }
 
-        composable<ForceUpdate> { PlaceholderScreen("S41", stringResource(R.string.force_update)) }
-        composable<Outage> { PlaceholderScreen("S42", stringResource(R.string.outage)) }
+        composable<ForceUpdate> { PlaceholderScreen("S41", stringResource(Res.string.force_update)) }
+        composable<Outage> { PlaceholderScreen("S42", stringResource(Res.string.outage)) }
     }
 }

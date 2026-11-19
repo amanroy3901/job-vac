@@ -1,6 +1,5 @@
 package com.sarkarimatch.feature.jobs.ui
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,13 +31,23 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sarkarimatch.app.resources.Res
+import com.sarkarimatch.app.resources.jobs_app_name
+import com.sarkarimatch.app.resources.jobs_disclaimer
+import com.sarkarimatch.app.resources.jobs_greeting
+import com.sarkarimatch.app.resources.jobs_greeting_subtitle
+import com.sarkarimatch.app.resources.jobs_notifications
+import com.sarkarimatch.app.resources.jobs_pill_later
+import com.sarkarimatch.app.resources.jobs_pill_three_days
+import com.sarkarimatch.app.resources.jobs_pill_today
+import com.sarkarimatch.app.resources.jobs_section_later
+import com.sarkarimatch.app.resources.jobs_section_three_days
+import com.sarkarimatch.app.resources.jobs_section_today
+import com.sarkarimatch.app.resources.jobs_waiting_for_you
 import com.sarkarimatch.core.designsystem.component.SectionHeader
 import com.sarkarimatch.core.designsystem.component.SmIcon
 import com.sarkarimatch.core.designsystem.component.SmIcons
@@ -50,14 +59,18 @@ import com.sarkarimatch.core.designsystem.theme.tabular
 import com.sarkarimatch.core.model.MatchCardUi
 import com.sarkarimatch.core.model.PaywallSource
 import com.sarkarimatch.core.model.SmFormat
-import com.sarkarimatch.feature.jobs.R
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun HomeRoute(
     onOpenJob: (String) -> Unit,
     onOpenPaywall: (PaywallSource) -> Unit,
     onOpenDeliveryHealth: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel(),
+    viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     HomeScreen(
@@ -87,9 +100,9 @@ fun HomeScreen(
     ) {
         item(key = "top") { TopBar(onOpenAlerts, hasUnread = state.dueToday.isNotEmpty()) }
         item(key = "greeting") { GreetingCard(state) }
-        section("today", R.string.jobs_section_today, SmIcons.Alarm, state.dueToday, state, onOpenJob, onApplied, onLater, urgent = true)
-        section("three", R.string.jobs_section_three_days, SmIcons.Timer, state.withinThreeDays, state, onOpenJob, onApplied, onLater)
-        section("later", R.string.jobs_section_later, SmIcons.Event, state.later, state, onOpenJob, onApplied, onLater)
+        section("today", Res.string.jobs_section_today, SmIcons.Alarm, state.dueToday, state, onOpenJob, onApplied, onLater, urgent = true)
+        section("three", Res.string.jobs_section_three_days, SmIcons.Timer, state.withinThreeDays, state, onOpenJob, onApplied, onLater)
+        section("later", Res.string.jobs_section_later, SmIcons.Event, state.later, state, onOpenJob, onApplied, onLater)
         item(key = "disclaimer") {
             Row(
                 Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
@@ -102,7 +115,7 @@ fun HomeScreen(
                     modifier = Modifier.padding(top = 2.dp),
                 )
                 Text(
-                    stringResource(R.string.jobs_disclaimer),
+                    stringResource(Res.string.jobs_disclaimer),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -114,8 +127,8 @@ fun HomeScreen(
 @Suppress("LongParameterList")
 private fun LazyListScope.section(
     key: String,
-    title: Int,
-    @DrawableRes icon: Int,
+    title: StringResource,
+    icon: DrawableResource,
     cards: List<MatchCardUi>,
     state: HomeUiState,
     onOpenJob: (String) -> Unit,
@@ -164,7 +177,7 @@ private fun TopBar(onOpenAlerts: () -> Unit, hasUnread: Boolean) {
             SmIcon(SmIcons.BellActive, tint = SmTheme.colors.onMarigold, size = 18.dp)
         }
         Text(
-            stringResource(R.string.jobs_app_name),
+            stringResource(Res.string.jobs_app_name),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier
                 .padding(start = 8.dp)
@@ -173,7 +186,7 @@ private fun TopBar(onOpenAlerts: () -> Unit, hasUnread: Boolean) {
         )
         Box {
             IconButton(onClick = onOpenAlerts) {
-                SmIcon(SmIcons.Bell, contentDescription = stringResource(R.string.jobs_notifications))
+                SmIcon(SmIcons.Bell, contentDescription = stringResource(Res.string.jobs_notifications))
             }
             if (hasUnread) {
                 Box(
@@ -207,12 +220,12 @@ private fun GreetingCard(state: HomeUiState) {
             .fillMaxWidth()
             .padding(16.dp),
     ) {
-        Text(stringResource(R.string.jobs_greeting), style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(Res.string.jobs_greeting), style = MaterialTheme.typography.headlineSmall)
         Text(
             stringResource(
-                R.string.jobs_greeting_subtitle,
+                Res.string.jobs_greeting_subtitle,
                 SmFormat.shortDate(state.today, language),
-                pluralStringResource(R.plurals.jobs_waiting_for_you, state.waitingCount, state.waitingCount),
+                pluralStringResource(Res.plurals.jobs_waiting_for_you, state.waitingCount, state.waitingCount),
             ),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -220,11 +233,11 @@ private fun GreetingCard(state: HomeUiState) {
         Spacer(Modifier.height(12.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             if (state.dueToday.isNotEmpty()) {
-                Pill(stringResource(R.string.jobs_pill_today, state.dueToday.size), SmIcons.Alarm, colors.today, colors.onToday)
+                Pill(stringResource(Res.string.jobs_pill_today, state.dueToday.size), SmIcons.Alarm, colors.today, colors.onToday)
             }
             if (state.withinThreeDays.isNotEmpty()) {
                 Pill(
-                    stringResource(R.string.jobs_pill_three_days, state.withinThreeDays.size),
+                    stringResource(Res.string.jobs_pill_three_days, state.withinThreeDays.size),
                     SmIcons.Timer,
                     colors.urgentContainer,
                     colors.onUrgentContainer,
@@ -232,7 +245,7 @@ private fun GreetingCard(state: HomeUiState) {
             }
             if (state.later.isNotEmpty()) {
                 Pill(
-                    stringResource(R.string.jobs_pill_later, state.later.size),
+                    stringResource(Res.string.jobs_pill_later, state.later.size),
                     SmIcons.Event,
                     colors.card,
                     MaterialTheme.colorScheme.onSurface,
@@ -243,7 +256,7 @@ private fun GreetingCard(state: HomeUiState) {
 }
 
 @Composable
-private fun Pill(text: String, @DrawableRes icon: Int, container: Color, content: Color) {
+private fun Pill(text: String, icon: DrawableResource, container: Color, content: Color) {
     Row(
         Modifier
             .heightIn(min = 32.dp)

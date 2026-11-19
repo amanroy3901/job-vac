@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher label only; all UI strings are Compose Multiplatform resources in :composeApp / :core:designsystem. -->
 <resources>
     <string name="app_name" translatable="false">Sarkari Match</string>
-    <string name="tab_jobs">Jobs</string>
-    <string name="tab_forms">My forms</string>
-    <string name="tab_profile">Profile</string>
-    <string name="force_update">Update the app</string>
-    <string name="outage">Service is down for a while</string>
 </resources>

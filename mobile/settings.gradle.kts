@@ -16,7 +16,13 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
         mavenCentral()
     }
 }
@@ -24,14 +30,14 @@ dependencyResolutionManagement {
 rootProject.name = "sarkari-match"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
-// Pure Kotlin/JVM modules: always included, buildable and testable without the Android SDK.
+// Pure Kotlin Multiplatform modules (jvm + iOS targets): always included, testable without the Android SDK.
 include(":core:model")
 include(":core:eligibility")
 
 /*
- * Android modules need the Android SDK and Google Maven (AGP, AndroidX). They are skipped when
+ * Modules with an Android target need the Android SDK and Google Maven (AGP, AndroidX). They are skipped when
  * -Psm.jvmOnly=true is passed, or when no SDK can be found (no ANDROID_HOME / ANDROID_SDK_ROOT and no
- * sdk.dir in local.properties). Example: ./gradlew -Psm.jvmOnly=true :core:eligibility:test
+ * sdk.dir in local.properties). Example: ./gradlew -Psm.jvmOnly=true :core:eligibility:jvmTest
  */
 val jvmOnlyProperty = providers.gradleProperty("sm.jvmOnly").orNull?.toBoolean()
 val sdkFound: Boolean = run {
@@ -51,24 +57,13 @@ val includeAndroid = when (jvmOnlyProperty) {
 }
 
 if (includeAndroid) {
-    include(":app")
-    include(":core:designsystem")
-    include(":core:network")
-    include(":core:database")
-    include(":core:data")
-    include(":core:notifications")
-    include(":core:billing")
-    include(":core:ads")
-    include(":core:testing")
-    include(":feature:onboarding")
-    include(":feature:alerts")
-    include(":feature:jobs")
-    include(":feature:applications")
-    include(":feature:pro")
-    include(":feature:profile")
+    include(":core:designsystem") // KMP + CMP: Marigold theme, components, fonts, icons
+    include(":core:data") //         KMP: Ktor API, Room KMP, DataStore, repositories, platform service interfaces
+    include(":composeApp") //        KMP + CMP: all screens + navigation; produces the iOS framework "ComposeApp"
+    include(":androidApp") //        Android application shell (MainActivity, Application, manifest)
 } else {
     logger.warn(
-        "Sarkari Match: Android SDK not found or -Psm.jvmOnly=true; only the JVM modules " +
+        "Sarkari Match: Android SDK not found or -Psm.jvmOnly=true; only the pure KMP modules " +
             "(:core:model, :core:eligibility) are included in this build.",
     )
 }

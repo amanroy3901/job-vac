@@ -17,6 +17,7 @@ kotlin {
     }
 }
 
+// No Android dependencies here, so the JVM-only build (no Google Maven, no SDK) can still compile it.
 dependencies {
     compileOnly(libs.kotlin.gradlePlugin)
     compileOnly(libs.detekt.gradlePlugin)
@@ -31,9 +32,9 @@ tasks {
 
 gradlePlugin {
     plugins {
-        register("jvmLibrary") {
-            id = libs.plugins.sm.jvm.library.get().pluginId
-            implementationClass = "com.sarkarimatch.buildlogic.JvmLibraryConventionPlugin"
+        register("kmpLibrary") {
+            id = libs.plugins.sm.kmp.library.get().pluginId
+            implementationClass = "com.sarkarimatch.buildlogic.KmpLibraryConventionPlugin"
         }
     }
 }

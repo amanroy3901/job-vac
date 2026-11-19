@@ -1,19 +1,30 @@
 package com.sarkarimatch.feature.onboarding.navigation
 
-import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navDeepLink
 import androidx.navigation.toRoute
+import com.sarkarimatch.app.resources.Res
+import com.sarkarimatch.app.resources.onb_category
+import com.sarkarimatch.app.resources.onb_dob
+import com.sarkarimatch.app.resources.onb_edit_profile
+import com.sarkarimatch.app.resources.onb_exams
+import com.sarkarimatch.app.resources.onb_more
+import com.sarkarimatch.app.resources.onb_privacy
+import com.sarkarimatch.app.resources.onb_qualification
+import com.sarkarimatch.app.resources.onb_result
+import com.sarkarimatch.app.resources.onb_state
+import com.sarkarimatch.app.resources.onb_welcome
 import com.sarkarimatch.core.designsystem.component.PlaceholderScreen
 import com.sarkarimatch.core.designsystem.component.continueLabel
 import com.sarkarimatch.core.model.ProfileField
 import com.sarkarimatch.core.model.SetupMode
-import com.sarkarimatch.feature.onboarding.R
 import com.sarkarimatch.feature.onboarding.ui.LanguageRoute
 import kotlinx.serialization.Serializable
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 // Public routes (navigation.md §3). Args are IDs/enums only.
 @Serializable data object OnboardingGraph
@@ -52,14 +63,14 @@ fun NavGraphBuilder.onboardingGraph(
         composable<Onb.Language> {
             LanguageRoute(onContinue = { navController.navigate(Onb.Welcome) })
         }
-        step<Onb.Welcome>("S03", R.string.onb_welcome, navController) { onOpenPrivacy() }
-        step<Onb.Exams>("S04", R.string.onb_exams, navController) { navController.navigate(Onb.Qualification) }
-        step<Onb.Qualification>("S05", R.string.onb_qualification, navController) { navController.navigate(Onb.Dob) }
-        step<Onb.Dob>("S06", R.string.onb_dob, navController) { navController.navigate(Onb.Category) }
-        step<Onb.Category>("S07", R.string.onb_category, navController) { navController.navigate(Onb.State) }
-        step<Onb.State>("S08", R.string.onb_state, navController) { navController.navigate(Onb.More) }
-        step<Onb.More>("S09", R.string.onb_more, navController) { navController.navigate(Onb.Result) }
-        step<Onb.Result>("S10", R.string.onb_result, navController, onProfileDone)
+        step<Onb.Welcome>("S03", Res.string.onb_welcome, navController) { onOpenPrivacy() }
+        step<Onb.Exams>("S04", Res.string.onb_exams, navController) { navController.navigate(Onb.Qualification) }
+        step<Onb.Qualification>("S05", Res.string.onb_qualification, navController) { navController.navigate(Onb.Dob) }
+        step<Onb.Dob>("S06", Res.string.onb_dob, navController) { navController.navigate(Onb.Category) }
+        step<Onb.Category>("S07", Res.string.onb_category, navController) { navController.navigate(Onb.State) }
+        step<Onb.State>("S08", Res.string.onb_state, navController) { navController.navigate(Onb.More) }
+        step<Onb.More>("S09", Res.string.onb_more, navController) { navController.navigate(Onb.Result) }
+        step<Onb.Result>("S10", Res.string.onb_result, navController, onProfileDone)
     }
 }
 
@@ -72,14 +83,14 @@ fun NavGraphBuilder.onboardingSharedDestinations(
         val mode = entry.toRoute<Privacy>().mode
         PlaceholderScreen(
             screenId = "S47",
-            title = stringResource(R.string.onb_privacy),
+            title = stringResource(Res.string.onb_privacy),
             onBack = navController::popBackStack,
             primaryLabel = continueLabel(),
             onPrimary = { onPrivacyAcknowledged(mode) },
         )
     }
     composable<EditProfile> {
-        PlaceholderScreen("S27", stringResource(R.string.onb_edit_profile), onBack = navController::popBackStack)
+        PlaceholderScreen("S27", stringResource(Res.string.onb_edit_profile), onBack = navController::popBackStack)
     }
     composable<LanguageSettings> {
         LanguageRoute(onContinue = navController::popBackStack, onBack = navController::popBackStack)
@@ -88,7 +99,7 @@ fun NavGraphBuilder.onboardingSharedDestinations(
 
 private inline fun <reified T : Any> NavGraphBuilder.step(
     id: String,
-    title: Int,
+    title: StringResource,
     navController: NavController,
     noinline onNext: () -> Unit,
 ) {

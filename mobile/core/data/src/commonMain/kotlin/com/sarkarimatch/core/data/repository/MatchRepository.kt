@@ -7,8 +7,8 @@ import com.sarkarimatch.core.model.MatchCardUi
 import com.sarkarimatch.core.model.Verdict
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import java.time.LocalDate
-import javax.inject.Inject
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.plus
 
 /** Open matches for the S20 feed. Real implementation (Room + MatchEngine) arrives with FE-13/FE-16. */
 interface MatchRepository {
@@ -19,9 +19,9 @@ interface MatchRepository {
  * Sample feed so the skeleton renders like Direction C (the same three jobs as docs/design/directions). Dates are
  * relative to today (IST) so the ribbons always show "today", "2 days left" and a calm card.
  */
-class SampleMatchRepository @Inject constructor() : MatchRepository {
+class SampleMatchRepository : MatchRepository {
     override fun observeFeed(): Flow<List<MatchCardUi>> {
-        val today = LocalDate.now(Ist.ZONE)
+        val today = Ist.today()
         return flowOf(
             listOf(
                 MatchCardUi(
@@ -46,7 +46,7 @@ class SampleMatchRepository @Inject constructor() : MatchRepository {
                     verdict = Verdict.ELIGIBLE,
                     feePaise = 10_000,
                     qualification = LocalizedText.of("hi" to "10वीं पास", "en" to "10th pass"),
-                    lastDate = today.plusDays(2),
+                    lastDate = today.plus(2, DateTimeUnit.DAY),
                     lastTime = null,
                     whyLine = LocalizedText.of("hi" to "उम्र: 23 (सीमा 23, OBC +3 = 26)", "en" to "Age: 23 (limit 23, OBC +3 = 26)"),
                 ),
@@ -62,7 +62,7 @@ class SampleMatchRepository @Inject constructor() : MatchRepository {
                     verdict = Verdict.CHECK_YOURSELF,
                     feePaise = 2_500,
                     qualification = LocalizedText.of("hi" to "12वीं + CCC", "en" to "12th + CCC"),
-                    lastDate = today.plusDays(21),
+                    lastDate = today.plus(21, DateTimeUnit.DAY),
                     lastTime = null,
                     whyLine = LocalizedText.of(
                         "hi" to "CCC प्रमाणपत्र: आपकी प्रोफ़ाइल में नहीं है, ख़ुद जाँचें",

@@ -20,13 +20,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.sarkarimatch.core.designsystem.R
+import com.sarkarimatch.core.designsystem.resources.Res
+import com.sarkarimatch.core.designsystem.resources.ds_back
+import com.sarkarimatch.core.designsystem.resources.ds_continue
+import com.sarkarimatch.core.designsystem.resources.ds_placeholder_body
 import com.sarkarimatch.core.designsystem.theme.SmRadius
 import com.sarkarimatch.core.designsystem.theme.SmTheme
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Stand-in for a screen that is not built yet. Shows the inventory ID (docs/design/01-screen-inventory.md) so a
@@ -53,7 +56,7 @@ fun PlaceholderScreen(
         Row(Modifier.height(56.dp), verticalAlignment = Alignment.CenterVertically) {
             if (onBack != null) {
                 IconButton(onClick = onBack) {
-                    SmIcon(SmIcons.ArrowBack, contentDescription = stringResource(R.string.ds_back))
+                    SmIcon(SmIcons.ArrowBack, contentDescription = stringResource(Res.string.ds_back))
                 }
             }
         }
@@ -69,7 +72,7 @@ fun PlaceholderScreen(
         Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
         Spacer(Modifier.height(8.dp))
         Text(
-            stringResource(R.string.ds_placeholder_body, screenId),
+            stringResource(Res.string.ds_placeholder_body, screenId),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -84,4 +87,4 @@ fun PlaceholderScreen(
 
 /** "Continue" in the app language, for placeholder flows. */
 @Composable
-fun continueLabel(): String = stringResource(R.string.ds_continue)
+fun continueLabel(): String = stringResource(Res.string.ds_continue)

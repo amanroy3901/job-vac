@@ -17,7 +17,7 @@ class SscGdEvaluationTest {
     private fun age(p: EligibilityProfile) = evaluator.evaluate(rule, p).lines.first { it.rule == RuleKind.AGE }
 
     @Test
-    fun `Ravi - OBC NCL, 24 on cutoff, BA - eligible with OBC relaxation and 100 rupee fee`() {
+    fun raviOBCNCL24OnCutoffBAEligibleWithOBCRelaxationAnd100RupeeFee() {
         val ravi = profile("2001-05-10", category = Category.OBC, quals = ba)
         val result = evaluator.evaluate(rule, ravi)
         assertEquals(Verdict.ELIGIBLE, result.verdict)
@@ -31,7 +31,7 @@ class SscGdEvaluationTest {
     }
 
     @Test
-    fun `boundaries of the base window for general category`() {
+    fun boundariesOfTheBaseWindowForGeneralCategory() {
         assertEquals(LineResult.PASS, age(profile("2003-01-02")).result) // lo
         assertEquals(ReasonCode.AGE_TOO_OLD, age(profile("2003-01-01")).code) // lo - 1d
         assertEquals(LineResult.PASS, age(profile("2008-01-01")).result) // hi
@@ -39,7 +39,7 @@ class SscGdEvaluationTest {
     }
 
     @Test
-    fun `category relaxation - same DOB fails for GEN, passes for OBC, SC`() {
+    fun categoryRelaxationSameDOBFailsForGENPassesForOBCSC() {
         val dob = "2000-06-15" // 25 on cutoff
         assertEquals(Verdict.NOT_ELIGIBLE, evaluator.evaluate(rule, profile(dob)).verdict)
         assertEquals(Verdict.ELIGIBLE, evaluator.evaluate(rule, profile(dob, category = Category.OBC)).verdict)
@@ -47,19 +47,19 @@ class SscGdEvaluationTest {
     }
 
     @Test
-    fun `OBC creamy layer is treated as GEN`() {
+    fun oBCCreamyLayerIsTreatedAsGEN() {
         val p = profile("2000-06-15", category = Category.OBC, obcNcl = false)
         assertEquals(Verdict.NOT_ELIGIBLE, evaluator.evaluate(rule, p).verdict)
     }
 
     @Test
-    fun `SC boundary - 28 not attained`() {
+    fun sCBoundary28NotAttained() {
         assertEquals(LineResult.PASS, age(profile("1998-01-02", category = Category.SC)).result)
         assertEquals(LineResult.FAIL, age(profile("1998-01-01", category = Category.SC)).result)
     }
 
     @Test
-    fun `ESM OBC with 96 months service picks the most beneficial row`() {
+    fun eSMOBCWith96MonthsServicePicksTheMostBeneficialRow() {
         val p = profile("1996-06-01", category = Category.OBC, esm = true, esmServiceMonths = 96)
         val line = age(p)
         assertEquals(LineResult.PASS, line.result)
@@ -69,28 +69,28 @@ class SscGdEvaluationTest {
     }
 
     @Test
-    fun `ESM with unknown service months is check yourself, never a guess`() {
+    fun eSMWithUnknownServiceMonthsIsCheckYourselfNeverAGuess() {
         val p = profile("1996-06-01", category = Category.OBC, esm = true, esmServiceMonths = null)
         assertEquals(ReasonCode.AGE_DEPENDS_ON_SERVICE, age(p).code)
         assertEquals(Verdict.CHECK_YOURSELF, evaluator.evaluate(rule, p).verdict)
     }
 
     @Test
-    fun `riot victim rows are never applied (fact not collected)`() {
+    fun riotVictimRowsAreNeverAppliedFactNotCollected() {
         // 27 on cutoff: would pass only with riot_ur (+5); must not match.
         val p = profile("1998-06-01")
         assertEquals(Verdict.NOT_ELIGIBLE, evaluator.evaluate(rule, p).verdict)
     }
 
     @Test
-    fun `category unsure - fails for GEN but would pass for OBC becomes check yourself`() {
+    fun categoryUnsureFailsForGENButWouldPassForOBCBecomesCheckYourself() {
         val p = profile("2000-06-15", categoryUnsure = true)
         assertEquals(ReasonCode.AGE_CATEGORY_UNSURE, age(p).code)
         assertEquals(Verdict.CHECK_YOURSELF, evaluator.evaluate(rule, p).verdict)
     }
 
     @Test
-    fun `qualification - none, appearing with unknown result, completed 10th`() {
+    fun qualificationNoneAppearingWithUnknownResultCompleted10th() {
         val noQual = profile("2004-01-01", quals = listOf(HeldQualification("class8", QualificationStatus.COMPLETED)))
         assertEquals(Verdict.NOT_ELIGIBLE, evaluator.evaluate(rule, noQual).verdict)
 
@@ -102,24 +102,24 @@ class SscGdEvaluationTest {
     }
 
     @Test
-    fun `PwD candidates are not eligible`() {
+    fun pwDCandidatesAreNotEligible() {
         assertEquals(Verdict.NOT_ELIGIBLE, evaluator.evaluate(rule, profile("2004-01-01", pwd = true)).verdict)
     }
 
     @Test
-    fun `fee is zero for women and SC, 100 otherwise`() {
+    fun feeIsZeroForWomenAndSC100Otherwise() {
         assertEquals(0L, evaluator.evaluate(rule, profile("2004-01-01", gender = Gender.FEMALE)).feePaise)
         assertEquals(0L, evaluator.evaluate(rule, profile("2004-01-01", category = Category.SC)).feePaise)
         assertEquals(10_000L, evaluator.evaluate(rule, profile("2004-01-01")).feePaise)
     }
 
     @Test
-    fun `skipped gender is check yourself`() {
+    fun skippedGenderIsCheckYourself() {
         assertEquals(Verdict.CHECK_YOURSELF, evaluator.evaluate(rule, profile("2004-01-01", gender = null)).verdict)
     }
 
     @Test
-    fun `a rule needing a newer evaluator is check yourself with update line`() {
+    fun aRuleNeedingANewerEvaluatorIsCheckYourselfWithUpdateLine() {
         val future = rule.copy(evaluatorMinVersion = EligibilityEvaluator.EVALUATOR_VERSION + 1)
         val result = evaluator.evaluate(future, profile("2004-01-01"))
         assertEquals(Verdict.CHECK_YOURSELF, result.verdict)

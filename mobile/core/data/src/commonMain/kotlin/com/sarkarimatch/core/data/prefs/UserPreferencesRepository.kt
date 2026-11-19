@@ -1,41 +1,45 @@
 package com.sarkarimatch.core.data.prefs
 
-import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import com.sarkarimatch.core.model.AppLanguage
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
-import javax.inject.Singleton
+import okio.Path.Companion.toPath
 
-private val Context.appPrefs: DataStore<Preferences> by preferencesDataStore(name = "app_prefs")
+/** File name of the DataStore `app_prefs` (data-layer.md §4); the directory is platform-specific. */
+const val APP_PREFS_FILE = "app_prefs.preferences_pb"
 
-/** DataStore `app_prefs` (data-layer.md §4). Not encrypted: nothing secret lives here. */
-@Singleton
-class UserPreferencesRepository @Inject constructor(@ApplicationContext private val context: Context) {
+/** Creates the DataStore at [path] (Android: filesDir/datastore/…, iOS: Documents/…). Call once per process. */
+fun createAppPrefsDataStore(path: String): DataStore<Preferences> =
+    PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() })
+
+/** DataStore `app_prefs`. Not encrypted: nothing secret lives here. Same file format on Android and iOS. */
+class UserPreferencesRepository(private val store: DataStore<Preferences>) {
     private object Keys {
         val appLanguage = stringPreferencesKey("app_language")
         val onboardingDone = booleanPreferencesKey("onboarding_done")
     }
 
-    /** Mirror of the per-app locale, for workers and notification composition (no Activity there). */
-    val appLanguage: Flow<AppLanguage> = context.appPrefs.data.map {
+    /** The chosen app language (Hindi until the user picks another, i18n A1). */
+    val appLanguage: Flow<AppLanguage> = store.data.map {
         AppLanguage.fromTag(it[Keys.appLanguage]) ?: AppLanguage.DEFAULT
     }
 
-    val onboardingDone: Flow<Boolean> = context.appPrefs.data.map { it[Keys.onboardingDone] ?: false }
+    /** Whether the user has chosen a language at all (vs. the Hindi default). */
+    val appLanguageChosen: Flow<Boolean> = store.data.map { it[Keys.appLanguage] != null }
+
+    val onboardingDone: Flow<Boolean> = store.data.map { it[Keys.onboardingDone] ?: false }
 
     suspend fun setAppLanguage(language: AppLanguage) {
-        context.appPrefs.edit { it[Keys.appLanguage] = language.tag }
+        store.edit { it[Keys.appLanguage] = language.tag }
     }
 
     suspend fun setOnboardingDone(done: Boolean) {
-        context.appPrefs.edit { it[Keys.onboardingDone] = done }
+        store.edit { it[Keys.onboardingDone] = done }
     }
 }

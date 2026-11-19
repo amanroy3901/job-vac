@@ -1,6 +1,6 @@
 package com.sarkarimatch.core.model
 
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 /**
  * What a feed card (S20 MatchCard) needs. Built by `:core:data` from Room + a local evaluation; the UI formats

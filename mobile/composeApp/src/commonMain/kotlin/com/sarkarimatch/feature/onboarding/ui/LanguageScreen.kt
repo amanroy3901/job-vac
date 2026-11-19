@@ -26,14 +26,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selectableGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sarkarimatch.app.resources.Res
+import com.sarkarimatch.app.resources.onb_language_coming_soon
+import com.sarkarimatch.app.resources.onb_language_continue
+import com.sarkarimatch.app.resources.onb_language_helper_en
+import com.sarkarimatch.app.resources.onb_language_helper_hi
+import com.sarkarimatch.app.resources.onb_language_subtitle
+import com.sarkarimatch.app.resources.onb_language_title
 import com.sarkarimatch.core.designsystem.component.LanguageOptionCard
 import com.sarkarimatch.core.designsystem.component.SmButton
 import com.sarkarimatch.core.designsystem.component.SmIcon
@@ -41,13 +46,14 @@ import com.sarkarimatch.core.designsystem.component.SmIcons
 import com.sarkarimatch.core.designsystem.theme.SmRadius
 import com.sarkarimatch.core.designsystem.theme.SmTheme
 import com.sarkarimatch.core.model.AppLanguage
-import com.sarkarimatch.feature.onboarding.R
+import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun LanguageRoute(
     onContinue: () -> Unit,
     onBack: (() -> Unit)? = null,
-    viewModel: LanguageViewModel = hiltViewModel(),
+    viewModel: LanguageViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LanguageScreen(
@@ -106,7 +112,7 @@ fun LanguageScreen(
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    stringResource(R.string.onb_language_title),
+                    stringResource(Res.string.onb_language_title),
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.semantics { heading() },
                 )
@@ -118,7 +124,7 @@ fun LanguageScreen(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    stringResource(R.string.onb_language_subtitle),
+                    stringResource(Res.string.onb_language_subtitle),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -129,7 +135,7 @@ fun LanguageScreen(
                     LanguageOptionCard(
                         endonym = language.endonym,
                         helper = stringResource(
-                            if (language == AppLanguage.HI) R.string.onb_language_helper_hi else R.string.onb_language_helper_en,
+                            if (language == AppLanguage.HI) Res.string.onb_language_helper_hi else Res.string.onb_language_helper_en,
                         ),
                         badge = if (language == AppLanguage.HI) "अ" else "A",
                         selected = state.selected == language,
@@ -139,7 +145,7 @@ fun LanguageScreen(
             }
             Spacer(Modifier.height(24.dp))
             Text(
-                stringResource(R.string.onb_language_coming_soon),
+                stringResource(Res.string.onb_language_coming_soon),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -159,7 +165,7 @@ fun LanguageScreen(
             Spacer(Modifier.height(24.dp))
         }
         SmButton(
-            text = stringResource(R.string.onb_language_continue),
+            text = stringResource(Res.string.onb_language_continue),
             onClick = onContinue,
             icon = SmIcons.ArrowForward,
             modifier = Modifier
@@ -169,7 +175,7 @@ fun LanguageScreen(
     }
 }
 
-@Preview(locale = "hi")
+@Preview
 @Composable
 private fun LanguageScreenPreview() {
     SmTheme(darkTheme = false) { LanguageScreen(LanguageUiState(AppLanguage.HI), {}, {}) }

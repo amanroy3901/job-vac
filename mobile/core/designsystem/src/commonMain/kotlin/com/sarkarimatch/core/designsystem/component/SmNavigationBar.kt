@@ -1,6 +1,6 @@
 package com.sarkarimatch.core.designsystem.component
 
-import androidx.annotation.DrawableRes
+import org.jetbrains.compose.resources.DrawableResource
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -32,8 +32,8 @@ fun RowScope.SmNavigationItem(
     selected: Boolean,
     onClick: () -> Unit,
     label: String,
-    @DrawableRes icon: Int,
-    @DrawableRes selectedIcon: Int,
+    icon: DrawableResource,
+    selectedIcon: DrawableResource,
     badge: Int? = null,
 ) {
     NavigationBarItem(

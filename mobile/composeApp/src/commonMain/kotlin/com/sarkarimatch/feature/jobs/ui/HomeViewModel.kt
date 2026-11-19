@@ -8,7 +8,6 @@ import com.sarkarimatch.core.model.DeadlineTone
 import com.sarkarimatch.core.model.Ist
 import com.sarkarimatch.core.model.MatchCardUi
 import com.sarkarimatch.core.model.deadlineTone
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -16,8 +15,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import java.time.LocalDate
-import javax.inject.Inject
+import kotlinx.datetime.LocalDate
 
 /** S20 feed, grouped by urgency (Direction C): last day today · within 3 days · later. */
 @Immutable
@@ -31,9 +29,8 @@ data class HomeUiState(
     val waitingCount: Int get() = dueToday.size + withinThreeDays.size + later.size
 }
 
-@HiltViewModel
-class HomeViewModel @Inject constructor(matchRepository: MatchRepository) : ViewModel() {
-    private val today: LocalDate get() = LocalDate.now(Ist.ZONE)
+class HomeViewModel(matchRepository: MatchRepository) : ViewModel() {
+    private val today: LocalDate get() = Ist.today()
 
     val state: StateFlow<HomeUiState> = matchRepository.observeFeed()
         .map { cards -> group(cards, today) }

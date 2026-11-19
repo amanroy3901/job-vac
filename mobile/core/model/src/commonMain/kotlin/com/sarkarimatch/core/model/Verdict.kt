@@ -2,9 +2,11 @@ package com.sarkarimatch.core.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 
 /** The three outcomes of on-device matching (matching-engine.md). `CheckYourself` is never shown as eligible. */
 @Serializable
@@ -27,9 +29,12 @@ fun deadlineTone(daysLeft: Long): DeadlineTone = when {
 
 /** All "today", countdowns and deadline tones use the IST calendar date. */
 object Ist {
-    val ZONE: ZoneId = ZoneId.of("Asia/Kolkata")
+    val ZONE: TimeZone = TimeZone.of("Asia/Kolkata")
 
-    fun daysLeft(today: LocalDate, lastDate: LocalDate): Long = ChronoUnit.DAYS.between(today, lastDate)
+    /** Today's calendar date in India, whatever the device time zone. */
+    fun today(clock: Clock = Clock.System): LocalDate = clock.todayIn(ZONE)
+
+    fun daysLeft(today: LocalDate, lastDate: LocalDate): Long = today.daysUntil(lastDate).toLong()
 }
 
 /** Category tiles on cards (Direction C): recognisable without reading. */

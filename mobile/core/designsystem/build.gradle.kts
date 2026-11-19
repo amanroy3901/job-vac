@@ -1,24 +1,47 @@
+// Marigold Home design system (docs/design/02-design-system.md, tokens.json v2.0) for Android and iOS.
 plugins {
-    alias(libs.plugins.sm.android.library)
-    alias(libs.plugins.sm.android.compose)
+    alias(libs.plugins.sm.kmp.android.library)
+    alias(libs.plugins.sm.kmp.compose)
 }
 
-android {
-    namespace = "com.sarkarimatch.core.designsystem"
+/*
+ * TokensParityTest (commonTest) compares the Kotlin theme with docs/design/tokens.json. commonTest cannot read files
+ * on iOS, so the JSON is embedded as a Kotlin string constant at build time.
+ */
+val generateTokensSource = tasks.register("generateTokensSource") {
+    val tokens = rootProject.layout.projectDirectory.file("../docs/design/tokens.json")
+    val output = layout.buildDirectory.dir("generated/tokens/kotlin")
+    inputs.file(tokens).withPathSensitivity(PathSensitivity.NAME_ONLY)
+    outputs.dir(output)
+    doLast {
+        val dir = output.get().asFile.resolve("com/sarkarimatch/core/designsystem/theme").apply { mkdirs() }
+        dir.resolve("TokensJson.kt").writeText(
+            "// Generated from docs/design/tokens.json by :core:designsystem:generateTokensSource. Do not edit.\n" +
+                "package com.sarkarimatch.core.designsystem.theme\n\n" +
+                "internal const val TOKENS_JSON: String = \$\$\$\"\"\"" + tokens.asFile.readText() + "\"\"\"\n",
+        )
+    }
 }
 
-dependencies {
-    api(projects.core.model)
-    api(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.ui.text.google.fonts)
-    implementation(libs.kotlinx.collections.immutable)
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            api(projects.core.model)
+            api(libs.compose.material3)
+            api(libs.compose.components.resources)
+            implementation(libs.kotlinx.collections.immutable)
+        }
+        commonTest {
+            kotlin.srcDir(generateTokensSource)
+            dependencies {
+                implementation(libs.kotlinx.serialization.json)
+            }
+        }
+    }
 }
 
-dependencies {
-    testImplementation(libs.kotlinx.serialization.json)
-}
-
-// TokensParityTest reads the design tokens straight from the docs.
-tasks.withType<Test>().configureEach {
-    systemProperty("sm.tokensJson", rootProject.file("../docs/design/tokens.json").absolutePath)
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.sarkarimatch.core.designsystem.resources"
+    generateResClass = always
 }

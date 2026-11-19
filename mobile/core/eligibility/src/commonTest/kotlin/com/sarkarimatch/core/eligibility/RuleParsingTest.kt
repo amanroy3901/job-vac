@@ -1,7 +1,7 @@
 package com.sarkarimatch.core.eligibility
 
 import com.sarkarimatch.core.model.AppLanguage
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -9,7 +9,7 @@ class RuleParsingTest {
     private val evaluator = EligibilityEvaluator()
 
     @Test
-    fun `both examples parse`() {
+    fun bothExamplesParse() {
         assertEquals("CAPF-CT-GD", Fixtures.sscGd.post.code)
         assertEquals("SSC GD 2026", Fixtures.sscGd.post.shortName?.pick(AppLanguage.HI))
         assertEquals(8, Fixtures.sscGd.age.relaxations.size)
@@ -19,7 +19,7 @@ class RuleParsingTest {
 
     /** matching-engine.md §3.1: the printed DOB window must reproduce from the formulas (publish validator). */
     @Test
-    fun `printed DOB window reproduces for SSC GD`() {
+    fun printedDOBWindowReproducesForSSCGD() {
         val age = Fixtures.sscGd.age
         val (after, before) = evaluator.baseDobWindow(age, age.limits.single())
         assertEquals(LocalDate.parse(age.printedDobWindow!!.bornOnOrAfter), after)
@@ -29,7 +29,7 @@ class RuleParsingTest {
     }
 
     @Test
-    fun `printed DOB window reproduces for UP Police male row`() {
+    fun printedDOBWindowReproducesForUPPoliceMaleRow() {
         val age = Fixtures.upPolice.age
         val male = age.limits.first()
         val (after, before) = evaluator.baseDobWindow(age, male)

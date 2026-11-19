@@ -1,6 +1,6 @@
 package com.sarkarimatch.core.designsystem.component
 
-import androidx.annotation.DrawableRes
+import org.jetbrains.compose.resources.DrawableResource
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,7 +29,7 @@ fun SmButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     style: SmButtonStyle = SmButtonStyle.Primary,
-    @DrawableRes icon: Int? = null,
+    icon: DrawableResource? = null,
     compact: Boolean = false,
     enabled: Boolean = true,
 ) {

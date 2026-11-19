@@ -6,12 +6,17 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.withType
 
-/** Detekt with the shared config in android/config/detekt/detekt.yml. Run with `./gradlew detekt`. */
+/**
+ * Detekt with the shared config in mobile/config/detekt/detekt.yml. Run with `./gradlew detekt`.
+ * KMP modules keep their code in `src/<sourceSet>/kotlin` (commonMain, androidMain, iosMain, *Test), so the plain
+ * `detekt` task scans all of `src/` (no type resolution; the per-target `detekt<Target>` tasks are not used).
+ */
 fun Project.configureDetekt() {
     pluginManager.apply("io.gitlab.arturbosch.detekt")
     extensions.configure<DetektExtension> {
         buildUponDefaultConfig = true
         config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+        source.setFrom(files("src"))
         parallel = true
     }
     tasks.withType<Detekt>().configureEach {
