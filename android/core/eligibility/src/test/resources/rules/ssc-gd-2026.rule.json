@@ -1,0 +1,67 @@
+{
+  "schema_version": "1",
+  "evaluator_min_version": 1,
+  "post": {
+    "code": "CAPF-CT-GD",
+    "name": { "hi": "कांस्टेबल (GD) — CAPFs, SSF, असम राइफल्स में राइफलमैन (GD)", "en": "Constable (GD) in CAPFs, SSF and Rifleman (GD) in Assam Rifles" },
+    "short_name": { "hi": "SSC GD 2026", "en": "SSC GD 2026" },
+    "pay_level": "Level-3",
+    "vacancies": {
+      "total": 25487,
+      "allocation_basis": "domicile_state",
+      "source": { "doc": "ssc_gd_2026_notice_01122025", "page": null, "quote": "25,487 vacancies (as reported; state/category-wise table in the notice annexure)" }
+    }
+  },
+  "exam_tags": ["ssc", "police", "defence"],
+  "scope": { "kind": "all_india", "state": null },
+  "age": {
+    "cutoff_date": "2026-01-01",
+    "max_convention": "not_attained",
+    "limits": [ { "min_years": 18, "max_years": 23 } ],
+    "general_extension_years": 0,
+    "relaxations": [
+      { "id": "obc", "when": { "category": ["obc"] }, "years": 3, "mode": "add_to_max", "label": { "hi": "OBC", "en": "OBC" }, "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "age relaxation table" } },
+      { "id": "sc_st", "when": { "category": ["sc", "st"] }, "years": 5, "mode": "add_to_max", "label": { "hi": "SC/ST", "en": "SC/ST" }, "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "age relaxation table" } },
+      { "id": "esm_ur_ews", "when": { "esm": true, "category": ["gen", "ews"] }, "years": 3, "mode": "after_service_deduction", "needs_profile": ["esm_service_months"], "label": { "hi": "पूर्व सैनिक", "en": "Ex-Servicemen" }, "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "age relaxation table", "quote": "3 years after deduction of the military service rendered from the actual age as on the date of reckoning" } },
+      { "id": "esm_obc", "when": { "esm": true, "category": ["obc"] }, "years": 6, "mode": "after_service_deduction", "needs_profile": ["esm_service_months"], "label": { "hi": "पूर्व सैनिक (OBC)", "en": "Ex-Servicemen (OBC)" }, "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "age relaxation table — VERIFY (standard SSC row)" } },
+      { "id": "esm_sc_st", "when": { "esm": true, "category": ["sc", "st"] }, "years": 8, "mode": "after_service_deduction", "needs_profile": ["esm_service_months"], "label": { "hi": "पूर्व सैनिक (SC/ST)", "en": "Ex-Servicemen (SC/ST)" }, "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "age relaxation table — VERIFY (standard SSC row)" } },
+      { "id": "riot_ur", "when": { "category": ["gen", "ews"] }, "years": 5, "mode": "add_to_max", "needs_profile": ["riot_victim_family"], "label": { "hi": "1984/2002 दंगा पीड़ित परिवार", "en": "Children/dependants of 1984 / 2002 riot victims" }, "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "age relaxation table — VERIFY (standard SSC GD row)" } },
+      { "id": "riot_obc", "when": { "category": ["obc"] }, "years": 8, "mode": "add_to_max", "needs_profile": ["riot_victim_family"], "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "VERIFY" } },
+      { "id": "riot_sc_st", "when": { "category": ["sc", "st"] }, "years": 10, "mode": "add_to_max", "needs_profile": ["riot_victim_family"], "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "VERIFY" } }
+    ],
+    "printed_dob_window": { "born_on_or_after": "2003-01-02", "born_on_or_before": "2008-01-01" },
+    "source": { "doc": "ssc_gd_2026_notice_01122025", "quote": "18-23 years as on 01.01.2026: not born before 02.01.2003 and not later than 01.01.2008" }
+  },
+  "qualification": {
+    "any_of": [ { "codes": ["class10"], "include_higher": true } ],
+    "must_complete_by": "2026-01-01",
+    "appearing_policy": "if_passed_by_date",
+    "equivalence": "check_yourself_same_level",
+    "text": { "hi": "मान्यता प्राप्त बोर्ड से 10वीं (मैट्रिक) पास, 01-01-2026 तक", "en": "Matriculation (10th) from a recognised board on or before 01-01-2026" },
+    "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "essential qualification" }
+  },
+  "required_attributes": [],
+  "domicile": null,
+  "gender": { "allowed": ["male", "female"], "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "vacancies by gender" } },
+  "category": null,
+  "pwd": { "eligible": false, "source": { "doc": "ssc_gd_2026_notice_01122025", "quote": "Persons with Benchmark Disabilities are not eligible (VERIFY wording)" } },
+  "ex_serviceman": { "eligible": true },
+  "marital_status": null,
+  "physical": {
+    "text": { "hi": "शारीरिक मानक (ऊँचाई/सीना) और दौड़ (PST/PET) — वर्ग और क्षेत्र के अनुसार अलग। नोटिस की तालिका देखें।", "en": "Physical standards (height/chest) and race (PST/PET) differ by category and region. See the notice table." },
+    "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "PST/PET" }
+  },
+  "other_conditions": [
+    { "text": { "hi": "पूर्व-अग्निवीरों के लिए अलग आयु छूट हो सकती है — नोटिस में जाँचें", "en": "Ex-Agniveers may have a separate age relaxation. Check the notice." }, "severity": "advisory", "when": { "esm": true } },
+    { "text": { "hi": "आपके निवास (domicile) राज्य की रिक्तियों पर ही चयन होगा; निवास प्रमाण पत्र ज़रूरी", "en": "Vacancies are allotted by state of domicile; a domicile certificate is required" }, "severity": "advisory" }
+  ],
+  "fees": [
+    { "when": { "any": [ { "gender": ["female"] }, { "category": ["sc", "st"] }, { "esm": true } ] }, "amount_paise": 0, "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "fee" } },
+    { "amount_paise": 10000, "source": { "doc": "ssc_gd_2026_notice_01122025", "para": "fee" } }
+  ],
+  "review": {
+    "risk_flags": ["esm_relaxation", "multi_relaxation_table"],
+    "notes": "Worked example. Base window, OBC/SC/ST, ESM-UR and fee rows match public reporting of the 01-12-2025 notice (application window 01-12-2025 to 31-12-2025). Rows marked VERIFY are standard SSC GD table rows not re-checked against the PDF page."
+  },
+  "source": { "doc": "https://ssc.gov.in (notice dated 01-12-2025, Constable (GD) Examination 2026)" }
+}

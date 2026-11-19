@@ -1,0 +1,60 @@
+{
+  "schema_version": "1",
+  "evaluator_min_version": 1,
+  "post": {
+    "code": "UPP-CONST-CP",
+    "name": { "hi": "आरक्षी नागरिक पुलिस (पुरुष/महिला)", "en": "Constable, Civil Police (male/female)" },
+    "pay_level": "Level-3",
+    "vacancies": {
+      "total": null,
+      "by_gender": {},
+      "allocation_basis": "none",
+      "source": { "doc": "uppbpb_const_2025_advt", "quote": "32,679 posts across constable/PAC/jail warder etc. (as reported); civil police split ILLUSTRATIVE" }
+    }
+  },
+  "exam_tags": ["police"],
+  "scope": { "kind": "state", "state": "UP" },
+  "age": {
+    "cutoff_date": "2025-07-01",
+    "max_convention": "not_attained",
+    "limits": [
+      { "when": { "gender": ["male"] }, "min_years": 18, "max_years": 22 },
+      { "when": { "gender": ["female"] }, "min_years": 18, "max_years": 25 }
+    ],
+    "general_extension_years": 3,
+    "relaxations": [
+      { "id": "up_reserved", "when": { "category": ["obc", "sc", "st"], "domicile_states": ["UP"] }, "years": 5, "mode": "add_to_max", "label": { "hi": "उ.प्र. के OBC/SC/ST", "en": "OBC/SC/ST of Uttar Pradesh" }, "source": { "doc": "uppbpb_const_2025_advt", "quote": "relaxation as per UP Govt rules; reserved-category benefits only for UP domicile (VERIFY page)" } },
+      { "id": "up_esm", "when": { "esm": true, "domicile_states": ["UP"] }, "years": 3, "mode": "after_service_deduction", "needs_profile": ["esm_service_months"], "label": { "hi": "उ.प्र. के पूर्व सैनिक", "en": "Ex-servicemen of UP" }, "source": { "doc": "uppbpb_const_2025_advt", "para": "ILLUSTRATIVE — UP rule is 'service period + 3 years'; confirm against the notice" } }
+    ],
+    "printed_dob_window": { "when": { "gender": ["male"] }, "born_on_or_after": "2003-07-02", "born_on_or_before": "2007-07-01" },
+    "source": { "doc": "uppbpb_const_2025_advt", "quote": "Male 18-22, Female 18-25 as on 01-07-2025 (as reported). Corrigendum/GO Jan 2026: one-time +3 years for all categories" }
+  },
+  "qualification": {
+    "any_of": [ { "codes": ["class12"], "include_higher": true } ],
+    "must_complete_by": "2026-01-30",
+    "appearing_policy": "not_allowed",
+    "equivalence": "check_yourself_same_level",
+    "text": { "hi": "मान्यता प्राप्त बोर्ड से इंटरमीडिएट (12वीं) पास", "en": "Intermediate (12th) from a recognised board" },
+    "source": { "doc": "uppbpb_const_2025_advt", "para": "ILLUSTRATIVE must_complete_by = last date of application; verify" }
+  },
+  "required_attributes": [],
+  "domicile": { "note": { "hi": "अन्य राज्यों के उम्मीदवार अनारक्षित (UR) माने जाएँगे; आरक्षण/छूट केवल उ.प्र. निवासियों को", "en": "Candidates from other states are treated as Unreserved; reservation and relaxations only for UP domicile" } },
+  "gender": { "allowed": ["male", "female"] },
+  "category": null,
+  "pwd": { "eligible": false },
+  "ex_serviceman": { "eligible": true },
+  "marital_status": null,
+  "physical": {
+    "text": { "hi": "ऊँचाई: पुरुष 168 सेमी (ST 160), महिला 152 सेमी (ST 147); पुरुष सीना 79–84 सेमी; दौड़: पुरुष 4.8 किमी/25 मिनट, महिला 2.4 किमी/14 मिनट", "en": "Height: male 168 cm (ST 160), female 152 cm (ST 147); male chest 79–84 cm; run: male 4.8 km in 25 min, female 2.4 km in 14 min" },
+    "source": { "doc": "uppbpb_const_2025_advt", "para": "ILLUSTRATIVE — values from the 2023 UP Police constable notice; verify" }
+  },
+  "other_conditions": [
+    { "text": { "hi": "महिलाओं का 20% क्षैतिज आरक्षण केवल उ.प्र. निवासी महिलाओं के लिए", "en": "20% horizontal reservation for women applies only to UP-domicile women" }, "severity": "advisory", "when": { "gender": ["female"], "not_domicile_states": ["UP"] } }
+  ],
+  "fees": [ { "amount_paise": 40000, "source": { "doc": "uppbpb_const_2025_advt", "para": "ILLUSTRATIVE (₹400 in 2023 notice)" } } ],
+  "review": {
+    "risk_flags": ["state_domicile_conditional_relaxation", "gender_specific_limits", "corrigendum_age_extension"],
+    "notes": "Rule version 2. v1 (advt of 31-12-2025, as reported) had general_extension_years=0; v2 applies the UP govt's one-time 3-year relaxation for all categories (IANS, 05-01-2026). Publishing v2 re-runs matching and alerts newly eligible users ('age limit raised, you can now apply'). Apply window 31-12-2025 to 30-01-2026 as reported. Items marked ILLUSTRATIVE not verified against the PDF."
+  },
+  "source": { "doc": "https://uppbpb.gov.in (Constable recruitment 2025 advertisement + Jan 2026 age relaxation order)" }
+}

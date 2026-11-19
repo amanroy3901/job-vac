@@ -59,12 +59,12 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 - 5 `PrivacyNoticeItem`s (06 §K4):
   1. `school` **"हम क्या पूछते हैं"** — "कौन-सी नौकरियाँ, पढ़ाई, जन्मतिथि, वर्ग, राज्य। लिंग, दिव्यांग और पूर्व सैनिक — चाहें तो छोड़ दें।" · क्यों: "इन्हीं से तय होता है कि आप किस नौकरी के योग्य हैं।" / *"What we ask: jobs you want, education, date of birth, category, state. Gender, disability and ex-servicemen are optional." Why: "These decide which jobs you are eligible for."*
   2. `block` **"हम क्या कभी नहीं माँगते"** — "मोबाइल नंबर, आधार, दस्तावेज़, फ़ोटो, आपके कॉन्टैक्ट या लोकेशन।" / *"Never: phone number, Aadhaar, documents, photos, contacts or location."*
-  3. `lock` **"जानकारी कहाँ रहती है"** — "भारत में हमारे सर्वर पर, सुरक्षित। हम इसे किसी को बेचते या देते नहीं। Google से साइन इन करें तो सिर्फ़ नाम और ईमेल लेते हैं।" / *"On our server in India, encrypted. Never sold or shared. If you sign in with Google we take only your name and email."*
+  3. `lock` **"जानकारी कहाँ रहती है"** — "आपकी प्रोफ़ाइल आपके फ़ोन में ही रहती है, और नौकरियाँ भी फ़ोन पर ही मिलाई जाती हैं। Google से साइन इन करके बैकअप चालू करें, तो वह ताले में बंद (एन्क्रिप्ट) होकर सेव होती है — उसे सिर्फ़ आप खोल सकते हैं। हम इसे किसी को बेचते या देते नहीं। Google से साइन इन करें तो सिर्फ़ नाम और ईमेल लेते हैं।" / *"Your profile is stored on your phone, and jobs are matched on your phone too. If you sign in with Google and turn on backup, it is saved encrypted so only you can open it. Never sold or shared. If you sign in with Google we take only your name and email."*
   4. `info` **"विज्ञापन"** — "मुफ़्त ऐप में नीचे एक छोटा विज्ञापन होता है। विज्ञापन वालों को आपकी प्रोफ़ाइल नहीं मिलती। Pro में कोई विज्ञापन नहीं।" / *"The free app shows one small ad at the bottom. Advertisers never get your profile. Pro has no ads."* (link "और जानें" → B17)
   5. `delete` **"हटाना आपके हाथ में"** — "प्रोफ़ाइल → अकाउंट और डेटा में अपना डेटा डाउनलोड करें या सब कुछ हमेशा के लिए हटाएँ।" / *"Profile → Account & data: download your data or delete everything."*
 - `TextButton` "पूरी प्राइवेसी नीति पढ़ें" (Custom Tab) and the line "सूचनाएँ भेजने के लिए हम आगे इजाज़त माँगेंगे।" / *"We'll ask for notification permission later."*
 - **Bottom:** primary **"समझ गया, आगे बढ़ें"** / *"Got it, continue"* → S04. No checkbox (nothing here needs special consent). Settings variant: no bottom bar.
-- **Logic:** stores `privacy_notice_ack{version, at}` locally and on the server with the profile. A new `notice_version` shows S47 once more on next open.
+- **Logic:** stores `privacy_notice_ack{version, at}` on the phone (DataStore); there is no server profile. Accounts also get one `privacy_notice` entry in the account-level consent log. A new `AppConfig.privacy_notice_version` shows S47 once more on next open.
 - **A11y:** each item one node ("हम क्या पूछते हैं: …; क्यों: …").
 - **ev:** `privacy_notice_view{surface}`, `privacy_notice_ack{version}`, `privacy_policy_open`.
 
@@ -433,7 +433,7 @@ No OTP. The "which profile to keep" question is D10.
   2. ज़रूरी सूचनाओं का चैनल — "तेज़ आवाज़ में" / "चुप करा दिया गया" [ठीक करें]
   3. बैटरी — "कोई रोक नहीं" / "बैटरी सेवर रोक सकता है" [ठीक करें → S15]
   4. ऑटोस्टार्ट ({brand}) — "आपने चालू किया" / "पता नहीं" [गाइड देखें]
-  5. आख़िरी टेस्ट — "19 नवं, पहुँच गया ✓" / "14 दिन से जवाब नहीं" [टेस्ट करें → S16]
+  5. आख़िरी टेस्ट — "19 नवं, पहुँच गया ✓" / "14 दिन से जवाब नहीं" [टेस्ट करें → S16]. Fed by the weekly self-test push (`/v1/push-tests`), which replaces the retired weekly silent ping
   6. फ़ोन पर बैकअप रिमाइंडर — "चालू · समय पर" / "चालू · लगभग समय पर" / "बंद" [चालू करें → S28 / S14]
 - **ev:** `delivery_health_view{issues}`, `delivery_fix_tap{item}`.
 
@@ -457,7 +457,7 @@ No OTP. The "which profile to keep" question is D10.
 - **Primary** (full-width filled `Button`, `primary` colour — the one CTA blue across the app; Pro saffron is used for badges/icons only) **"₹199 में Pro लें"** / *"Get Pro for ₹199"*; trial-eligible users additionally see a `TextButton` **"14 दिन मुफ़्त आज़माएँ"** (calls `POST /v1/me/trial`; no Play free-trial offer exists, so the buy button never mentions a trial).
 - Secondary row: `TextButton` "पहले ख़रीदा था? वापस लाएँ".
 - Legal `bodySmall`: "भुगतान सिर्फ़ Google Play से — UPI, कार्ड या Play बैलेंस। साल वाला प्लान अपने-आप रिन्यू होगा — Play Store में कभी भी बंद करें। मुफ़्त अलर्ट हमेशा मुफ़्त रहेंगे।" / *"Paid only through Google Play — UPI, card or Play balance. The yearly plan renews automatically — cancel any time in the Play Store. Free alerts stay free."*
-- **Guest:** tapping the primary button the first time shows B16 `pro`; either answer continues to the Play sheet (O06).
+- **Guest:** tapping the primary button the first time shows B16 `pro`; either answer continues to the Play sheet (O06). The purchase carries `obfuscatedAccountId` = the server's opaque `billing_account_ref` for this account (not derived from profile data).
 - **States:** products loading → plan skeletons, button disabled; billing unavailable → error card "Google Play से भुगतान अभी नहीं हो पा रहा" + retry; offline → button disabled "भुगतान के लिए इंटरनेट चाहिए".
 - **ev:** `paywall_view{surface, trial_eligible}`, `plan_select{plan}`, `purchase_start{plan, method}`.
 
@@ -498,7 +498,7 @@ No WhatsApp. Pro delivery reliability is S29 + on-device backup (S28/S14).
 - **ev:** `family_invite_create{relation}`, `family_invite_share{method}`, `family_invite_cancel`.
 
 ## S35 Family invite (invitee) — P1
-- No top bar (root for invitees). Icon `family_restroom` 48 · `headlineSmall` **"Ravi ने आपको परिवार अलर्ट के लिए जोड़ा है"** / *"Ravi added you for family alerts"* (name = aspirant's first name or the account's given name; never email).
+- No top bar (root for invitees). Icon `family_restroom` 48 · `headlineSmall` **"Ravi ने आपको परिवार अलर्ट के लिए जोड़ा है"** / *"Ravi added you for family alerts"* (name = aspirant's first name or the account's given name; never email. The name travels inside the end-to-end-encrypted watch-list and is rendered on the member's phone; the server never sees it).
 - Body: "आपको उनके फ़ॉर्म की सिर्फ़ ज़रूरी तारीख़ें मिलेंगी — आखिरी दिन, एडमिट कार्ड और DV। कोई मोबाइल नंबर या अकाउंट नहीं चाहिए।"
 - Primary **"हाँ, मुझे अलर्ट भेजें"** → S13 family variant → S49 · text "नहीं चाहिए" (declines; aspirant sees "मना किया").
 - States: invalid/expired token → "यह निमंत्रण अब नहीं चलता — उनसे नया लिंक माँगें"; already linked → S49.
@@ -550,7 +550,7 @@ Icon `report` 48 · "अभी हमारा सर्वर काम नह�
 | D07 | बदलाव सेव नहीं हुए | "बिना सेव किए वापस जाएँ?" | छोड़ दें | सेव करें |
 | D08 | Pro वापस आ गया / कोई ख़रीद नहीं मिली | "{date} तक Pro चालू है।" / "इस Google अकाउंट या इस फ़ोन के Play अकाउंट पर Pro नहीं मिला।" | ठीक है | मदद |
 | D09 | नया वर्ज़न उपलब्ध | "अपडेट में सुधार हैं। अभी अपडेट करें?" | अपडेट करें | बाद में |
-| D10 | कौन-सी प्रोफ़ाइल रखें? | "इस Google अकाउंट में पहले से एक प्रोफ़ाइल है।" + two option cards (K8) with summaries | यह रखें | — (must choose; back = keep account's) |
+| D10 | कौन-सी प्रोफ़ाइल रखें? | "इस Google अकाउंट का एक सेव किया हुआ बैकअप है।" + two option cards (K8) with summaries: "सेव की हुई (बैकअप)" / "इस फ़ोन वाली". Shown when sign-in returns `has_backup` and this phone already has a profile (no server 409). "सेव की हुई" restores the encrypted backup; "इस फ़ोन वाली" overwrites the backup | यह रखें | — (must choose; back = keep saved) |
 | D11 | Google अकाउंट बदलें? | "{email} की जानकारी उसी अकाउंट में सुरक्षित रहेगी। इस फ़ोन पर दूसरे अकाउंट से साइन इन करेंगे।" | अकाउंट बदलें | रद्द करें |
 | D12 | {name} के अलर्ट बंद करें? | "आपको अब {name} की ज़रूरी तारीख़ों की सूचना नहीं आएगी। दोबारा चाहिए तो उनसे नया लिंक माँगें।" | बंद करें (error) | रद्द करें |
 
