@@ -1,6 +1,8 @@
 # 06 — Component Library (Compose / Material 3)
 
-Package suggestion: `:core:designsystem` → `com.sarkarimatch.designsystem.component`. All components are **stateless** (state hoisted, callbacks out), take `modifier: Modifier = Modifier` as first optional param, read colours only from `MaterialTheme.colorScheme` / `SarkariTheme.colors`, and ship `@Preview`s for: light, dark, fontScale 2.0, Hindi + English.
+Package suggestion: `:core:designsystem` → `com.sarkarimatch.designsystem.component`. All components are **stateless** (state hoisted, callbacks out), take `modifier: Modifier = Modifier` as first optional param, read colours only from `MaterialTheme.colorScheme` / `SarkariTheme.colors`, and ship `@Preview`s for: light, dark, fontScale 2.0, Hindi + English, and the pseudolocales `en-XA` (long) and `ar-XB` (RTL) until real Tamil/Urdu strings exist (07 §3–§4). No component may set a fixed width on text or use `left`/`right` paddings.
+
+**2026-11-19 changes:** retired E10 `PhoneField`, E11 `OtpField`, G6 `WhatsAppPreviewBubble`; changed E5, G2, H1, J1; added §K (account, privacy, family) and §L (localization). See [CHANGES-2026-11-19.md](CHANGES-2026-11-19.md).
 
 Shared UI models (in `:core:model`, all `@Immutable`):
 
@@ -110,13 +112,13 @@ enum class StageStatus { Done, Current, Upcoming, Changed, Missed }
 | E2 | `StepProgressHeader` | `LinearProgressIndicator` | `step, total`; a11y "चरण 2 / 6". |
 | E3 | `SelectableTile` | `OutlinedCard` + `toggleable` | `icon, title, subtitle, selected, onToggle`; min 96 dp; selected border 2 dp primary, bg primaryContainer, check badge. `Role.Checkbox`. |
 | E4 | `RadioListItem` | `ListItem` + `RadioButton` + `selectable` | `title, supporting?, selected, onSelect`; 56 dp min (72 with supporting). Parent `Modifier.selectableGroup()`. |
-| E5 | `LanguageOptionCard` | E4 styled as card | text in its own script; `Modifier.semantics { this.contentDescription = …; }` + `LocaleSpan`/`localeList` so TalkBack pronounces with the right voice. |
+| E5 | `LanguageOptionCard` | E4 styled as card | `nativeName` (`titleLarge`, in its own script and font) + `englishName` (`bodySmall`); `Modifier.semantics { contentDescription = … }` + `LocaleSpan`/`localeList` so TalkBack pronounces with the right voice. Height grows with content (min 72). Used inside L1. |
 | E6 | `DobInputRow` | 3× `OutlinedTextField` | `day, month, year, onChange, error: String?, ageText: String?`; `KeyboardOptions(keyboardType = Number, imeAction = Next)`; `FocusRequester` chain; `supportingText` shared under row; error → all three `isError`. |
 | E7 | `ChipGroup` | `FlowRow` of `FilterChip` | `options, selected (single or multi), onSelect, onSkip?`; chips `labelMedium`, `minimumInteractiveComponentSize()`. |
 | E8 | `YesNoToggle` | `SingleChoiceSegmentedButtonRow` | options हाँ/नहीं/(पता नहीं). |
 | E9 | `SearchField` | `OutlinedTextField` leading `search` | debounce 150 ms; clear button labelled "मिटाएँ". |
-| E10 | `PhoneField` | `OutlinedTextField` | prefix "+91 ", `KeyboardType.Phone`, `maxLength 10`, `VisualTransformation` "98765 43210", `autofill` hint `PhoneNumber`. |
-| E11 | `OtpField` | `BasicTextField` + 6 decoration boxes | single field (paste & autofill), `KeyboardType.NumberPassword`, `autofill` hint `SmsOtpCode`; states default/focused/error/disabled. |
+| ~~E10~~ | ~~`PhoneField`~~ | — | **Retired 2026-11-19** (no phone number). |
+| ~~E11~~ | ~~`OtpField`~~ | — | **Retired 2026-11-19** (no OTP). |
 | E12 | `ProfileCompletenessBar` | `LinearProgressIndicator` + chips | `percent, missing: List<ProfileField>, onFix`. |
 | E13 | `MonthYearPicker` | two `ExposedDropdownMenuBox`es (month, year) | no wheels: simpler on low-end phones and with TalkBack. |
 
@@ -139,17 +141,17 @@ enum class StageStatus { Done, Current, Upcoming, Changed, Missed }
 | # | Component | Base | Notes |
 | --- | --- | --- | --- |
 | G1 | `PlanOptionCard` | `OutlinedCard` + `selectable(role = RadioButton)` | `title "साल भर", price "₹199", sub "सिर्फ़ ₹17/महीना", badge? "सबसे सस्ता", selected`. Selected: 2 dp primary border + `RadioButton` checked. Price `titleLarge`. |
-| G2 | `BenefitRow` | `Row` | icon 24 tertiary + title `titleSmall` + body `bodySmall`; optional "जल्द" tag for P1. |
+| G2 | `BenefitRow` | `Row` | icon 24 tertiary + title `titleSmall` + body `bodySmall`; optional "जल्द" tag for P1. Title and body wrap (no `maxLines`); the tag sits after the title in a `FlowRow` so it wraps below in long languages. |
 | G3 | `ProStatusCard` | `Card(tertiaryContainer)` | `state: Free|Trial(daysLeft, until)|Active(until, plan)|Expired`, `onCta`. |
 | G4 | `ProUpsellInline` | `Surface(tertiaryContainer)` | one-line + text button; dismiss hides for 7 days. |
 | G5 | `ProBadge` | `Surface(tertiary)` | "Pro" `labelSmall` onTertiary; a11y "Pro सुविधा". |
-| G6 | `WhatsAppPreviewBubble` | `Surface(shape = RoundedCornerShape(12, 12, 12, 2))` | background `successContainer` / text `onSuccessContainer` (we do not imitate WhatsApp's own chat chrome), timestamp `bodySmall`. Official WhatsApp glyph 20 dp above. |
+| ~~G6~~ | ~~`WhatsAppPreviewBubble`~~ | — | **Retired 2026-11-19** (no WhatsApp). |
 
 ## H. Navigation & structure
 
 | # | Component | Base | Notes |
 | --- | --- | --- | --- |
-| H1 | `SmBottomBar` | `NavigationBar` | 3 `NavigationBarItem`s (02/01). Selected icon filled. Label always shown (`alwaysShowLabel = true`). Badge on Jobs: `BadgedBox` with count ≤ "9+"; a11y "नौकरियाँ, 5 जवाब बाकी". |
+| H1 | `SmBottomBar` | `NavigationBar` | 3 `NavigationBarItem`s (02/01). Selected icon filled. Label always shown (`alwaysShowLabel = true`), `maxLines = 2`, centred; bar height grows (80 → 88 dp) instead of truncating long labels (07 §3). Badge on Jobs: `BadgedBox` with count ≤ "9+"; a11y "नौकरियाँ, 5 जवाब बाकी". |
 | H2 | `SmTopBar` | `TopAppBar` | `title, onBack?, actions`; back icon `AutoMirrored.ArrowBack` with label "वापस". |
 | H3 | `SettingsRow` | `ListItem` | `icon, title, value?, statusWord?, trailing = Chevron|Switch|None, destructive=false, onClick`. 56–72 dp. Switch rows: whole row `toggleable(role = Switch)`. |
 | H4 | Sheets | `ModalBottomSheet` | `sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)`; drag handle on; title `titleLarge` + close `IconButton` (a11y "बंद करें"); content padding 24 h / 16 bottom + nav inset. |
@@ -158,19 +160,45 @@ enum class StageStatus { Done, Current, Upcoming, Changed, Missed }
 ## J. Ads (free tier only)
 
 ### J1 `NativeAdSlot`
-- **Where (only these 2 places):** last item of the S20 feed (after all sections, before the footer disclaimer) and last item of S44 digest. Max **1 ad per screen**. **Never** in: S21 (job detail) incl. What-you-need / Why-you-match, B-sheets, S22/S23, onboarding, paywall, push/WhatsApp/SMS. Not rendered at all when `entitlement.isPro || trialActive`.
+- **Where (only these 2 places):** last item of the S20 feed (after all sections, before the footer disclaimer) and last item of S44 digest. Max **1 ad per screen**. **Never** in: S21 (job detail) incl. What-you-need / Why-you-match, B-sheets, S22/S23, onboarding, paywall, privacy and family screens (S47, S34, S35, S48, S49), push. Not rendered at all when `entitlement.isPro || trialActive`.
 - **SDK:** Google Mobile Ads **native** ad (`NativeAdView` hosted via `AndroidView`), small template: icon 40 dp + headline + body (1 line) + CTA. No media view / video, no interstitial, no app-open, no rewarded. Request only when the slot is about to enter the viewport (`LazyListState` visible index ≥ last−2), on Wi-Fi or mobile; never more than one request per screen visit. Ad SDK is loaded lazily (keeps cold start fast; budget note in README).
 - **Props:** `state: AdSlotState (Loading | Loaded(ad) | NoFill | Hidden), onAdClick, onWhyAds`.
 - **Visual — deliberately unlike a MatchCard:**
   - container `surfaceContainer` (grey, not white), **dashed** 1 dp `outline` border, radius 12, **no** top stripe, no verdict/deadline chips, no job-style title.
-  - top row: label pill **"विज्ञापन · Ad"** (`labelSmall`, `onSurfaceVariant` on `surfaceContainerHighest`, 4 dp radius) + right `TextButton` "विज्ञापन हटाएँ" → S30 (`src=ad_slot`). AdChoices icon in its required corner.
+  - top row: label pill **"विज्ञापन · Ad"** (`labelSmall`, `onSurfaceVariant` on `surfaceContainerHighest`, 4 dp radius) + `TextButton` "क्यों?" → B17 ads notice (new 2026-11-19, `onWhyAds`) + end-aligned `TextButton` "विज्ञापन हटाएँ" → S30 (`src=ad_slot`). The row is a `FlowRow` so the two text buttons wrap under the pill in long languages. AdChoices icon in its required corner (mirrors to the other corner in RTL, per the SDK).
   - content: advertiser icon 40, headline `titleSmall` (max 1 line), body `bodySmall` (max 2 lines), CTA `SmSecondaryButton` compact (40 dp, outlined — never the primary blue filled style).
   - 24 dp gap above, separating it from the last match card; preceded by a thin `HorizontalDivider`.
 - **States:** Loading → same-size static placeholder (no shimmer, to avoid looking like job skeletons) with only the "विज्ञापन · Ad" pill; NoFill / error / offline → **collapse to 0 height** (no empty box, no layout jump: slot is the last item so collapse shifts nothing above); Hidden for Pro.
 - **Content policy (ad-network blocklist + manual review):** block categories coaching/test-prep/"sarkari result" sites, loan apps, gambling, dating; block creatives using govt emblems, tricolour or words like "अधिसूचना/Notification/Last date". Report link in overflow ("यह विज्ञापन ठीक नहीं") → logs `ad_report`.
 - **A11y:** container `contentDescription` prefix "विज्ञापन:"; it is a separate TalkBack stop after the last card; not announced as a job.
-- **Consent:** ads are non-personalised by default (`npa=1`) until the user consents in UMP/consent sheet (only where required); no ads to users who declared age < 18.
+- **Consent:** ads are **non-personalised only** (`npa=1`, `AD_ID` permission removed; frontend ads.md), so no ads-personalisation consent is asked in v1. The ads notice (S47 item, B17) explains this. No ads to users who declared age < 18.
 - **Analytics:** `ad_slot_view{screen}`, `ad_loaded`, `ad_no_fill`, `ad_click`, `ad_remove_tap` (→ paywall).
+
+### J2 `AdNoticeSheet` (B17)
+- `ModalBottomSheet` (H4). Icon `info` 40 in `surfaceContainerHigh` circle · title "विज्ञापन क्यों दिखता है?" · 3 `PrivacyNoticeItem`s (K4): why (free alerts cost money to run), what is shared (non-personalised request; no advertising ID; none of your profile), where never (reminders, job details, sheets, push) · `TextButton` "यह विज्ञापन ठीक नहीं — बताएँ" (`ad_report`) · `SmSecondaryButton` "Pro में कोई विज्ञापन नहीं" → S30 · close.
+
+## K. Account, privacy & family (new 2026-11-19)
+
+| # | Component | Base | Props / states |
+| --- | --- | --- | --- |
+| K1 | `GoogleSignInButton` | `OutlinedButton`-shaped `Surface` following the **official Sign in with Google branding** (`tokens.json → component.googleSignInButton`: light fill `#FFFFFF`, stroke `#747775`, text `#1F1F1F`; dark `#131314` / `#8E918F` / `#E3E3E3`), pill, 40 dp visual / 48 touch, official multi-colour "G" 20 dp at start | `text` (localized: "Google से साइन इन करें" / "Google से सेव करें" / "Sign in with Google"), `onClick` → starts Credential Manager `GetCredentialRequest(GetSignInWithGoogleOption(serverClientId))` (O11), `loading`, `enabled` + `disabledReason` (offline). Full width in sheets; wraps to 2 lines. Never recoloured to brand blue; never the only button on a screen without a "not now" path. a11y role Button, label = text |
+| K2 | `AccountHeader` | `ListItem` in a card | `state: Guest | SignedIn(name, email, photoUrl?)`. Guest: `person` avatar, "मेहमान (Guest)", supporting "फ़ोन बदलने पर प्रोफ़ाइल साथ रखने के लिए साइन इन करें", trailing compact K1. SignedIn: photo (Coil, 40 dp, circle) or initials, name, email (`bodySmall`, LTR-isolated in RTL), chevron → S38. Email never truncated in the middle; wraps |
+| K3 | `SignInOfferContent` (B16 body) | `Column` | `variant: AfterMatches | Pro | Sync | Family | Settings`, `onSignIn`, `onNotNow`. Icon `cloud_done` 40 in `primaryContainer` circle, title per variant, 3 `BulletRow`s, K1 full width, `SmTextButton` "अभी नहीं". Shown at most once per session; dismiss state per variant in DataStore |
+| K4 | `PrivacyNoticeItem` | `Row` | `icon, title (titleSmall), body (bodyMedium), why: String?` (`bodySmall onSurfaceVariant`, prefixed "क्यों: "). Used ×5 on S47 and ×3 on B17. Not interactive; one TalkBack node per item |
+| K5 | `InviteShareCard` (S48) | `OutlinedCard` | `url, qrBitmap, expiresAt, status: Waiting | Linked(name) | Expired | Cancelled, onShare, onCopy, onShowQr, onCancel`. QR 200 dp, generated on device (ZXing core, no network), quiet zone 4 modules, always dark-on-white even in dark theme (scanners need it); link row `bodyMedium`, LTR-isolated, `content_copy` button; status chip (`schedule` "इंतज़ार" / `check_circle` "जुड़ गए" / `event_busy` "समय निकल गया"). Primary `SmPrimaryButton` "लिंक शेयर करें" (`share`) → `Intent.ACTION_SEND` chooser (O08) with prefilled text (04 §S48) |
+| K6 | `FamilyLinkRow` (S34) | `ListItem` | `relation, nickname?, status: InviteSent | Linked | Declined | Paused, since, onMore (हटाएँ / निमंत्रण फिर भेजें)`. No phone number anywhere. Leading `family_restroom` |
+| K7 | `FamilyFollowingCard` (S49) | `OutlinedCard` | `aspirantName, relation, next: List<NextDateUi>` (max 3, deadline chips C3), `paused: Boolean`, `onStop` → D12 |
+| K8 | `ProfileConflictDialog` (D10) | H5 | two `RadioListItem`-like options with summaries ("Google अकाउंट वाली: SSC, रेलवे · ग्रेजुएशन · 3 फ़ॉर्म" / "इस फ़ोन वाली: …"), recommended = account's; confirm "यह रखें" |
+
+## L. Localization (new 2026-11-19; rules in 07)
+
+| # | Component / helper | Notes |
+| --- | --- | --- |
+| L1 | `LanguageList` (S02/S40) | `enabled: List<LanguageUi>, comingSoon: List<LanguageUi>, selected, onSelect`. Enabled → E5 radio cards in a `selectableGroup()`. Coming soon → `ExpandableSection` "जल्द आ रही हैं ({n})" with `ComingSoonLanguageRow` (native name in its script, system font; English name; `schedule` icon + "जल्द"; not focusable as a control, TalkBack reads "தமிழ், Tamil, जल्द आ रही है"). Search field appears when `enabled.size > 5` |
+| L2 | `SarkariTheme(locale)` | Picks `AppTypography(script)` (07 §2 font + line-height multiplier) and provides `LocalLayoutDirection` from the locale; no per-screen font code |
+| L3 | `localizedAnnotatedString(@StringRes, vararg args)` | Formats placeholders, wraps every argument in a bidi isolate (FSI…PDI), formats numbers/dates with Western digits and IST (07 §5), and adds `LocaleSpan` for runs in another language (exam names). The only way feature code builds sentences: no `+` on strings |
+| L4 | `MirrorableIcon(icon, mirror: Boolean)` | Applies `scaleX = -1` in RTL for directional glyphs not available as `AutoMirrored`; list of which glyphs mirror in 07 §4 |
+| L5 | Text rules for all components | `softWrap = true`; `maxLines` only where 07 §3 allows (titles 3, buttons 2, chips 1, nav 2); `overflow = Ellipsis` only on titles and top bars; `TextAlign.Start`/`End`, never `Left`/`Right` |
 
 ## I. Tokens → component mapping cheat-sheet
 
@@ -183,5 +211,6 @@ enum class StageStatus { Done, Current, Upcoming, Changed, Missed }
 | `ext.today` | Today chip (filled) + stripe + R-last notif colour |
 | `error*` | NotEligible, destructive actions, failed payment, cancelled notice |
 | `tertiary*` | Pro badge/cards/benefit icons |
+| `component.googleSignInButton` | K1 only (official Google colours, never reused) |
 | `surfaceContainerLowest` | cards (light) · `surfaceContainerLow` cards (dark) |
 | `outlineVariant` | card borders, dividers |

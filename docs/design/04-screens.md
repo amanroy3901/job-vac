@@ -3,6 +3,8 @@
 Reads with: [01 inventory](01-screen-inventory.md) (IDs, routes) · [02 design system](02-design-system.md) (tokens) · [06 components](06-components.md) (component APIs).
 Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strings.xml` names. All dimensions in dp/sp.
 
+**2026-11-19:** S11, S12, S33, B11, D05 retired; new S47, S48, S49, B16, B17, D10–D12; Google sign-in or guest replaces phone/OTP; Play Billing only; no WhatsApp. Every screen must also pass the localization rules in [07](07-localization.md) (no fixed widths, wrap don't truncate, start/end only, Western digits, bidi isolates).
+
 ## 0. Global rules (apply to every screen; not repeated below)
 
 | Topic | Rule |
@@ -16,7 +18,8 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 | Snackbar | One at a time, 4 s (6 s with Undo), above bottom bar; announced politely by TalkBack. |
 | Analytics | Every screen logs `screen_view{screen_id, src}`. Event names are `snake_case`; params listed per screen. No PII in params (no name, phone, DOB; age bucket only). |
 | A11y | Every screen title is `heading()`. Focus starts at the top-app-bar title after navigation. Cards merge semantics + custom actions (02 §8). Test tags: `"{screenId}:{element}"`, e.g. `S21:applied_btn`. |
-| Font scale ≥ 1.5 | Two-button rows stack vertically (full-width), chips wrap (`FlowRow`), countdown chip moves below title. |
+| Font scale ≥ 1.5 / long languages | Two-button rows stack vertically (full-width), chips wrap (`FlowRow`), countdown chip moves below title. The same stacking applies at 1.0 when a label needs more than 2 lines in the current language (Tamil, Malayalam). |
+| Direction | Layout uses `start`/`end`; Urdu mirrors per 07 §4. Copy below is Hindi/English; other languages come from the same string keys. |
 | Back | System back = top-bar back. On bottom-nav roots, back from S22/S26 goes to S20; back from S20 exits. Sheets close on back. |
 
 ---
@@ -31,9 +34,10 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 - **Content:** 
   - Icon `translate` 48 dp `primary`.
   - Title `headlineSmall`: "अपनी भाषा चुनें" + second line `bodyLarge` `onSurfaceVariant`: "Choose your language".
-  - `LanguageOptionCard` ×2 (radio-cards, 72 dp min height, full width, 12 dp gap): **"हिंदी"** (sub "Hindi") · **"English"** (sub "अंग्रेज़ी"). Selected: 2 dp `primary` border + `primaryContainer` fill + `check_circle` filled.
+  - `LanguageList` (06 §L1). Enabled languages as `LanguageOptionCard` radio cards (72 dp min height, full width, 12 dp gap): **"हिंदी"** (sub "Hindi") · **"English"** (sub "अंग्रेज़ी"). Selected: 2 dp `primary` border + `primaryContainer` fill + `check_circle` filled.
+  - Below: collapsed row `schedule` **"जल्द आ रही हैं (11)"** / *"Coming soon (11)"* → expands to non-selectable rows, each in its own script: বাংলা · मराठी · తెలుగు · தமிழ் · ગુજરાતી · ಕನ್ನಡ · ଓଡ଼ିଆ · മലയാളം · ਪੰਜਾਬੀ · অসমীয়া · اردو, with the English name and the tag "जल्द / Soon". Helper `bodySmall`: "आपकी भाषा जल्द आएगी — तब तक हिंदी या English चुनें।" 
 - **Bottom:** `BottomActionBar` primary button "आगे बढ़ें / Continue".
-- **States:** default selection = Hindi unless system locale starts with `en` and no Devanagari locale installed.
+- **States:** default selection = the device language if it is enabled, else Hindi. Enabled/coming-soon lists come from `ReferenceBundle.languages` (cached; bundled default hi+en enabled when offline on first run).
 - **A11y:** radio group `selectableGroup()`, each card `Role.RadioButton`, label "हिंदी, चुनी गई".
 - **Analytics:** `language_select{lang, surface=onboarding|settings}`.
 
@@ -46,11 +50,26 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
     2. `notifications_active` "जब तक आप फ़ॉर्म न भरें, हम याद दिलाते रहेंगे" / *"We keep reminding you until you apply"*
     3. `description` "हर सूचना में फ़ीस, दस्तावेज़, फ़ोटो का साइज़ और आधिकारिक लिंक" / *"Every alert has fee, documents, photo size and the official link"*
   - `DisclaimerNote` (icon `info`, `bodySmall`, `surfaceContainer` bg, radius 12): fixed disclaimer string (02 §7).
-- **Bottom:** primary "शुरू करें — 2 मिनट लगेंगे" / *"Start — takes 2 minutes"*; below, `TextButton` "पहले से अकाउंट है? लॉग इन करें" / *"Have an account? Log in"* → S11 (`entry=welcome`).
+- **Bottom:** primary "शुरू करें — 2 मिनट लगेंगे" / *"Start — takes 2 minutes"* → S47; below, `TextButton` "पहले इस्तेमाल किया है? Google से साइन इन करें" / *"Used it before? Sign in with Google"* → O11 (SC-46: restores profile and skips S47/S04–S10).
 - **Analytics:** `onb_start`.
 
+## S47 Privacy notice ("आपकी जानकारी") — P0 (new 2026-11-19)
+- **Top bar:** onboarding: back (→ S03), no title; settings variant: back + "प्राइवेसी नोटिस" / *"Privacy notice"*.
+- **Content (scroll):** icon `privacy_tip` 48 `primary` · `headlineSmall` **"आपकी जानकारी, सीधी बात"** / *"Your data, plainly"* · `bodyLarge` "नौकरियाँ मिलाने के लिए हमें बस कुछ बातें चाहिए। यह रही पूरी बात:" / *"We need only a few details to match jobs. Here is all of it:"*
+- 5 `PrivacyNoticeItem`s (06 §K4):
+  1. `school` **"हम क्या पूछते हैं"** — "कौन-सी नौकरियाँ, पढ़ाई, जन्मतिथि, वर्ग, राज्य। लिंग, दिव्यांग और पूर्व सैनिक — चाहें तो छोड़ दें।" · क्यों: "इन्हीं से तय होता है कि आप किस नौकरी के योग्य हैं।" / *"What we ask: jobs you want, education, date of birth, category, state. Gender, disability and ex-servicemen are optional." Why: "These decide which jobs you are eligible for."*
+  2. `block` **"हम क्या कभी नहीं माँगते"** — "मोबाइल नंबर, आधार, दस्तावेज़, फ़ोटो, आपके कॉन्टैक्ट या लोकेशन।" / *"Never: phone number, Aadhaar, documents, photos, contacts or location."*
+  3. `lock` **"जानकारी कहाँ रहती है"** — "भारत में हमारे सर्वर पर, सुरक्षित। हम इसे किसी को बेचते या देते नहीं। Google से साइन इन करें तो सिर्फ़ नाम और ईमेल लेते हैं।" / *"On our server in India, encrypted. Never sold or shared. If you sign in with Google we take only your name and email."*
+  4. `info` **"विज्ञापन"** — "मुफ़्त ऐप में नीचे एक छोटा विज्ञापन होता है। विज्ञापन वालों को आपकी प्रोफ़ाइल नहीं मिलती। Pro में कोई विज्ञापन नहीं।" / *"The free app shows one small ad at the bottom. Advertisers never get your profile. Pro has no ads."* (link "और जानें" → B17)
+  5. `delete` **"हटाना आपके हाथ में"** — "प्रोफ़ाइल → अकाउंट और डेटा में अपना डेटा डाउनलोड करें या सब कुछ हमेशा के लिए हटाएँ।" / *"Profile → Account & data: download your data or delete everything."*
+- `TextButton` "पूरी प्राइवेसी नीति पढ़ें" (Custom Tab) and the line "सूचनाएँ भेजने के लिए हम आगे इजाज़त माँगेंगे।" / *"We'll ask for notification permission later."*
+- **Bottom:** primary **"समझ गया, आगे बढ़ें"** / *"Got it, continue"* → S04. No checkbox (nothing here needs special consent). Settings variant: no bottom bar.
+- **Logic:** stores `privacy_notice_ack{version, at}` locally and on the server with the profile. A new `notice_version` shows S47 once more on next open.
+- **A11y:** each item one node ("हम क्या पूछते हैं: …; क्यों: …").
+- **ev:** `privacy_notice_view{surface}`, `privacy_notice_ack{version}`, `privacy_policy_open`.
+
 ## S04–S09 Onboarding steps — P0 (shared frame `OnboardingStepScaffold`)
-- **Top bar:** back arrow (S04 back → S03) · title empty · right: `TextButton` "छोड़ें" only on S09.
+- **Top bar:** back arrow (S04 back → S47) · title empty · right: `TextButton` "छोड़ें" only on S09.
 - **Header:** `StepProgressHeader`: `LinearProgressIndicator` (determinate, step/6, 4 dp, rounded) + `labelMedium` "चरण 2 / 6" / *"Step 2 of 6"*. Below: question `headlineSmall`, helper `bodyMedium onSurfaceVariant`.
 - **Bottom:** `BottomActionBar` with primary "आगे / Next" (disabled until valid; disabled label shows reason below bar in `bodySmall`: "एक विकल्प चुनें"). Single-choice screens auto-advance 250 ms after selection (button remains for TalkBack users; auto-advance disabled when TalkBack on).
 - **Autosave:** each answer persisted on change.
@@ -124,42 +143,48 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
     - `ProfileCompletenessBar` if any `unknown`: "प्रोफ़ाइल 90% पूरी · 1 जानकारी बाकी" + chip "PwD" → S27.
   - *Empty (n = 0):* `EmptyState` icon `notifications_active` · "अभी आपके लिए कोई खुली नौकरी नहीं है" · "नई नौकरी आते ही हम सूचना भेजेंगे।"
   - *Error:* "नतीजे नहीं आ पाए" + retry; continue allowed (match runs later, push N-01s).
-- **Bottom:** primary **"मुझे सूचना भेजें"** / *"Send me alerts"* (→ S13; if permission already granted → S15/S16). Secondary `OutlinedButton` "मोबाइल नंबर से प्रोफ़ाइल सेव करें" / *"Save profile with mobile number"* → S11 (`entry=onb_result`) → then S13.
+- **Bottom:** primary **"मुझे सूचना भेजें"** / *"Send me alerts"* (→ S13; if permission already granted → S15/S16). Secondary `GoogleSignInButton` **"Google से सेव करें"** / *"Save with Google"* with caption `bodySmall` "ज़रूरी नहीं · फ़ोन बदलने पर प्रोफ़ाइल वापस मिलेगी" / *"Optional · get your profile back on a new phone"* → O11 → snackbar "Google अकाउंट से जुड़ गया ✓" → stays on S10 (button becomes "✓ {email} से सेव"). Cancel → nothing changes.
 - **A11y:** hero is one node: "आप अभी 7 नौकरियों के योग्य हैं, और 2 में ख़ुद जाँचना होगा".
 - **Analytics:** `match_count_shown{eligible, check, secs}`, `onb_result_cta{cta}`.
 
-## S11 Phone — P0
-- **Top bar:** back · title "मोबाइल नंबर" / *"Mobile number"*.
-- **Content:** 
-  - `headlineSmall`: "अपना मोबाइल नंबर डालें" / *"Enter your mobile number"*.
-  - `bodyMedium`: purpose text varies by entry: default "प्रोफ़ाइल सुरक्षित रखने के लिए — फ़ोन बदलने पर भी आपकी जानकारी रहेगी।"; `entry=whatsapp`: "इसी नंबर पर WhatsApp अलर्ट आएँगे।"; `entry=pro`: "Pro आपके नंबर से जुड़ा रहेगा।"
-  - `PhoneField`: leading fixed "+91" (not editable), 10 digits, `KeyboardType.Phone`, `autofill(PhoneNumber)`; on focus first time, launch Phone Number Hint API (`GetPhoneNumberHintIntentRequest`).
-  - Consent `Checkbox` row (48 dp): "मैं [नियम] और [प्राइवेसी नीति] से सहमत हूँ" (links open Custom Tab).
-  - Privacy note `bodySmall` + `lock` icon: "हम आपका नंबर किसी को नहीं देते। कोई कॉल या मार्केटिंग मैसेज नहीं।" / *"We never share your number. No calls or marketing messages."*
-- **Bottom:** primary "OTP भेजें" / *"Send OTP"* (enabled: 10 digits starting 6–9 + consent). Onboarding entry also shows `TextButton` "अभी नहीं" / *"Not now"*.
-- **Errors:** "पूरे 10 अंक डालें" · "यह नंबर सही नहीं लगता (6, 7, 8 या 9 से शुरू होना चाहिए)" · rate limit "बहुत बार कोशिश हुई। 10 मिनट बाद फिर करें।" · offline button disabled + "OTP के लिए इंटरनेट चाहिए".
-- **ev:** `login_start{entry}`, `otp_sent`, `phone_hint_used`.
+## S11 Phone — retired 2026-11-19
+No phone number is collected. Sign-in is Google via O11 (see B16, S10, S26, S38 and 03 SC-03).
 
-## S12 OTP — P0
-- **Top bar:** back · "OTP डालें".
-- **Content:** `bodyLarge` "+91 98765 43210 पर 6 अंकों का OTP भेजा है" + `TextButton` "नंबर बदलें". `OtpField`: 6 boxes visual (48×56 each, 8 gap), but **one** underlying `BasicTextField` (paste-friendly, `autofill(SmsOtpCode)`, SMS Retriever API auto-fill). Auto-submit at 6 digits.
-- Timer `bodyMedium`: "0:24 में फिर से भेज सकेंगे" → `TextButton` "OTP फिर भेजें"; after 2nd resend also "कॉल पर OTP पाएँ".
-- **States:** verifying (boxes disabled + progress), error (boxes `error` outline + text "OTP गलत है। फिर से डालें (2 मौके बाकी)"), expired ("OTP की समय सीमा ख़त्म — नया OTP भेजें"), success (check animation 200 ms → navigate back to entry).
-- **Merge dialog** (existing account): title "इस नंबर पर पहले से प्रोफ़ाइल है", body "कौन-सी जानकारी रखें?", buttons "पुरानी प्रोफ़ाइल रखें (सुझाया)" / "इस फ़ोन वाली रखें".
-- **a11y:** OTP field label "6 अंकों का OTP"; error announced via `liveRegion = Polite`.
-- **ev:** `otp_autofilled`, `login_success{merge}`, `login_fail{reason}`.
+## S12 OTP — retired 2026-11-19
+No OTP. The "which profile to keep" question is D10.
+
+## O11 Sign in with Google (system sheet) — P0
+- Started only by `GoogleSignInButton` (06 §K1): `CredentialManager.getCredential(GetCredentialRequest(listOf(GetSignInWithGoogleOption(serverClientId, nonce))))`. The bottom sheet, account list and consent text are Google's; we do not draw or restyle them. Account switching (D11) uses the same call, which always shows the account chooser.
+- Result → Firebase `GoogleAuthProvider.getCredential(idToken)` → `linkWithCredential` (guest) or `signInWithCredential` (account exists) → API `merge` (SC-03).
+- Errors: `GetCredentialCancellationException` → silent return; `NoCredentialException` (no Google account) → Google offers "Add account"; other → snackbar "साइन इन नहीं हो पाया, फिर कोशिश करें" / *"Couldn't sign in, try again"*. Offline → button disabled with "साइन इन के लिए इंटरनेट चाहिए".
+- **ev:** `signin_start{surface}`, `signin_result{result, merge}`.
+
+### B16 Sign-in offer — P0 (new)
+- Sheet (H4). Icon `cloud_done` 40 in `primaryContainer` circle. Title per variant:
+  - `pro`: **"Pro को अपने Google अकाउंट से जोड़ें?"** / *"Link Pro to your Google account?"*
+  - `sync`: **"अपने फ़ॉर्म Google अकाउंट में सेव करें"** / *"Save your forms to your Google account"*
+  - `family`: **"परिवार का लिंक नए फ़ोन पर भी रहे"** / *"Keep family links on a new phone"*
+  - `settings`: **"Google से साइन इन करें"** / *"Sign in with Google"*
+- 3 bullets (`check_circle` success 20): "फ़ोन बदलने पर प्रोफ़ाइल, फ़ॉर्म और Pro वापस मिलेंगे" · "मुफ़्त है — कोई पासवर्ड या मोबाइल नंबर नहीं" · "हम सिर्फ़ आपका नाम और ईमेल लेते हैं" / *"Get your profile, forms and Pro back on a new phone" · "Free — no password or phone number" · "We take only your name and email"*.
+- `GoogleSignInButton` full width "Google से साइन इन करें" · `TextButton` **"अभी नहीं"** (variant `pro`: "बिना साइन इन के जारी रखें" / *"Continue without signing in"* → Play sheet).
+- Frequency: `pro` once per install; `sync` dismiss hides 30 days; never two offers in a session.
+- **ev:** `signin_offer_view{variant}`, `signin_offer_result{variant, action}`.
 
 ## S13 Notification permission primer — P0
 - **Content (centred):**
   - Mock notification card (static composable, not an image): app icon + "Sarkari Match · अभी" + **"कल आखिरी दिन! SSC GD कांस्टेबल"** + "फ़ीस ₹100 · आप योग्य हैं ✓".
   - `headlineSmall`: **"आखिरी तारीख से पहले याद दिलाएँ?"** / *"Get reminded before the last date?"*
-  - `bodyLarge`: "सूचना की इजाज़त दें — हम दिन में 3 से ज़्यादा सूचना नहीं भेजते, और रात 10 से सुबह 7 तक चुप रहते हैं।" / *"Allow notifications — never more than 3 a day, and silent 10 pm–7 am."*
+  - 3 `BulletRow`s (`bodyLarge`):
+    1. `event` "कब: नई नौकरी आने पर, हर 3 दिन, आखिरी 3 दिन में और आखिरी दिन सुबह" / *"When: a new job, every 3 days, in the last 3 days and on the last morning"*
+    2. `bedtime` "दिन में 3 से ज़्यादा नहीं · रात 10 से सुबह 7 चुप" / *"Never more than 3 a day · silent 10 pm–7 am"*
+    3. `notifications_active` "सिर्फ़ इसी ऐप में — कोई SMS या WhatsApp नहीं। इजाज़त न दी तो हम याद नहीं दिला पाएँगे।" / *"Only in this app — no SMS or WhatsApp. Without permission we can't remind you."*
+  - Family-member variant (from S35): title **"{name} के ज़रूरी अलर्ट पाने के लिए इजाज़त दें"**, bullet 1 "सिर्फ़ आखिरी तारीख, एडमिट कार्ड और DV" 
 - **Bottom:** primary "इजाज़त दें" / *"Allow"* → `rememberLauncherForActivityResult(RequestPermission(POST_NOTIFICATIONS))` (API 33+); API < 33 → if disabled open settings, else skip. `TextButton` "अभी नहीं" / *"Not now"*.
 - **Result:** granted → S15 (if needed) else S16 · denied → S20 with O02 · permanently denied (rationale false after a denial) → D01.
 - **ev:** `notif_perm_prompt{api}`, `notif_perm_result{granted, permanent}`.
 
-## S14 Exact-alarm primer — P1
-- Icon `alarm` 48 · `headlineSmall` "बिना इंटरनेट भी आखिरी दिन की याद" · body "आखिरी दिन सुबह 8:15 बजे, फ़ोन में ही एक अलार्म जैसा रिमाइंडर लगेगा — अगर किसी वजह से हमारी सूचना न पहुँचे।" · steps: "‘अलार्म और रिमाइंडर’ में Sarkari Match को चालू करें" · primary "सेटिंग खोलें" · text "रहने दें".
+## S14 Exact-alarm primer — P0 (was P1)
+- Icon `alarm_on` 48 · `headlineSmall` "बिना इंटरनेट भी आखिरी दिनों की याद" · body "अगर किसी वजह से हमारी सूचना न पहुँचे, तो आपका फ़ोन ख़ुद याद दिलाएगा — आखिरी तारीख से एक दिन पहले और आखिरी दिन सुबह 8:15 बजे।" / *"If our alert doesn't arrive, your phone reminds you itself — the day before and at 8:15 am on the last day."* · steps: "‘अलार्म और रिमाइंडर’ में Sarkari Match को चालू करें" · primary "सेटिंग खोलें" · text "रहने दें".
 
 ## S15 Phone setup guide (OEM) — P0
 - **Top bar:** back · "सूचना पक्की करें" / *"Make alerts reliable"* · right `TextButton` "बाद में".
@@ -177,7 +202,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
   1. "सूचना की इजाज़त" — ✓ चालू / ✗ बंद → "चालू करें"
   2. "ऐप खुले में सूचना" — spinner "भेज रहे हैं…" → ✓ "पहुँच गई (2 सेकंड)" / ✗ "नहीं पहुँची"
   3. "ऐप बंद होने पर सूचना" — instruction card: "अब Recent apps से Sarkari Match हटा दें (ऊपर swipe करें)। 1 मिनट में टेस्ट सूचना आएगी — उस पर टैप करें।" → ✓ "बंद ऐप में भी सूचना आती है" / ✗ after 3 min "सूचना नहीं आई"
-- Result card: success (`successContainer`) "सब ठीक है! अब आपकी कोई आखिरी तारीख नहीं छूटेगी।" / failure (`warningContainer`) "आपका फ़ोन सूचना रोक रहा है" + buttons "फ़ोन की सेटिंग देखें" (→S15) and Pro line "Pro में WhatsApp पर भी अलर्ट आता है" (→S30).
+- Result card: success (`successContainer`) "सब ठीक है! अब आपकी कोई आखिरी तारीख नहीं छूटेगी।" / failure (`warningContainer`) "आपका फ़ोन सूचना रोक रहा है" + buttons "फ़ोन की सेटिंग देखें" (→S15) and "फ़ोन पर बैकअप रिमाइंडर चालू है ✓" status line (or "चालू करें" → S14 if exact alarms are blocked). No upsell on this screen.
 - **Bottom:** primary "ठीक है" (→ S20) — available at any time; test continues server-side and result is stored.
 - **ev:** `self_test_start{surface}`, `self_test_result{step, ok, latency_ms}`.
 
@@ -198,7 +223,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
    - `pending` **"जवाब बाकी"** / *"Waiting for your reply"*
    - `help` **"ख़ुद जाँचें"** / *"Check yourself"* (checkYourself verdict, any deadline — sorted inside sections above if urgent ≤ 3 days)
 4. "क्या आपने ये फ़ॉर्म भरे थे?" grouped card (SC-17) when applicable, between sections 2 and 3.
-5. **Ad slot (free users only)** — `NativeAdSlot` (06 §J1) as the last list item after all job sections, never between job cards. Pro/trial: not rendered. No-fill/offline: collapses to nothing.
+5. **Ad slot (free users only)** — `NativeAdSlot` (06 §J1) as the last list item after all job sections, never between job cards; label row "विज्ञापन · Ad" · "क्यों?" (→ B17) · "विज्ञापन हटाएँ" (→ S30). Pro/trial: not rendered. No-fill/offline: collapses to nothing.
 6. Footer `DisclaimerNote` (short): "सरकारी ऐप नहीं · हर जानकारी आधिकारिक नोटिस से मिलाएँ".
 
 **MatchCard** (see 06 §C1 for API). Layout inside card (16 padding):
@@ -304,6 +329,14 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 - Variant **plans** (trial used): same header; two compact `PlanOptionCard`s (₹199/साल — "₹17/महीना · सबसे सस्ता" badge; ₹49/सीज़न — "4 महीने") + primary "₹199 में Pro लें" → S30 with plan preselected.
 - ev `paywall_view{variant}`, `paywall_cta{cta}`.
 
+### B08 Trial started
+- Title **"14 दिन Pro चालू — {date} तक"** · 3 `check_circle` rows: "एडमिट कार्ड से रिज़ल्ट तक हर सूचना" · "परीक्षा की तारीख बदली तो तुरंत" · "कोई विज्ञापन नहीं".
+- Guest: `GoogleSignInButton` "Google से सेव करें" + caption "फ़ोन बदलने पर भी Pro और फ़ॉर्म साथ रहेंगे" · text "अभी नहीं". Signed in: primary "ठीक है".
+
+### B17 Why ads — P0 (new)
+- See 06 §J2. Title **"विज्ञापन क्यों दिखता है?"** / *"Why do I see an ad?"* · items: "मुफ़्त अलर्ट चलाने का ख़र्च इसी से निकलता है" · "विज्ञापन वालों को आपकी प्रोफ़ाइल, उम्र या राज्य नहीं मिलता; विज्ञापन आपकी पसंद के हिसाब से नहीं चुने जाते" · "रिमाइंडर, नौकरी के ब्योरे और सूचनाओं में कभी विज्ञापन नहीं" · `TextButton` "यह विज्ञापन ठीक नहीं — बताएँ" · `SmSecondaryButton` "Pro में कोई विज्ञापन नहीं".
+- **ev:** `ads_notice_view{surface}`, `ad_report`.
+
 ### B03 Not interested
 - Title **"इसमें रुचि नहीं?"** · body "हम इसकी याद नहीं दिलाएँगे। (वैकल्पिक) वजह बताएँ — इससे आगे बेहतर नौकरियाँ दिखाएँगे।"
 - `FilterChip`s (multi): पोस्ट पसंद नहीं · जगह दूर है · तैयारी नहीं है · पहले से नौकरी है · मैं योग्य नहीं हूँ (→ also opens B05 after). API values in the same order: `not_interested_in_post`, `location`, `not_prepared`, `already_employed`, `not_eligible`.
@@ -337,6 +370,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 - **Top bar:** "मेरे फ़ॉर्म" / *"My forms"*. Filter chips under bar: "चालू (4)" · "पूरे हुए (1)".
 - **Pro status strip** (free users): `ProUpsellInline` (tertiaryContainer): `workspace_premium` "फ़ॉर्म भरने के बाद की सूचना (एडमिट कार्ड, रिज़ल्ट) Pro में मिलती है" + `TextButton` "₹17/महीना से" → S30. Trial users: "Pro ट्रायल · 9 दिन बाकी".
 - **`ClashBanner`** (P1) above list when relevant.
+- **Sync card** (guest with ≥ 1 Applied, dismissible 30 days): `cloud_done` "अपने फ़ॉर्म Google अकाउंट में सेव करें — फ़ोन बदलने पर भी रहेंगे" + `TextButton` "सेव करें" (→ B16 `sync`) · `close`.
 - **`TrackerRow`** card per Applied job: title `titleMedium`; "भरा: 18 नवं"; current stage chip (stage icon + "एडमिट कार्ड आ गया" / "रिज़ल्ट का इंतज़ार"); **next** line: "अगला: परीक्षा — 12 फ़र 2027"; mini progress (8 dots). Free users: next line shows `lock` + "अगला चरण: एडमिट कार्ड · सूचना Pro में".
 - Tap → S23 (Pro/trial) or S21 (free; with Pro CTA in bar).
 - **Empty:** icon `assignment_turned_in`: "अभी कोई फ़ॉर्म नहीं" · "‘फ़ॉर्म भर दिया’ दबाने पर नौकरी यहाँ आ जाएगी।" · button "नौकरियाँ देखें".
@@ -353,19 +387,19 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 - **ev:** `timeline_view{stage}`, `timeline_link_open{stage, kind}`, `result_self_report{shortlisted}`.
 
 ## S24 Alert history — P1
-`InboxRow`: channel icon (push `notifications` / WhatsApp glyph / family `family_restroom`), title, time, delivery status text ("पहुँचा · खोला" / "पहुँचा" / "नहीं पहुँचा"), tap → target. Sticky date headers "आज", "कल", "17 नवं". Empty "अभी कोई सूचना नहीं भेजी".
+`InboxRow`: icon (push `notifications` / on-device backup `alarm_on` / sent to family `family_restroom`), title, time, delivery status text ("पहुँचा · खोला" / "पहुँचा" / "नहीं पहुँचा"), tap → target. Sticky date headers "आज", "कल", "17 नवं". Empty "अभी कोई सूचना नहीं भेजी".
 
 ## S25 Past & hidden jobs — P1
 `PrimaryTabRow`: "रुचि नहीं" · "तारीख निकल गई" · "अब योग्य नहीं". Rows: title, reason/date, action `TextButton` ("वापस लाएँ" if window open / "भरा था" within 30 days). Empty per tab.
 
 ## S26 Profile — P0
 - **Top bar:** "प्रोफ़ाइल" / *"Profile"*.
-- **`ProfileHeader`:** avatar circle with initials or `person` icon; name (optional; "नाम जोड़ें") ; phone "+91 98xxx xx210" or `TextButton` "लॉग इन करें — प्रोफ़ाइल सुरक्षित रखें"; `ProfileCompletenessBar`.
-- **`ProStatusCard`:** Free: tertiaryContainer, `workspace_premium`, "Pro लें — कोई ज़रूरी तारीख न छूटे" · 3 bullets · button "₹199/साल देखें". Trial: "Pro ट्रायल · 26 नवं तक" + "प्लान चुनें". Pro: "Pro चालू · 18 नवं 2027 तक" + "मैनेज करें" (→S32).
+- **`AccountHeader`** (06 §K2): signed in → Google photo/initials, name, email (`bodySmall`), chevron → S38; guest → `person` avatar, **"मेहमान (Guest)"**, "फ़ोन बदलने पर प्रोफ़ाइल साथ रखने के लिए साइन इन करें" + compact `GoogleSignInButton` "Google से साइन इन करें" (→ O11 directly; no B16 here). Below: `ProfileCompletenessBar`.
+- **`ProStatusCard`:** Free: tertiaryContainer, `workspace_premium`, "Pro लें — फ़ॉर्म भरने के बाद की हर सूचना" · 3 bullets ("एडमिट कार्ड से रिज़ल्ट तक", "कोई विज्ञापन नहीं", "परिवार को भी अलर्ट (जल्द)") · button "₹199/साल देखें". Trial: "Pro ट्रायल · 26 नवं तक" + "प्लान चुनें". Pro: "Pro चालू · 18 नवं 2027 तक" + "मैनेज करें" (→S32).
 - **Section "मेरी जानकारी"** (`SettingsRow` with leading icon, label, value, chevron; tap → S27): कौन-सी नौकरियाँ (SSC, रेलवे, पुलिस) · पढ़ाई (ग्रेजुएशन — BA, पास) · जन्मतिथि (12/03/2003 · 23 साल) · वर्ग (OBC-NCL) · राज्य (उत्तर प्रदेश · निवास प्रमाण: हाँ) · लिंग (पुरुष) · दिव्यांग (नहीं) · पूर्व सैनिक (नहीं). Unknown values show warning text "बताया नहीं" + `?` icon.
-- **Section "अलर्ट"**: अलर्ट सेटिंग (S28; value "चुप: रात 10–सुबह 7") · अलर्ट पक्के करें (S29; value with status dot+text "सब ठीक" / "ध्यान दें") · WhatsApp अलर्ट (S33; "Pro" tag if locked) · परिवार अलर्ट (S34, P1) · सर्टिफ़िकेट (S36, P1).
-- **Section "ऐप"**: भाषा (हिंदी) · थीम (सिस्टम जैसा) · दोस्त को बताएँ (S45, P1) · मदद और जानकारी (S39).
-- **Section "अकाउंट"** (separated by 24 dp, destructive items live inside S38): अकाउंट और डेटा (S38).
+- **Section "अलर्ट"**: अलर्ट सेटिंग (S28; value "चुप: रात 10–सुबह 7") · अलर्ट पक्के करें (S29; value with status dot+text "सब ठीक" / "ध्यान दें") · परिवार अलर्ट (S34, P1; "Pro" tag if locked) · मुझे किसके अलर्ट आते हैं (S49, P1; only if this phone follows someone) · सर्टिफ़िकेट (S36, P1).
+- **Section "ऐप"**: भाषा (हिंदी; value shows the native name) · थीम (सिस्टम जैसा) · दोस्त को बताएँ (S45, P1) · मदद और जानकारी (S39).
+- **Section "अकाउंट"** (separated by 24 dp, destructive items live inside S38): अकाउंट और डेटा (S38) · प्राइवेसी नोटिस (S47).
 - Footer: version "वर्ज़न 1.0.0 (100)".
 - **ev:** `profile_view{completeness}`, `profile_row_tap{row}`.
 
@@ -386,7 +420,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
   - `schedule` **याद दिलाने का समय** / *Reminder time* — radio sheet: सुबह 9 · दोपहर 1 · शाम 7 (default) · रात 9.
   - `summarize` **रोज़ का सारांश** (P1) — switch + time (B13).
   - `info` **दिन में ज़्यादा से ज़्यादा 3 सूचनाएँ** — info row (not editable): "बाकी अगले दिन या सारांश में आएँगी।"
-  - `alarm` **बिना इंटरनेट भी आखिरी दिन की याद** (P1) — switch → S14 if needed.
+  - `alarm_on` **फ़ोन पर बैकअप रिमाइंडर** / *Backup reminder on this phone* (P0, **on by default**) — switch; supporting text "सूचना न पहुँचे तो फ़ोन ख़ुद याद दिलाएगा (आखिरी दिन से एक दिन पहले और आखिरी दिन सुबह)"; → S14 if exact alarms are blocked; value "समय पर" / "लगभग समय पर (±15 मिनट)".
   - `notifications` **फ़ोन की सूचना सेटिंग** — opens `ACTION_APP_NOTIFICATION_SETTINGS`.
 - Changes save instantly (snackbar "सेव हो गया"); offline → queued.
 - **ev:** `settings_change{key, value}`.
@@ -400,7 +434,7 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
   3. बैटरी — "कोई रोक नहीं" / "बैटरी सेवर रोक सकता है" [ठीक करें → S15]
   4. ऑटोस्टार्ट ({brand}) — "आपने चालू किया" / "पता नहीं" [गाइड देखें]
   5. आख़िरी टेस्ट — "19 नवं, पहुँच गया ✓" / "14 दिन से जवाब नहीं" [टेस्ट करें → S16]
-  6. WhatsApp बैकअप — Pro: "चालू · 98xxx" / Free: lock "Pro में" [देखें]
+  6. फ़ोन पर बैकअप रिमाइंडर — "चालू · समय पर" / "चालू · लगभग समय पर" / "बंद" [चालू करें → S28 / S14]
 - **ev:** `delivery_health_view{issues}`, `delivery_fix_tap{item}`.
 
 ## S30 Paywall (Pro plans) — P0
@@ -411,23 +445,26 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
   2. `update` परीक्षा की तारीख बदली — "तुरंत बताएँगे"
   3. `key` आंसर की, आपत्ति की आखिरी तारीख, रिज़ल्ट, कट-ऑफ़
   4. `fact_check` DV और मेडिकल की तारीख — "न जाने पर दोबारा मौका नहीं मिलता"
-  5. WhatsApp glyph · WhatsApp पर भी अलर्ट — "फ़ोन सूचना रोके तब भी"
-  6. `block` **कोई विज्ञापन नहीं** / *No ads* — "ऐप में कहीं भी विज्ञापन नहीं"
-  7. (P1, shown with "जल्द" tag) परिवार अलर्ट · परीक्षा टकराव · सर्टिफ़िकेट की जाँच
+  5. `block` **कोई विज्ञापन नहीं** / *No ads* — "ऐप में कहीं भी विज्ञापन नहीं"
+  6. `event_repeat` **परीक्षा टकराव** / *Exam clash alerts* — "दो परीक्षाएँ एक ही दिन या हफ़्ते में हों तो बताएँगे" · "जल्द" tag (P1)
+  7. `verified` **सर्टिफ़िकेट की जाँच** / *Certificate validity* — "OBC/EWS या निवास प्रमाण पत्र इस नोटिस के लिए पुराना हो तो बताएँगे" · "जल्द" (P1)
+  8. `family_restroom` **परिवार को भी अलर्ट** / *Family alerts* — "माता-पिता या भाई-बहन के फ़ोन पर आखिरी तारीख और DV की सूचना — एक लिंक भेजकर जोड़ें" · "जल्द" (P1)
+  - Benefits 1–4 can be merged into one row "फ़ॉर्म भरने के बाद हर सूचना" on short screens (prototype shows the merged version).
 - **Plans** (`PlanOptionCard` radio group, 12 gap):
   - **साल भर — ₹199** · sub "सिर्फ़ ₹17/महीना" · badge (tertiary filled) "सबसे सस्ता" · default selected.
   - **एक सीज़न — ₹49** · sub "4 महीने · एक भर्ती के मौसम के लिए".
   - Prices from `ProductDetails.formattedPrice`; per-month computed.
 - **Primary** (full-width filled `Button`, `primary` colour — the one CTA blue across the app; Pro saffron is used for badges/icons only) **"₹199 में Pro लें"** / *"Get Pro for ₹199"*; trial-eligible users additionally see a `TextButton` **"14 दिन मुफ़्त आज़माएँ"** (calls `POST /v1/me/trial`; no Play free-trial offer exists, so the buy button never mentions a trial).
-- Secondary row: "UPI से भरें" (only `upi` flavour) · `TextButton` "पहले ख़रीदा था? वापस लाएँ".
-- Legal `bodySmall`: "Google Play से भुगतान। साल वाला प्लान अपने-आप रिन्यू होगा — Play Store में कभी भी बंद करें। मुफ़्त अलर्ट हमेशा मुफ़्त रहेंगे।" 
+- Secondary row: `TextButton` "पहले ख़रीदा था? वापस लाएँ".
+- Legal `bodySmall`: "भुगतान सिर्फ़ Google Play से — UPI, कार्ड या Play बैलेंस। साल वाला प्लान अपने-आप रिन्यू होगा — Play Store में कभी भी बंद करें। मुफ़्त अलर्ट हमेशा मुफ़्त रहेंगे।" / *"Paid only through Google Play — UPI, card or Play balance. The yearly plan renews automatically — cancel any time in the Play Store. Free alerts stay free."*
+- **Guest:** tapping the primary button the first time shows B16 `pro`; either answer continues to the Play sheet (O06).
 - **States:** products loading → plan skeletons, button disabled; billing unavailable → error card "Google Play से भुगतान अभी नहीं हो पा रहा" + retry; offline → button disabled "भुगतान के लिए इंटरनेट चाहिए".
 - **ev:** `paywall_view{surface, trial_eligible}`, `plan_select{plan}`, `purchase_start{plan, method}`.
 
 ## S31 Payment status — P0
 | State | Icon (48) | Title | Body | Buttons |
 | --- | --- | --- | --- | --- |
-| success | `check_circle` success | **"Pro चालू हो गया!"** | "{date} तक आपके सभी फ़ॉर्म की हर सूचना मिलेगी।" | primary "WhatsApp अलर्ट चालू करें" (→S33) · text "मेरे फ़ॉर्म देखें" |
+| success | `check_circle` success | **"Pro चालू हो गया!"** | "{date} तक आपके सभी फ़ॉर्म की हर सूचना मिलेगी। अब कोई विज्ञापन नहीं।" | primary "मेरे फ़ॉर्म देखें" (→S22) · text "परिवार को जोड़ें" (→S34, P1; hidden until P1) · guest: compact `GoogleSignInButton` "Pro को Google अकाउंट से जोड़ें" |
 | pending | `hourglass_top` warning | **"भुगतान की पुष्टि हो रही है"** | "पैसे कट गए हैं तो चिंता न करें — पुष्टि होते ही Pro चालू होगा और हम सूचना भेजेंगे। आमतौर पर 10 मिनट।" | primary "ठीक है" · text "मदद चाहिए" |
 | failed | `error` error | **"भुगतान नहीं हो पाया"** | "कोई पैसा नहीं कटा। अगर कटा है तो 3–5 दिन में वापस आ जाएगा।" | primary "फिर से कोशिश करें" · text "बाद में" |
 | cancelled | — | (no screen; snackbar on S30 "भुगतान रद्द किया") | | |
@@ -436,22 +473,42 @@ Copy format: **HI** (default) / *EN*. String keys in `code` are suggested `strin
 ## S32 Manage plan — P0
 `PlanSummaryCard` (plan, "{date} तक", renew state) · rows: "साल वाले प्लान पर जाएँ" (season users) · "Play Store में मैनेज करें" (`https://play.google.com/store/account/subscriptions?sku=…&package=…`) · "पहले ख़रीदा था? वापस लाएँ" → D08 · "रसीदें" (list). Free users never land here (redirect S30).
 
-## S33 WhatsApp alerts — P0 (Pro)
-- **Top bar:** back · "WhatsApp अलर्ट".
-- `WhatsAppPreviewBubble`: a static chat bubble showing W-03 sample text ("*आज आखिरी दिन* — SSC GD कांस्टेबल 2027…").
-- Explanation `bodyLarge`: "सिर्फ़ ज़रूरी सूचनाएँ: नई नौकरी, आखिरी 3 दिन, एडमिट कार्ड, DV। एक सीज़न में 30 से ज़्यादा नहीं।"
-- Number row: "इस नंबर पर: +91 98xxx xx210" + `TextButton` "दूसरा नंबर" (opens WhatsApp with a prefilled "START {code}" message to send from that number; S33 shows "WhatsApp में भेजें दबाएँ…" and polls until active, API §3).
-- Consent `Checkbox` (required, unchecked by default): "मैं Sarkari Match से WhatsApp पर अलर्ट पाने के लिए सहमत हूँ। ‘STOP’ भेजकर कभी भी बंद कर सकता/सकती हूँ।"
-- Primary "WhatsApp अलर्ट चालू करें". After: status card "चालू ✓ — एक टेस्ट मैसेज भेजा है, मिला?" [हाँ] [नहीं].
-- Active state: `Switch` row "WhatsApp अलर्ट" on; off → D05.
-- Locked (free): preview + lock card "यह Pro में है" + "Pro देखें".
-- **ev:** `whatsapp_optin{surface}`, `whatsapp_test_ack{received}`, `whatsapp_optout{surface}`.
+## S33 WhatsApp alerts — retired 2026-11-19
+No WhatsApp. Pro delivery reliability is S29 + on-device backup (S28/S14).
 
-## S34 Family alerts — P1
-List of `FamilyMemberRow` (name, relation, masked number, status chip "चालू"/"निमंत्रण भेजा"/"मना किया", overflow "हटाएँ"), "सदस्य जोड़ें (2 तक)" → B12. Explainer: "उन्हें सिर्फ़ आखिरी 2 दिन, एडमिट कार्ड और DV की सूचना जाएगी — आपकी प्रोफ़ाइल नहीं दिखेगी।"
+## S34 Family alerts — P1 (Pro)
+- **Top bar:** back · "परिवार अलर्ट" / *"Family alerts"*.
+- Explainer card (`primaryContainer`): `family_restroom` "माता-पिता या भाई-बहन को अपने फ़ोन पर आपकी ज़रूरी तारीख़ें मिलें" · "उन्हें सिर्फ़ आखिरी 2 दिन, एडमिट कार्ड और DV की सूचना जाएगी — आपकी प्रोफ़ाइल, जन्मतिथि या वर्ग नहीं। मोबाइल नंबर नहीं चाहिए: आप उन्हें एक लिंक भेजेंगे।"
+- List of `FamilyLinkRow` (relation, nickname, status chip "जुड़ गए" / "निमंत्रण भेजा" / "मना किया" / "रुका हुआ", overflow "हटाएँ" → D06 / "लिंक फिर से भेजें" → S48).
+- Primary "सदस्य जोड़ें (2 तक)" → B12. Disabled at 2 with reason.
+- Locked (free): explainer + lock card "यह Pro में है" + "Pro देखें".
+- **ev:** `family_view{n_linked}`, `family_add_tap`.
+
+### B12 Add family member
+- Title **"किसे जोड़ना है?"** / *"Who do you want to add?"* · `ChipGroup` single: पिता · माँ · भाई · बहन · पति · पत्नी · दूसरा · optional `OutlinedTextField` "नाम (सिर्फ़ आपको दिखेगा)" (30 chars).
+- Note `bodySmall`: "आप उन्हें एक लिंक भेजेंगे। लिंक खोलकर वे अपने फ़ोन पर Sarkari Match में अलर्ट पाएँगे।"
+- Primary **"निमंत्रण बनाएँ"** / *"Create invite"* → S48.
+
+## S48 Family invite (share) — P1 (new)
+- **Top bar:** back · "निमंत्रण भेजें" / *"Send invite"*.
+- `InviteShareCard` (06 §K5): title "पापा के लिए निमंत्रण" · QR (200 dp, dark on white) · link `sarkarimatch.in/f/8KQ2-…` + `content_copy` · "7 दिन तक चलेगा · एक बार इस्तेमाल होगा" · status chip "इंतज़ार" → "जुड़ गए ✓".
+- Primary **"लिंक शेयर करें"** / *"Share link"* (`share`) → Android sharesheet (O08) with text (gender-neutral, 07 §7): "नमस्ते! मेरे सरकारी नौकरी के फ़ॉर्म की ज़रूरी तारीख़ें आपको भी याद दिलाई जाएँ, इसके लिए यह लिंक खोलें: {link} — Sarkari Match" / *"Hi! Open this link to get reminders of my government job form dates too: {link} — Sarkari Match"*. The user picks any app; we send nothing ourselves.
+- Secondary `TextButton` "पास बैठे हैं? QR दिखाएँ" (full-screen QR at max brightness) · destructive `TextButton` "निमंत्रण रद्द करें".
+- States: expired → "समय निकल गया" + "नया लिंक बनाएँ"; linked → success card "पापा जुड़ गए ✓ — अब उन्हें भी ज़रूरी तारीख़ें मिलेंगी" + "ठीक है" (→ S34).
+- **ev:** `family_invite_create{relation}`, `family_invite_share{method}`, `family_invite_cancel`.
 
 ## S35 Family invite (invitee) — P1
-Card "Ravi ने आपको परिवार अलर्ट के लिए जोड़ा है" · "आपको Ravi के फ़ॉर्म की ज़रूरी तारीख़ें (आखिरी दिन, एडमिट कार्ड, DV) भेजी जाएँगी।" · primary "हाँ, मुझे अलर्ट भेजें" (→ OTP on invitee phone) · text "नहीं चाहिए".
+- No top bar (root for invitees). Icon `family_restroom` 48 · `headlineSmall` **"Ravi ने आपको परिवार अलर्ट के लिए जोड़ा है"** / *"Ravi added you for family alerts"* (name = aspirant's first name or the account's given name; never email).
+- Body: "आपको उनके फ़ॉर्म की सिर्फ़ ज़रूरी तारीख़ें मिलेंगी — आखिरी दिन, एडमिट कार्ड और DV। कोई मोबाइल नंबर या अकाउंट नहीं चाहिए।"
+- Primary **"हाँ, मुझे अलर्ट भेजें"** → S13 family variant → S49 · text "नहीं चाहिए" (declines; aspirant sees "मना किया").
+- States: invalid/expired token → "यह निमंत्रण अब नहीं चलता — उनसे नया लिंक माँगें"; already linked → S49.
+
+## S49 Alerts I receive (family member) — P1 (new)
+- **Top bar:** "मुझे किसके अलर्ट आते हैं" / *"Alerts I receive"* (as a root for family-only users; else back).
+- One `FamilyFollowingCard` per aspirant: "Ravi (बेटा)" · next dates (deadline chips): "SSC GD — कल आखिरी दिन", "RRB NTPC — एडमिट कार्ड आया" · last alert time · `TextButton` "अलर्ट बंद करें" → D12. Paused: "Ravi का Pro रुका हुआ है — अलर्ट अभी बंद हैं".
+- Footer: "अपनी नौकरियाँ भी देखें?" `TextButton` → S04 (becomes a normal user too) · guest: B16 `family` once ("नया फ़ोन लें तो भी यह लिंक रहे").
+- No ads on this screen.
+- **ev:** `family_following_view{n}`, `family_stop`.
 
 ## S36 Certificates — P1
 Rows: OBC-NCL / EWS सर्टिफ़िकेट ("मार्च 2025 में बना") · निवास प्रमाण पत्र · दिव्यांग प्रमाण पत्र; each `ValidityBadge` ("इस साल के नोटिस के लिए ठीक" ✓ / "नया बनवाना पड़ सकता है" ⚠) + "बदलें" (month-year picker). Note "हम सर्टिफ़िकेट की फ़ोटो नहीं रखते — सिर्फ़ तारीख।"
@@ -460,12 +517,13 @@ Rows: OBC-NCL / EWS सर्टिफ़िकेट ("मार्च 2025 म
 Header `event_repeat` "परीक्षा टकराव" · two `ClashCompareCard`s side-by-side (stack at font ≥ 1.3) with exam name, date, shift, city · guidance: "दोनों बोर्ड के नियम अलग हैं — तारीख बदलने के लिए आधिकारिक सूचना देखें। हम तारीख बदलते ही बताएँगे।" · links.
 
 ## S38 Account & data — P0
-- Rows: मोबाइल नंबर (masked) · इस अकाउंट पर फ़ोन ("यही फ़ोन अलर्ट पाता है" / "दूसरे फ़ोन पर: Redmi Note 12" + "इसी फ़ोन पर पाएँ") · सहमतियाँ (WhatsApp, परिवार — with "वापस लें") · **"मेरा डेटा डाउनलोड करें"** (`download`) → D04.
-- Danger zone (24 dp gap, `titleSmall` "सावधानी" in error colour): `logout` "लॉग आउट" (→D02) · `delete` **"अकाउंट हमेशा के लिए हटाएँ"** (error text) → explainer card expands: "क्या हटेगा: प्रोफ़ाइल, सूचनाओं का इतिहास, परिवार और WhatsApp सहमति। 7 दिन में पूरी तरह हट जाएगा। Pro का पैसा अपने-आप वापस नहीं होगा।" → D03.
-- **ev:** `data_export_request`, `logout`, `account_delete{step}`.
+- **Account card:** signed in → Google photo, name, email + row `switch_account` "Google अकाउंट बदलें" (→ D11); guest → "आप मेहमान के रूप में इस्तेमाल कर रहे हैं" / *"You're using the app as a guest"* + "साइन इन नहीं किया तो फ़ोन बदलने पर प्रोफ़ाइल दोबारा बनानी होगी" + `GoogleSignInButton`.
+- Rows: अलर्ट वाला फ़ोन ("यही फ़ोन अलर्ट पाता है" / "दूसरे फ़ोन पर: Redmi Note 12" + "इसी फ़ोन पर पाएँ") · `privacy_tip` प्राइवेसी नोटिस (S47) · `family_restroom` परिवार लिंक (S34/S49 counts) · **"मेरा डेटा डाउनलोड करें"** (`download`) → D04.
+- Danger zone (24 dp gap, `titleSmall` "सावधानी" in error colour): `logout` "साइन आउट" (signed in only, → D02) · `delete` **"अकाउंट हमेशा के लिए हटाएँ"** (error text) → explainer card expands: "क्या हटेगा: प्रोफ़ाइल, फ़ॉर्म, सूचनाओं का इतिहास, परिवार लिंक और Google से जुड़ाव। 7 दिन में पूरी तरह हट जाएगा। Pro का पैसा अपने-आप वापस नहीं होगा — सब्सक्रिप्शन Play Store में बंद करें।" → D03.
+- **ev:** `data_export_request`, `signout`, `account_switch`, `account_delete{step}`.
 
 ## S39 Help & about — P0
-FAQ (`FaqItem` expandable, 10 items): "आप किन नोटिस को देखते हैं?" · "‘ख़ुद जाँचें’ का क्या मतलब है?" · "सूचना नहीं आ रही, क्या करूँ?" (→S29) · "क्या आप मेरा फ़ॉर्म भरते हैं?" ("नहीं…") · "क्या यह सरकारी ऐप है?" ("नहीं…") · "मेरा डेटा कहाँ जाता है?" · "Pro कैसे बंद करूँ?" · "गलत मैच कैसे बताऊँ?" · "उम्र कैसे गिनते हैं?" · "किन राज्यों की नौकरियाँ?" (launch states). Contact rows: WhatsApp support · ईमेल. About: disclaimer, sources list, privacy policy, terms, open-source licences, version.
+FAQ (`FaqItem` expandable, 10 items): "आप किन नोटिस को देखते हैं?" · "‘ख़ुद जाँचें’ का क्या मतलब है?" · "सूचना नहीं आ रही, क्या करूँ?" (→S29) · "क्या आप मेरा फ़ॉर्म भरते हैं?" ("नहीं…") · "क्या यह सरकारी ऐप है?" ("नहीं…") · "मेरा डेटा कहाँ जाता है?" · "Pro कैसे बंद करूँ?" · "गलत मैच कैसे बताऊँ?" · "उम्र कैसे गिनते हैं?" · "किन राज्यों की नौकरियाँ?" (launch states). Contact rows: ईमेल · "ऐप में सुझाव भेजें" (form, attaches app version and anonymous ID only). FAQ adds "मेरा मोबाइल नंबर क्यों नहीं माँगा?" and "फ़ोन बदलूँ तो क्या होगा?" (SC-46). About: disclaimer, sources list, privacy policy, terms, open-source licences, version.
 
 ## S41 Force update — P0
 Icon `system_update` 48 · "ज़रूरी अपडेट" · "नए वर्ज़न में अलर्ट सही समय पर आते हैं। आगे बढ़ने के लिए अपडेट करें।" · primary "अपडेट करें" (In-App Update IMMEDIATE → fallback Play Store). No back (back exits app).
@@ -484,14 +542,17 @@ Icon `report` 48 · "अभी हमारा सर्वर काम नह�
 | ID | Title | Body | Confirm | Dismiss |
 | --- | --- | --- | --- | --- |
 | D01 | सूचना बंद है | "आखिरी तारीख की याद के लिए सेटिंग में ‘सूचना’ चालू करें।" | सेटिंग खोलें | अभी नहीं |
-| D02 | लॉग आउट करें? | "इस फ़ोन पर अलर्ट आना बंद हो जाएगा। आपकी प्रोफ़ाइल सुरक्षित रहेगी।" | लॉग आउट (error) | रद्द करें |
-| D03 | अकाउंट हमेशा के लिए हटाएँ? | "यह वापस नहीं होगा। पुष्टि के लिए {phone} पर OTP भेजेंगे।" → OTP field | हटाएँ (error, enabled after OTP) | रद्द करें |
+| D02 | साइन आउट करें? | "इस फ़ोन पर अलर्ट आना बंद हो जाएगा। आपकी प्रोफ़ाइल आपके Google अकाउंट में सुरक्षित रहेगी।" | साइन आउट (error) | रद्द करें |
+| D03 | अकाउंट हमेशा के लिए हटाएँ? | "यह वापस नहीं होगा। पुष्टि के लिए नीचे ‘हटाएँ’ लिखें।" → text field (signed-in users: "Google से पुष्टि करें" → O11 re-auth instead) | हटाएँ (error, enabled after typing / re-auth) | रद्द करें |
 | D04 | आपका डेटा तैयार है | "फ़ाइल ‘sarkari-match-data.json’ में आपकी प्रोफ़ाइल, नौकरियों पर आपके जवाब और सूचनाओं का इतिहास है।" | फ़ाइल सेव करें | बंद करें |
-| D05 | WhatsApp अलर्ट बंद करें? | "आखिरी दिन और DV जैसी ज़रूरी सूचनाएँ सिर्फ़ फ़ोन पर आएँगी।" | बंद करें | चालू रखें |
-| D06 | {name} को हटाएँ? | "उन्हें अब आपके अलर्ट नहीं जाएँगे।" | हटाएँ | रद्द करें |
+| ~~D05~~ | retired 2026-11-19 (WhatsApp) | — | — | — |
+| D06 | {relation} को हटाएँ? | "उन्हें अब आपके अलर्ट नहीं जाएँगे। उन्हें एक सूचना जाएगी कि लिंक बंद हुआ।" | हटाएँ | रद्द करें |
 | D07 | बदलाव सेव नहीं हुए | "बिना सेव किए वापस जाएँ?" | छोड़ दें | सेव करें |
-| D08 | Pro वापस आ गया / कोई ख़रीद नहीं मिली | "{date} तक Pro चालू है।" / "इस नंबर या Google अकाउंट पर Pro नहीं मिला।" | ठीक है | मदद |
+| D08 | Pro वापस आ गया / कोई ख़रीद नहीं मिली | "{date} तक Pro चालू है।" / "इस Google अकाउंट या इस फ़ोन के Play अकाउंट पर Pro नहीं मिला।" | ठीक है | मदद |
 | D09 | नया वर्ज़न उपलब्ध | "अपडेट में सुधार हैं। अभी अपडेट करें?" | अपडेट करें | बाद में |
+| D10 | कौन-सी प्रोफ़ाइल रखें? | "इस Google अकाउंट में पहले से एक प्रोफ़ाइल है।" + two option cards (K8) with summaries | यह रखें | — (must choose; back = keep account's) |
+| D11 | Google अकाउंट बदलें? | "{email} की जानकारी उसी अकाउंट में सुरक्षित रहेगी। इस फ़ोन पर दूसरे अकाउंट से साइन इन करेंगे।" | अकाउंट बदलें | रद्द करें |
+| D12 | {name} के अलर्ट बंद करें? | "आपको अब {name} की ज़रूरी तारीख़ों की सूचना नहीं आएगी। दोबारा चाहिए तो उनसे नया लिंक माँगें।" | बंद करें (error) | रद्द करें |
 
 Destructive confirm buttons use `error` colour text (TextButton) — never the primary filled style.
 
