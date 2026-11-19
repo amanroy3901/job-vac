@@ -85,7 +85,7 @@ Card surface: always `SarkariTheme.colors.card` (light `#FFFFFF` = `surfaceConta
 
 ### 2.4 Extended palette (`SarkariColors`, via `staticCompositionLocalOf`)
 
-Names kept from v1.1: `success*`, `warning*`, `urgent*`, `today/onToday`. **New in v2:** `marigold*`, `marigoldIcon`, `terracotta*`, `cocoa`, `cocoaMuted`, `card`, `sunken`, `hairline`, `glass`, `shadowTint`, `category.*`.
+Names kept from v1.1: `success*`, `warning*`, `urgent*`, `today/onToday`. **New in v2:** `marigold*`, `marigoldIcon`, `snackbarAction`, `terracotta*`, `cocoa`, `cocoaMuted`, `card`, `sunken`, `hairline`, `glass`, `shadowTint`, `category.*`.
 
 | Token | Light | Dark | Used for |
 | --- | --- | --- | --- |
@@ -98,7 +98,8 @@ Names kept from v1.1: `success*`, `warning*`, `urgent*`, `today/onToday`. **New 
 | today / onToday | `#B3361E` / `#FFFFFF` | `#FF8A6B` / `#2A1205` | **filled ribbon** (today), calendar band, nav badge, key date chip |
 | marigold / onMarigold | `#F2A93B` / `#3A2405` | `#F4B755` / `#2A1A02` | nav pill, "next" stage node, Pro chip, marigold CTA |
 | marigoldContainer / onMarigoldContainer | `#FDEFD6` / `#8A5200` | `#3A2A12` / `#F4B755` | Pro strip, lock pill, section icon tiles, greeting gradient start |
-| marigoldIcon | `#B06E00` | `#F4B755` | icons on marigoldContainer or white (3.64 / 4.14:1; icons only) |
+| marigoldIcon | `#9A5B00` | `#F4B755` | icons and short labels on marigoldContainer / white / cream (4.78 / 5.43 / 5.01:1). direction-c.html used `#B06E00` (3.64:1); darkened per the v2 onboarding notes |
+| snackbarAction | `#F2A93B` | `#8A5200` | snackbar action on `inverseSurface` (6.52 / 5.51:1) |
 | terracotta (+ on/container/onContainer) | = urgent / today | = urgent / today | alias for non-deadline uses (confetti, illustration) |
 | cocoa / cocoaMuted | `#2A1E14` / `#6E5D4E` | `#F6EDE1` / `#C2B19E` | = onSurface / onSurfaceVariant (illustrations) |
 | card | `#FFFFFF` | `#231C15` | every card |
@@ -161,7 +162,8 @@ All **text** pairs ≥ 4.5:1; icon-only and UI-boundary pairs ≥ 3:1.
 | warning text on card / onWarningContainer on warningContainer | 5.93 / 5.10 | 10.14 / 8.45 |
 | onMarigold on marigold | 7.33 | 9.42 |
 | inverseOnSurface on inverseSurface (snackbar) | 11.24 | 14.00 |
-| *Icons:* marigoldIcon on marigoldContainer / on card | 3.64 / 4.14 | 7.73 / 9.41 |
+| marigoldIcon on marigoldContainer / card / background | 4.78 / 5.43 / 5.01 | 7.73 / 9.41 / — |
+| snackbarAction on inverseSurface | 6.52 | 5.51 |
 | *Icons:* category icon on tile — police / ssc / railway / bank / state | 4.65 / 6.77 / 5.45 / 6.11 / 6.10 | 7.72 / 7.75 / 7.41 / 8.01 / 7.85 |
 | *Boundary:* outline on background / card | 3.80 / 4.12 | 5.45 / 4.93 |
 
@@ -225,7 +227,7 @@ val DarkColors = darkColorScheme(
   val today: Color, val onToday: Color,
   // v2 (Marigold Home)
   val marigold: Color, val onMarigold: Color, val marigoldContainer: Color, val onMarigoldContainer: Color,
-  val marigoldIcon: Color,
+  val marigoldIcon: Color, val snackbarAction: Color,
   val card: Color, val sunken: Color, val hairline: Color, val glass: Color, val shadowTint: Color,
   val police: CategoryColors, val ssc: CategoryColors, val railway: CategoryColors,
   val bank: CategoryColors, val state: CategoryColors,
@@ -240,7 +242,7 @@ val LightSarkari = SarkariColors(
   urgent = Color(0xFFB3361E), onUrgent = Color.White, urgentContainer = Color(0xFFFBE4DC), onUrgentContainer = Color(0xFF8A2A15),
   today = Color(0xFFB3361E), onToday = Color.White,
   marigold = Color(0xFFF2A93B), onMarigold = Color(0xFF3A2405), marigoldContainer = Color(0xFFFDEFD6), onMarigoldContainer = Color(0xFF8A5200),
-  marigoldIcon = Color(0xFFB06E00),
+  marigoldIcon = Color(0xFF9A5B00), snackbarAction = Color(0xFFF2A93B),
   card = Color.White, sunken = Color(0xFFF5ECDF), hairline = Color(0xFFEFE4D4),
   glass = Color(0xE6FBF5EC), shadowTint = Color(0xFF78460A),
   police = CategoryColors(Color(0xFFFDEBD3), Color(0xFF9A5B00)), ssc = CategoryColors(Color(0xFFE2F0E8), Color(0xFF1E5B46)),
@@ -253,7 +255,7 @@ val DarkSarkari = SarkariColors(
   urgent = Color(0xFFFF8A6B), onUrgent = Color(0xFF2A1205), urgentContainer = Color(0xFF3E2018), onUrgentContainer = Color(0xFFFFC9B8),
   today = Color(0xFFFF8A6B), onToday = Color(0xFF2A1205),
   marigold = Color(0xFFF4B755), onMarigold = Color(0xFF2A1A02), marigoldContainer = Color(0xFF3A2A12), onMarigoldContainer = Color(0xFFF4B755),
-  marigoldIcon = Color(0xFFF4B755),
+  marigoldIcon = Color(0xFFF4B755), snackbarAction = Color(0xFF8A5200),
   card = Color(0xFF231C15), sunken = Color(0xFF2D241B), hairline = Color(0xFF3A2F24),
   glass = Color(0xE617120D), shadowTint = Color(0xFF000000),
   police = CategoryColors(Color(0xFF3A2A14), Color(0xFFF4B755)), ssc = CategoryColors(Color(0xFF1D3329), Color(0xFF86D4B2)),
