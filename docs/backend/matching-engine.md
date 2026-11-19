@@ -188,6 +188,7 @@ orders of magnitude and has zero cache. Revisit only beyond about 10M profiles.
 | Corrigendum or new rule version | `matchPost` with new version + diff | **newly eligible** → new match alert ("age limit raised, you can now apply"); **no longer eligible** and not yet applied → `withdrawn` + one alert ("after the corrigendum you're no longer eligible: reason"); still eligible → only date changes trigger an `extension`/`corrigendum` alert; reminders recomputed |
 | Profile edit (`PUT /v1/me/profile`) | `matchUser(user)`: evaluate all open posts (≈100–300) for one user, O(P·R), < 5 ms; synchronous in the request | added matches are `silent=true` (no push; shown in the B10 re-match sheet); removed open matches → `withdrawn`; applied ones are never withdrawn |
 | Post closes (`apply_end` passed) | housekeeping | open matches → `expired` |
+| User crosses an exam family's upper age (P1, SC-21) | nightly job over profiles whose age passes a followed exam family's general limit (cutoffs of open posts are fixed, so open matches never change) | one `age` notice: which exams are still open with relaxations (B14) |
 | Reference taxonomy change (code merged/renamed) | migration maps codes; signatures recomputed in batch | none |
 | Wrong-match report confirmed | fix the rule → new version → as corrigendum | affected users get a correction alert |
 

@@ -85,6 +85,7 @@ CREATE TABLE notification_prefs (
   quiet_end       time NOT NULL DEFAULT '07:00',
   digest_enabled  boolean NOT NULL DEFAULT true,
   digest_time     time NOT NULL DEFAULT '19:00',
+  reminder_time   time NOT NULL DEFAULT '19:00',          -- periodic, D-3, D-1 slots (last day is fixed 08:00)
   push_enabled    boolean NOT NULL DEFAULT true,
   whatsapp_enabled boolean NOT NULL DEFAULT false,
   lifecycle_alerts boolean NOT NULL DEFAULT true,

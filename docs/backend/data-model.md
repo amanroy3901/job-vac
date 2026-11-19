@@ -107,7 +107,7 @@ SMS inbox (OTP autofill uses the SMS Retriever/User Consent API, not READ_SMS).
 
 **Ads (free tier, PRD change 2026-11-19):** the server stores no advertising ID or ad events. The Google Mobile Ads
 SDK on the device processes the advertising ID; that is disclosed in the privacy notice and the Play Data safety form
-(see [security-privacy.md](./security-privacy.md#ads)).
+(see [security-privacy.md](./security-privacy.md#7-ads)).
 
 ## 5. Deletion and export flows
 

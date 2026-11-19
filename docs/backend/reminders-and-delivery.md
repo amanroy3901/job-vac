@@ -38,12 +38,17 @@ stateDiagram-v2
   snoozed --> expired : last date passed
   applied --> [*] : (Pro) lifecycle tracking continues on application
   not_interested --> [*]
+  expired --> applied : "yes, I applied" (≤ 30 d)
   expired --> [*]
 ```
 
 - **Applied** stops deadline reminders. It creates an `application` (lifecycle timeline), starts the 14-day trial on
   the first Applied (if unused), and is never withdrawn by a later corrigendum (the user gets a corrigendum alert
   instead).
+- **Cancelled notice:** open and applied matches → `status_reason = notice_cancelled` (open ones become
+  `withdrawn`, applied ones stay applied with a banner). One `cancelled` push goes out; slots are cleared.
+- **Expired, then "yes, I applied" (SC-17):** `applied` is accepted on `expired` matches for 30 days. It creates the
+  application with lifecycle backfill. There is no push for expiry itself.
 - **Extension:** if `apply_end` moves later, `expired` matches revert to `reminded` (when the new date is in the
   future) and an `extension` alert is sent once to open, snoozed and expired-by-old-date matches.
 - `seen` is set by a `seen` action (a feed impression ≥ 1 s or a detail open). It only affects badges; it does not
@@ -54,21 +59,30 @@ stateDiagram-v2
 All times IST. `D` = `apply_end` (the date the user can last apply; if `fee_end` is later, reminders still target
 `apply_end`).
 
-| Kind | When | Free channels | Pro adds | Priority |
+Aligned with the design scenario catalogue (`docs/design/03-scenarios.md` §0.2: slots R0/Rp/R3/R1/R-last, cap ranks).
+`T` = the user's `reminder_time` (default 19:00).
+
+| Kind (design slot) | When | Free channels | Pro adds | Cap rank |
 |---|---|---|---|---|
-| `new_match` | at publish + matching (shifted out of quiet hours) | push | WhatsApp **if push not received/opened within 60 min** | high if `D − today ≤ 3`, else normal |
-| `periodic` | every 3 days after match, 18:30, while `today < D−3` | push (first to overflow to the digest) | — | low |
-| `d_minus_3` | D−3, 10:00 | push | WhatsApp if push not opened in 60 min | normal |
-| `d_minus_1` | D−1, 10:00 | push, high priority | WhatsApp (if push not opened in 30 min) + family | high |
-| `last_day` | D, 08:00 (**ignores quiet hours**; if matched late on day D, sent immediately) | push, high priority | WhatsApp (if not opened in 15 min) + family | critical |
-| `snooze_due` | snooze target (tomorrow 09:00, D−2 09:00, or today 18:00) | push | — | normal |
-| `extension` / `corrigendum` | on publish, once | push | WhatsApp if it changes the user's deadline or verdict | normal |
+| `last_day` (R-last) | D, 08:00 (**ignores quiet hours**; if matched late on day D, sent immediately) | push, high priority | WhatsApp + family | 1 (never deferred) |
+| `d_minus_1` (R1) | D−1 at T | push, high priority | WhatsApp + family | 2 (never deferred) |
+| lifecycle critical | at publish | push (Pro only) | WhatsApp (+ family for DV/medical/admit card) | 3 (never deferred) |
+| `new_match` (R0) | at publish + matching (shifted out of quiet hours) | push | WhatsApp | 4 |
+| `extension` / `corrigendum` / `cancelled` | on publish, once | push (date moved earlier, eligibility changed, or cancelled; otherwise a quiet update) | WhatsApp if it changes the user's deadline or verdict | 4 |
+| `d_minus_3` (R3) | D−3 at T | push | WhatsApp | 5 |
+| `periodic` (Rp) | every 3 days after R0 at T while ≥ 4 days are left; for windows > 30 days, every 5 days after the 3rd unopened periodic (`rp_backoff`) | push | — | 6 |
+| `snooze_due` | snooze target (tomorrow 09:00, D−2 09:00, or today 18:00) | push | — | 5 |
+
+**WhatsApp rule (Pro):** WhatsApp goes out for R0, R3, R1, R-last and lifecycle critical **unless the matching push
+was opened** before the escalation check (R0/R3: 60 min, R1: 30 min, R-last: 15 min, lifecycle critical: 30 min).
+This matches the design's "skip if opened in the last 2 h" intent and stays inside the 30/season cap. If the device is
+`failing` (two missed weekly pings or a failed self-test), WhatsApp is sent for R1/R-last regardless of push.
 
 `nextReminder(match, state, now)` is a **pure function** of `(D, matched_at, status, snoozed_until, last_sent_kind,
 quiet hours)`. It returns `(kind, due_at)` or null. Rules:
 
 1. Candidates are the kinds above, minus kinds already sent (each fixed kind is sent at most once; `periodic`
-   repeats).
+   repeats). **Collapse:** a match never gets two pushes on the same IST day; if R3 and Rp coincide, R3 wins.
 2. A snooze suppresses every candidate before `snoozed_until` **except `last_day`**. The snooze target itself is
    capped at the last-day reminder.
 3. Quiet hours (`quiet_start`–`quiet_end`, default 22:00–07:00) push `due_at` to `quiet_end`, except `last_day`.
@@ -116,9 +130,11 @@ sequenceDiagram
    new_match(normal) > snooze_due > periodic`.
 3. **Bundle:** items due in the same tick become one notification ("2 jobs: last date tomorrow"), which counts as one
    push.
-4. **Cap:** at most **3 alert pushes per user per IST day**. Critical (`last_day`) items may take a 4th slot only when
-   they would otherwise be lost. Everything else beyond the cap → `digest_pending` for today.
-5. **Quiet hours:** `alert.not_before = quiet_end`, except `last_day`.
+4. **Cap:** at most **3 pushes per user per IST day**. Ranks 1–3 (R-last, R1, lifecycle critical) are never deferred
+   and may exceed the cap (design: observed max about 5). Beyond the cap, P0 items are deferred to the next day's
+   first slot; once the digest ships (P1), lower ranks fold into the daily digest instead.
+5. **Quiet hours:** `alert.not_before = quiet_end`, except ranks 1–3 whose slot is within the next 24 h, which go out
+   at quiet-hours end at the latest, and R-last, which is always 08:00.
 6. Insert `alert` with its deterministic id (`INSERT INTO alert_dedupe … ON CONFLICT DO NOTHING`; skip if it already
    exists), then `delivery(channel=push, target=primary device)`. Set `escalate_at` for Pro-eligible kinds.
 7. Update `reminder_state` (`last_sent_at`, `sent_count`, `next_due_at = nextReminder(...)`) and `match.status =
@@ -164,7 +180,7 @@ be enabled for dashboards only).
 
 | Kind | Escalate to WhatsApp (Pro, opted in, quota left) when |
 |---|---|
-| `new_match`, `d_minus_3` | no `received` within 60 min (push likely blocked by OEM) |
+| `new_match`, `d_minus_3` | push not opened within 60 min |
 | `d_minus_1` | no `opened` within 30 min **and** match still open |
 | `last_day` | no `opened` within 15 min **and** match still open |
 | lifecycle `critical` (admit card, reschedule, DV/medical slot, objection window closing) | always (this is the Pro promise), deduped per event |
@@ -204,6 +220,11 @@ status `received`. With no receipt in 120 s → `timeout` with `advice[]` derive
 optimisation not ignored → `enable_autostart` + `disable_battery_optimization`; Pro without WhatsApp →
 `link_whatsapp`). The rolling 14-day receipt rate updates `device.delivery_health`, which drives the S29 traffic
 light and server-side escalation.
+
+**Weekly silent ping (SC-35):** a `ping` tick sends each primary device one silent high-priority data message
+about every 7 days around 12:00 IST (spread by user hash). The app acks with a `received` receipt. Two consecutive
+missed pings → `delivery_health = failing` → O02 banner on next open; for Pro, WhatsApp becomes the default for R1 and
+R-last. The killed-app self-test step uses `POST …/self-tests {kind: killed_app, delay_seconds: 60}`.
 
 ## 5. WhatsApp Business (Meta Cloud API)
 

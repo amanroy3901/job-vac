@@ -138,7 +138,7 @@ can post receipts). High priority is used only for messages that always produce 
 
 | key | example | notes |
 |---|---|---|
-| `type` | `match_new` · `reminder` · `deadline` · `extension` · `corrigendum` · `lifecycle` · `digest` · `clash` · `certificate` · `self_test` · `sync` | unknown → treat as `sync` |
+| `type` | `match_new` · `reminder` · `deadline` · `extension` · `corrigendum` · `cancelled` · `lifecycle` · `digest` · `clash` · `certificate` · `self_test` · `ping` · `sync` | unknown → treat as `sync` |
 | `msg_id` | `d_01JD…` | post receipts with this id |
 | `reminder_id` | `r:m_01JD…:d_minus_1:20260731` | deterministic for scheduled reminders (`r:{match_id}:{kind}:{IST date}`); equals `msg_id` for reminder pushes, so the on-device mirror alarm (`next_reminder_id`, `reminder_plan[].reminder_id`) can dedupe |
 | `match_id` / `application_id` / `notice_id` | | deep-link targets |
@@ -152,6 +152,10 @@ can post receipts). High priority is used only for messages that always produce 
 
 `type=sync` is normal priority and shows nothing. `type=self_test` shows a low-importance "Alerts are working ✓"
 notification.
+`type=ping` (weekly at about 12:00 IST) is a **silent, high-priority** data message used for the delivery health
+check (SC-35). The app must post a `received` receipt (expedited WorkManager) and show nothing. Two missed pings mark
+the device `failing` (O02 banner; for Pro, WhatsApp becomes the default for 1-day-before and last-day). One silent
+high-priority message a week is well within Android's tolerance for high-priority messages that show nothing.
 
 **Receipts:** in `onMessageReceived`, enqueue an expedited WorkManager job that posts `received` + `displayed`
 to `POST /v1/me/delivery-receipts`; post `opened`/`action_tapped` when the user interacts. For Pro users the server

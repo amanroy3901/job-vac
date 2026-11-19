@@ -216,7 +216,7 @@ sessions). This costs nothing at any scale. The kill switch covers a bad SDK rel
 that looks like an official notice. Ad content policy: block the education/test-prep look-alike, gambling, loans and
 dating categories in the AdMob console, plus a manual blocklist of advertiser URLs that mimic govt portals. For
 privacy, the Google Mobile Ads SDK collects the advertising ID. That has to be disclosed in the Play Data safety form
-and in our DPDP notice; consent is covered in [security-privacy.md](./security-privacy.md#ads). An ads-free build
+and in our DPDP notice; consent is covered in [security-privacy.md](./security-privacy.md#7-ads). An ads-free build
 flavour stays possible.
 
 ### ADR-09: Single deployable, three roles

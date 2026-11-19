@@ -570,7 +570,9 @@ paths:
         Safe to replay (dedup on `action_id`). The server applies actions in `occurred_at` order;
         an action older than the match's last applied action is recorded but ignored (`applied=false`).
         First `applied` on an account that never had a trial starts the 14-day Pro trial automatically
-        and returns the new entitlement plus a `paywall` hint.
+        and returns the new entitlement plus a `paywall` hint. `applied` is also accepted on `expired` matches
+        up to 30 days after the last date ("हाँ, भरा था", SC-17); other actions on closed matches return
+        409 `match_closed`.
       parameters:
         - $ref: '#/components/parameters/MatchId'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -954,10 +956,20 @@ paths:
         Server sends a high-priority FCM data message `type=self_test` carrying `test_id`. The app shows a
         visible notification and posts `received`/`displayed` receipts with `message_id = test_id`.
         Poll GET .../self-tests/{test_id} (or wait for the receipt locally). Times out after 120 s.
-        Max 5 per hour per device.
+        Max 5 per hour per device. `delay_seconds` (0–120) supports the "swipe the app away, then wait" killed-app
+        step (SC-35).
       parameters:
         - $ref: '#/components/parameters/InstallationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                delay_seconds: { type: integer, minimum: 0, maximum: 120, default: 0 }
+                kind: { type: string, enum: [manual, killed_app], default: manual }
       responses:
         '202':
           description: Test push sent
@@ -1034,6 +1046,25 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         default: { $ref: '#/components/responses/Problem' }
 
+  /v1/me/purchases:
+    get:
+      tags: [entitlements]
+      operationId: listPurchases
+      summary: Receipt list for "Manage plan" (S32). No purchase tokens are returned.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/PurchaseRecord' }
+        default: { $ref: '#/components/responses/Problem' }
+
   /v1/me/purchases/google-play:
     post:
       tags: [entitlements]
@@ -1085,6 +1116,24 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/UpiLink' }
         '403': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/purchases/upi-link/{link_id}:
+    get:
+      tags: [entitlements]
+      operationId: getUpiPaymentLink
+      summary: Poll a UPI payment's state after returning from the UPI app (every 3 s, up to 60 s). Entitlement is granted by the gateway webhook.
+      parameters:
+        - name: link_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UpiLink' }
         default: { $ref: '#/components/responses/Problem' }
 
   /v1/me/referral:
@@ -1731,6 +1780,10 @@ components:
         notice_etag: { type: string, description: 'If different from the cached Notice ETag, refetch /v1/notices/{id}' }
         verdict: { $ref: '#/components/schemas/Verdict' }
         status: { $ref: '#/components/schemas/MatchStatus' }
+        status_reason:
+          type: [string, 'null']
+          enum: [corrigendum, profile_edit, notice_cancelled, age, retracted, deadline_passed, null]
+          description: 'Why the match is withdrawn/expired (S25 tabs, SC-18/19). notice_cancelled shows the cancellation banner.'
         title: { $ref: '#/components/schemas/LocalizedText' }
         org: { $ref: '#/components/schemas/LocalizedText' }
         exam_type: { type: string }
@@ -2110,6 +2163,7 @@ components:
           properties:
             push: { type: boolean, default: true }
             whatsapp: { type: boolean, default: false, description: 'Effective only when Pro and WhatsApp linked' }
+        reminder_time: { type: string, pattern: '^\d{2}:\d{2}$', default: '19:00', description: 'IST time for periodic, 3-days-before and 1-day-before reminders. The last-day reminder is always 08:00.' }
         lifecycle_alerts: { type: boolean, default: true }
         family_alerts: { type: boolean, default: true }
         max_push_per_day: { type: integer, minimum: 1, maximum: 3, default: 3, readOnly: true }
@@ -2235,12 +2289,28 @@ components:
         purchase_token: { type: string }
         order_id: { type: [string, 'null'] }
 
-    UpiLink:
+    PurchaseRecord:
       type: object
-      required: [id, url, amount, expires_at]
+      required: [id, provider, product_id, state, created_at]
       properties:
         id: { type: string }
-        url: { type: string, format: uri }
+        provider: { type: string, enum: [play, razorpay] }
+        product_id: { type: string }
+        state: { type: string, enum: [pending, active, in_grace, on_hold, paused, canceled, expired, revoked, refunded] }
+        order_id: { type: [string, 'null'] }
+        amount: { oneOf: [ { $ref: '#/components/schemas/Money' }, { type: 'null' } ] }
+        created_at: { type: string, format: date-time }
+        expiry_at: { type: [string, 'null'], format: date-time }
+        auto_renewing: { type: boolean }
+
+    UpiLink:
+      type: object
+      required: [id, url, amount, expires_at, state]
+      properties:
+        id: { type: string }
+        state: { type: string, enum: [created, paid, expired, failed] }
+        url: { type: string, format: uri, description: 'Hosted payment-link page (fallback)' }
+        upi_intent_url: { type: [string, 'null'], description: 'upi://pay?... intent with the gateway reference, for ACTION_VIEW (B11). Null if the gateway cannot issue one.' }
         amount: { $ref: '#/components/schemas/Money' }
         expires_at: { type: string, format: date-time }
 
