@@ -1,46 +1,47 @@
 # Security and privacy
 
-Threat model in one line: we hold modest but real personal data (DOB, category, PwD and ex-serviceman status, phone
-numbers) for up to 1M Indians. We send messages that cost money (OTP, WhatsApp). We sell a subscription. And we
-publish eligibility claims people make life decisions on. The main risks are **OTP/SMS pumping and WhatsApp cost
-abuse, account takeover via phone, scraping/abuse of the API, admin-console compromise publishing wrong rules, PII
-leakage via logs or backups, and DPDP non-compliance.**
+Threat model in one line: after the founder decisions of 2026-11-19 the server holds **no eligibility profile and no
+phone numbers** — DOB, category, PwD/ex-serviceman status and qualifications stay on the phone (ADR-11). We hold
+accounts (Firebase uid), purchases, encrypted blobs we cannot read, and the public catalog. No feature sends a message
+that costs money. The main risks are now **admin-console compromise or a wrong publish (every device would act on
+it), catalog tampering, abuse of the few unauthenticated endpoints (reports, telemetry, self-test), account takeover
+of a Google-linked account, leakage of on-device data (lost phone, backups), and DPDP non-compliance for the data we
+still hold.**
 
 ## 1. Client and API protection
 
 | Control | Detail |
 |---|---|
-| **App Check (Play Integrity provider)** | Required on every `/v1/**` call. Verified in a Ktor plugin with the Firebase Admin SDK (JWKS cached). Replay protection (limited-use tokens) on `/v1/auth/otp:send`, `/v1/eligibility/check`, `/v1/me/purchases/*`, referral redeem. Debug provider tokens accepted only in staging. Rollout: monitor-only for 2 weeks, then enforce (old Play Services devices fail; track the reject rate by OEM) |
-| **Firebase ID token** | `Authorization: Bearer`, verified locally (RS256, `aud`/`iss`, `exp`, `auth_time`), revocation checked on sensitive operations (delete account, phone change) |
-| **Rate limits** | Token buckets in the API process, keyed by user, installation, IP /24 and phone HMAC (OTP). Limits are in [api/README.md §7](../api/README.md#7-pagination--limits). At scale (> 100K users) add Cloud Armor rate-based rules in front (needs an external HTTPS LB, ~$18+/mo). Abusive installations are blocked via a `blocked_installation` flag |
-| **Input validation** | Generated DTO validation from OpenAPI; size limits (64 KB body; batch ≤ 50 actions); enums enforced |
+| **App Check (Play Integrity provider)** | Required on every non-catalog `/v1/**` call (catalog, config, reference and health are public CDN files). Verified in a Ktor plugin with the Firebase Admin SDK (JWKS cached). Limited-use (replay-protected) tokens on `/v1/reports`, `/v1/telemetry`, `/v1/push-tests`, `/v1/me/trial`, `/v1/me/purchases/*`, referral redeem, family accept. Debug provider tokens only in staging. Rollout: monitor-only for 2 weeks, then enforce (track the reject rate by OEM) |
+| **Firebase ID token** | `Authorization: Bearer` on `/v1/me/**` and `/v1/family/**`, verified locally (RS256, `aud`/`iss`, `exp`, `auth_time`); revocation checked on delete account and on Google account switch (D11) |
+| **Rate limits** | Token buckets in the API process, keyed by user, installation and IP /24 (the IP is used in memory only, never logged). Limits in [api/README.md §7](../api/README.md#7-pagination--limits). Cloud Armor rate rules only if abuse appears at scale |
+| **Input validation** | Generated DTO validation from OpenAPI; size limits (64 KB body; backup ≤ 64 KB; watch-list ≤ 32 KB; report comment ≤ 500 chars); enums enforced |
+| **Catalog integrity** | Catalog files are written only by the worker service account to a bucket with no public write; each batch carries `sha256` of its body in `catalog/head`, and the app verifies it before applying (defends against a poisoned cache/CDN object). Batches are immutable |
 | **Transport** | TLS 1.2+ (Firebase Hosting / Cloud Run managed certs); HSTS; no cleartext. App: network security config with no user CAs in release (*certificate pinning not used*: Google rotates certs; App Check covers the intent) |
-| **Output** | `Cache-Control: private, no-store` on all `/v1/me/**`; `public` only for notice/reference/config/health. CDN never caches authorized responses |
-| **Webhooks** | `/hooks/whatsapp`: `X-Hub-Signature-256` HMAC. `/hooks/razorpay`: `X-Razorpay-Signature`. `/hooks/play-rtdn`: Pub/Sub OIDC JWT (audience + service account email). `/internal/tick/*`: Cloud Scheduler OIDC JWT, and it is served only by the worker service with ingress `internal-and-cloud-load-balancing` + IAM `roles/run.invoker` |
+| **Output** | `Cache-Control: private, no-store` on all `/v1/me/**` and `/v1/family/**`; `public` only for catalog/reference/config/health. CDN never caches authorized responses |
+| **Webhooks** | Only `/hooks/play-rtdn`: Pub/Sub OIDC JWT (audience + service account email). `/internal/tick/*`: Cloud Scheduler OIDC JWT, served only by the worker service with ingress `internal-and-cloud-load-balancing` + IAM `roles/run.invoker` |
 
-## 2. OTP and messaging abuse
+## 2. Accounts and abuse
 
-SMS pumping (attackers trigger OTPs to premium numbers) is the main cost risk of any OTP flow.
+There is no OTP, SMS or WhatsApp anywhere, so SMS pumping and per-message cost abuse no longer exist.
 
-- WhatsApp authentication template first (no SMS-pumping revenue for fraudsters), SMS only as fallback.
-- Only `+91[6-9]\d{9}`. App Check limited-use tokens required. Phone Number Hint API in the app reduces typos.
-- Limits: 3 sends per number per 15 min, 5 per day; 10 per installation per day; 50 per IP /24 per hour; a global
-  daily OTP budget (config, default 2,000/day at launch) with an alert at 50% and a hard stop at 100%. The hard stop
-  degrades to "try again later"; users can still use the app anonymously.
-- OTP: 6 digits, stored as HMAC, 10-min TTL, 5 attempts max, constant-time compare; sessions bound to `firebase_uid`
-  + `installation_id`.
-- **Account restore by phone** (custom token into an existing account) is the takeover vector. Mitigations: it needs
-  OTP to the number; a notification is sent to the old primary device ("Your account was signed in on a new phone",
-  B15); the old device is demoted; changing the phone number requires OTP to the *old* number, or a 7-day delay with
-  notice to both.
-- WhatsApp alert cost is bounded per phone HMAC per 120 days (30 messages), not per account.
+- **Sign-in** is Google via Android Credential Manager → Firebase Auth (Google provider); guests use Firebase
+  anonymous auth, created lazily. Account takeover = Google account takeover, which Google's own protections cover.
+  Switching the Google account on a phone (D11) re-authenticates and clears local account state.
+- **Unauthenticated endpoints** (`/v1/reports`, `/v1/telemetry`, `/v1/push-tests`) need a limited-use App Check token
+  and are rate-limited per installation and IP /24. Telemetry values are bounded (per counter per day) and outliers
+  are dropped, so a modified client cannot meaningfully skew metrics.
+- **Self-test** can only target the FCM token in the request; it sends one fixed message and stores the token
+  encrypted until the test ends.
+- **Family links** need the invite token (128-bit, 7-day expiry, single use) and Pro on the owner side; the watch-list
+  is end-to-end encrypted, so a leaked token without the URL fragment reveals nothing.
 
 ## 3. Secrets and keys
 
-- Secret Manager: FCM/Admin SDK runs via the workload service account (no JSON keys). Other secrets: Meta access
-  token, Razorpay keys and webhook secret, SMS gateway key, the Anthropic API key, the phone HMAC pepper.
-- Cloud KMS: key ring `sm-prod`, key `pii-v1` (90-day rotation) for envelope encryption of phone numbers and purchase
-  tokens. DEKs are cached in memory for 10 min. Rotation re-wraps lazily; `*_enc` has a key-version prefix.
+- Secret Manager: FCM/Admin SDK runs via the workload service account (no JSON keys). Other secrets: the Anthropic API
+  key and the entitlement-token signing key (ES256, rotated yearly; public key in `AppConfig`).
+- Cloud KMS: key ring `sm-prod`, key `pii-v1` (90-day rotation) for envelope encryption of Play purchase tokens and
+  the transient self-test FCM token. DEKs are cached in memory for 10 min.
 - Service accounts per role (`api`, `worker`, `admin`, `rtdn-pusher`, `scheduler`) with least privilege. CI deploys via
   Workload Identity Federation from GitHub (no long-lived keys).
 
@@ -48,11 +49,15 @@ SMS pumping (attackers trigger OTPs to premium numbers) is the main cost risk of
 
 - Cloud SQL: private IP + Cloud SQL connector, IAM DB auth for humans, `sslmode=verify-full`, encryption at rest
   (Google-managed; CMEK optional later). Automated backups encrypted.
-- PII columns: phones and family phones are encrypted (AES-GCM) + HMAC; DOB/category/PwD are plaintext in the DB
-  (needed for indexed matching), protected by access control. **Never logged**: the logger has a deny-list
-  (`dob`, `phone`, `pwd*`, `category`, `qualifications`, `purchase_token`, `code`) and request bodies are not logged.
-- Analytics: no third-party analytics SDK receives profile attributes. Product metrics are computed in-DB or exported
-  to BigQuery with pseudonymous ids and coarse attributes only.
+- There are no profile columns to protect. Backup blobs and family watch-lists are end-to-end encrypted on the device
+  (AES-256-GCM; the backup key lives in Google Block Store with `shouldBackupToCloud`, which Google encrypts
+  end-to-end when the phone has a screen lock — the app offers backup only then). **Never logged**: request bodies,
+  `purchase_token`, report `attributes`, client IPs on the unauthenticated endpoints.
+- Analytics: no Firebase/Google Analytics SDK. Product metrics come from the opt-in, identifier-free
+  `usage_counter` aggregates and Play Console statistics.
+- **On the device**: Room in app-private storage under Android file-based encryption; `android:allowBackup` rules
+  exclude Room (restores go through the user's own encrypted backup, not Android Auto Backup). No profile field is
+  ever passed to the ads SDK, Crashlytics keys or logs.
 - GCS buckets: uniform access, no public buckets (the CDN serves notice JSON from the API, not from a public bucket),
   exports bucket with 7-day lifecycle.
 
@@ -64,7 +69,7 @@ SMS pumping (attackers trigger OTPs to premium numbers) is the main cost risk of
   only if not the extractor-run initiator *and* not the first reviewer for second-review tasks).
 - **Every admin action is in `audit_log`** with before/after JSON. Publishing and retraction need a typed confirmation;
   bulk actions (retract with alerts to > 10K users) need a second click after a 60 s cooldown.
-- User support lookups show masked phone and profile only; no export from the console.
+- User support lookups show account id, entitlement and purchases only (there is no profile or phone to show).
 - CSRF tokens on all forms (htmx), strict CSP (pdf.js self-hosted), no third-party scripts.
 
 ## 6. DPDP Act 2023 and DPDP Rules 2025
@@ -77,33 +82,53 @@ review before launch.*
 
 | Obligation | Implementation |
 |---|---|
-| Notice (itemised, plain language, Hindi + English) | First-run privacy notice screen (S03) + `terms_privacy` consent version; lists data, purposes, rights, grievance contact, Board complaint route |
-| Consent: free, specific, informed, unambiguous; per purpose | `consent_log` per purpose: `eligibility_processing` (required for the service), `push_alerts`, `whatsapp_alerts`, `family_alerts`, `analytics` (optional, off by default). Withdrawal as easy as giving: toggles in S28/S33/S38 → `POST /v1/me/consents` |
-| Purpose limitation and minimisation | Only eligibility attributes; no name/Aadhaar/docs; optional fields marked optional; PwD collected only with a "why we ask" line |
-| Accuracy | User edits profile anytime; re-match on save |
-| Security safeguards | §1–§5; encryption, access control, logs, backups |
-| **Breach notification** | Runbook (operations.md): inform affected users without delay and the Data Protection Board (detailed report within 72 h of awareness per the Rules' reading in most commentaries; *verify Rule 7*) |
-| Retention and erasure | data-model.md §4–5: delete on request (7-day grace), inactive 24 months → delete, alerts 90 days, logs 30 days |
-| Rights: access, correction, erasure, grievance, nomination | Export (`/v1/me/exports`), profile edit, delete, in-app grievance contact (support WhatsApp/email, response ≤ 30 days *verify*), nomination: a support-handled request (rare) |
-| Children (< 18): verifiable parental consent | **Open question.** Proposal: the service is 18+; if DOB < 18, no account is created (eligibility preview only, nothing stored), and a gentle message suggests a parent create the account. Needs legal confirmation |
-| Cross-border transfer | Data stays in India (asia-south1/asia-south2). Exceptions: FCM/Firebase Auth (Google global infra), Meta WhatsApp, the LLM provider (only **public notice PDFs**, never user data), Sentry (scrubbed errors; EU/US region; *consider self-hosting or disabling PII*). Listed in the privacy notice |
-| Processors | Google Cloud/Firebase, Meta, Razorpay, SMS gateway, Anthropic (notices only), Sentry. DPAs/terms recorded |
+| Notice (itemised, plain language, in the app language) | **S47 privacy notice** in onboarding (after S03) and from S38/S39: what stays on the phone, what the server holds and why, ads, crash reports, rights, grievance contact, Board complaint route. Version shown is recorded on the device; for accounts also as `consent_log(privacy_notice)` |
+| Consent: free, specific, informed, unambiguous; per purpose | Core matching and reminders process personal data **only on the device**, so no server-side consent is needed for them. Server consents (minimal `consent_log`): `privacy_notice` (at account creation), `cloud_backup`, `family_link_owner`, `family_link_member`. Device-only choices: crash reports (opt-in), usage counters (opt-in), notification permission explained by our own pre-prompt (S13), ads notice (B17). Withdrawal as easy as giving (S28/S38 toggles; `POST /v1/me/consents` for account purposes) |
+| Purpose limitation and minimisation | Only eligibility attributes, on the device; no phone, name, Aadhaar, documents; optional fields marked optional; PwD asked with a "why we ask" line and "stays on your phone" |
+| Accuracy | The user edits the profile at any time; re-match is local and instant |
+| Security safeguards | §1–§5 |
+| **Breach notification** | Runbook (operations.md): affected users and the Data Protection Board (detailed report within 72 h per Rule 7 as commonly read; *verify*). Scope is small: account ids, purchases, ciphertexts |
+| Retention and erasure | data-model.md §4–5: local wipe; account delete with 7-day grace; inactive accounts; logs 30 days |
+| Rights: access, correction, erasure, grievance, nomination | Access = on-device JSON export + `GET /v1/me` summary of server data; correction = profile edit; erasure = local wipe + `DELETE /v1/me`; in-app grievance contact (email, response ≤ 30 days *verify*); nomination via support |
+| **Children (< 18)** | Govt-job aspirants can be 17 (Agniveer, NDA, 10th-pass posts). Instead of an 18+ gate (excludes them) or verifiable parental consent (heavy), **minor mode**: when the DOB on the device is < 18, the app works fully for matching and local/topic reminders but never creates a server account, never offers Google sign-in, purchase, trial, backup or family-owner links, sends no reports with attributes, no usage counters, no crash reports, and shows **no ads** (no tracking or targeted advertising of children, s.9(3)). We therefore receive no personal data of the child. FCM topic subscriptions and Play services remain Google's processing. At 18 the device unlocks these features with a note. *Legal check: confirm that an install-level FCM token handled by Google as processor, with no identity linkage on our side, is acceptable for under-18 users* |
+| Cross-border transfer | Server data stays in India (asia-south1/asia-south2). Exceptions: FCM/Firebase Auth/Crashlytics/AdMob (Google global infra), Anthropic (only **public notice PDFs**). Listed in S47 |
+| Processors | Google Cloud/Firebase (Auth, FCM, App Check, Crashlytics, Hosting), Google AdMob, Google Play, Anthropic (notices only). DPAs/terms recorded |
+
+### 6.1 Play Data safety form (draft)
+
+| Data type (Play category) | Collected? | Shared? | Purpose | Optional? |
+|---|---|---|---|---|
+| Profile: DOB, category, PwD, qualifications, state | **No** — processed on the device only | No | — | — |
+| Email address / user IDs (Google sign-in → Firebase Auth uid) | Yes, if the user signs in | No | Account management | Yes |
+| Purchase history | Yes, if the user buys | No | App functionality (entitlement) | Yes |
+| Device or other IDs (Firebase installation id, FCM token for account pushes; AdMob app-instance id) | Yes | AdMob: per SDK disclosure | App functionality; advertising (non-personalised) | Ads: free tier, adults only |
+| Crash logs, diagnostics | Yes (Crashlytics) | No | Analytics | Yes (opt-in) |
+| App interactions | Aggregated, identifier-free counters | No | Analytics | Yes (opt-in) |
+| Encrypted backup (profile + state) | Declare as "Other user-generated content", collected, encrypted in transit, **unless** Play confirms end-to-end encrypted data we cannot decrypt is out of scope | No | App functionality (restore) | Yes |
+
+Encryption in transit: yes. Deletion request: yes (in-app, and a web form for uninstalled users).
 
 ## 7. Ads
 
 PRD change of 2026-11-19: light native ads in the free tier only.
 
-- Ads are rendered client-side by the Google Mobile Ads SDK (AdMob). The backend stores no ad identifiers or
+- Ads are rendered client-side by the GMA **Next-Gen** SDK (AdMob native). The backend stores no ad identifiers or
   impressions and sends no profile data to ad networks. **Profile attributes (category, PwD, DOB, domicile) are never
-  passed as ad targeting keys.** Request **non-personalised ads** by default (`npa=1`). Personalised ads only with an
-  explicit `ads_personalisation` consent purpose, if we ever want it. Default is off.
+  passed as ad targeting keys.** Every request is **non-personalised**: a Google extras bundle with `npa=1`
+  (`setGoogleExtrasBundle`, per the [Next-Gen migration guide](https://developers.google.com/admob/android/next-gen/migration/migrate-ad-requests)).
+  There is no personalised-ads option in v1.
+- **UMP** (User Messaging Platform) is integrated and called before the first ad request; it shows a form only where
+  Google requires one (EEA/UK/CH, some US states — the app is distributed in India only, so normally
+  `NOT_REQUIRED`). Ads load only when `canRequestAds()` is true. Our own disclosure is S47 + B17 ("Why do I see an
+  ad?"); no extra consent purpose is stored.
+- **No ads in minor mode** (DOB < 18 on the device).
 - The app removes the `AD_ID` permission (frontend ads.md), so the advertising ID is not read. The SDK still
   collects app-instance identifiers and diagnostics; declare those in the Play Data safety form and in the privacy
   notice under processors (Google AdMob).
 - Content safety: block categories that mimic official notices or prey on aspirants (job-placement "guarantees",
   paid "sarkari form" agents, loans, gambling, dating) in the AdMob console. The server-side kill switch
   (`AppConfig.ads.enabled`) removes all ads within about 15 min if an abusive ad slips through.
-- Ads never appear in notifications, WhatsApp, the what-you-need card or why-you-match (PRD), and are disabled for
+- Ads never appear in notifications, the what-you-need card or why-you-match (PRD), and are disabled for
   any Pro source including trial.
 
 ## 8. Backups and DR

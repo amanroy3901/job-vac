@@ -1,19 +1,41 @@
 # Payments and entitlements
 
-**One rule:** the app gates Pro features **only** on `GET /v1/me/entitlement` (also delivered via sync). The server
-computes the entitlement from `entitlement_grant` rows and nothing else. Purchases, trials, referrals and promos
-each create grants.
+**One rule:** the app gates Pro features **only** on the server entitlement (`GET /v1/me/entitlement`, which also
+returns a signed `entitlement_token` the app caches for offline gating and topic subscriptions). The server computes
+it from `entitlement_grant` rows and nothing else. Purchases, trials, referrals and promos each create grants.
+
+**Payments are Google Play Billing only** (founder decision 4, 2026-11-19). Play's sheet already offers UPI, cards,
+net banking/carrier billing where available and Play balance. There are no external UPI links, payment gateways or
+user-choice billing; Razorpay/Cashfree flows are removed.
 
 ## 1. Products
 
 | Our id | Play product / base plan | Type | Price | Duration | Notes |
 |---|---|---|---|---|---|
-| `pro_season` | `pro` / `season-4m-prepaid` | **prepaid plan** (no auto-renew; user can top up to extend) | ₹49 | 4 months (*confirm Play allows 4M prepaid; fallback 3M*) | lead offer at the paywall moment |
+| `pro_season` | `pro` / `season-4m-prepaid` | **subscription, prepaid base plan** (no auto-renew; top-up extends) | ₹49 | `P4M` (*confirm "every 4 months" is offered for prepaid in Play Console; fallback `P3M` at ₹49*) | lead offer at the paywall moment |
 | `pro_year` | `pro` / `yearly-autorenew` | auto-renewing | ₹199 (shown as ₹17/month) | 12 months | grace period 7 d, account hold 30 d (Play Console settings) |
 | `pro_month` | `pro` / `monthly-autorenew` | auto-renewing | ₹20 | 1 month | **disabled**; only if tests show demand (PRD) |
 
 Prices displayed in the app come from Play `ProductDetails`. `GET /v1/products` maps ids and features. Play's service
 fee is 15% on subscriptions → ~₹42 / ₹169 net (PRD).
+
+### 1.1 The ₹49 "season": prepaid plan vs one-time product (recommendation)
+
+| | **Prepaid base plan on the `pro` subscription (recommended)** | One-time product (consumable "4-month pass") |
+|---|---|---|
+| What Play models | time-limited access with an `expiryTime`; no renewal; user can **top up** to extend; shown in Play's subscription centre | an item with no duration; we would have to invent expiry, stacking and restore ourselves |
+| Server | same `subscriptionsv2.get` + RTDN path as the yearly plan (PURCHASED, top-up, EXPIRED, REVOKED); acknowledge within 3 days | separate `products.get` / `orders` path, consume vs acknowledge rules, voided-purchase handling only |
+| Upgrade season → year | Play `linkedPurchaseToken` / replacement modes | manual proration on our side |
+| Policy fit | Play's Payments policy requires Play Billing for digital subscriptions/feature unlocks — met. Subscriptions policy: show price, duration and "does not auto-renew" before purchase (S30 copy: "₹49 · 4 महीने · अपने-आप रिन्यू नहीं होगा"); no misleading "free" wording | allowed, but a time-bound feature unlock sold as a consumable invites "does it renew?" confusion and support tickets |
+| Limits | prepaid plans cannot carry Play free-trial/intro offers (we use a server trial anyway); a base plan's duration cannot be changed after creation | — |
+
+**Recommendation:** keep the season as a **prepaid base plan** (`season-4m-prepaid`, `P4M`, top-up enabled) and the
+year as an auto-renewing base plan (`yearly-autorenew`, `P1Y`; in India Play collects renewals via UPI Autopay or card
+mandates). One subscription product keeps one RTDN path, one restore path and Play-native upgrades. If the Console
+does not offer a 4-month prepaid period, ship `P3M` at ₹49 (copy "3 महीने") rather than switch to a one-time product.
+Sources: [Android "About subscriptions"](https://developer.android.com/google/play/billing/subs) (prepaid plans,
+top-ups, no offers on prepaid), [Play Console subscriptions help](https://support.google.com/googleplay/android-developer/answer/12154973)
+(billing periods; the full list could not be fetched from the build environment — **verify P4M in the Console**).
 
 ## 2. Play purchase flow (server-verified, server-acknowledged)
 
@@ -36,7 +58,7 @@ sequenceDiagram
   GP-->>PS: RTDN (renewed / canceled / on hold / expired / revoked …)
   PS->>API: push /hooks/play-rtdn (OIDC JWT)
   API->>PDA: subscriptionsv2.get(token)  — never trust the notification body alone
-  API->>API: upsert purchase; recompute entitlement; bump change_seq → app syncs
+  API->>API: upsert purchase; recompute entitlement → account push type=account (entitlement changed)
 ```
 
 **Verification checks:**
@@ -46,8 +68,9 @@ sequenceDiagram
    purchase_pending`, and the RTDN completes it later.
 4. `externalAccountIdentifiers.obfuscatedExternalAccountId == user.billing_account_ref`. If it differs and that
    account is active → `409 purchase_owned_by_other_account` (the app shows "this purchase belongs to another
-   account; sign in with that number"). If that account is deleted, or the field is absent (restore on a new
-   install) → link the purchase to the caller and audit-log it.
+   account — sign in with the Google account you used then", B16 `pro`). If that account is deleted, or it is an
+   anonymous account inactive for > 30 days, or the field is absent (restore on a new install) → link the purchase to
+   the caller and audit-log it.
 5. Token not already linked to another active user.
 
 **Acknowledgement:** the server acknowledges after granting. Unacknowledged purchases are auto-refunded by Play after
@@ -92,19 +115,26 @@ and its grant is ended at the new start.
 recompute(user):
   active = grants where revoked_at is null and starts_at <= now < ends_at
   if any active: plan = pro; expires_at = max(ends_at); source = highest-precedence active
-                 (play_year > play_season > upi > referral > promo > trial)
+                 (play_year > play_season > referral > promo > trial)
   else if latest play purchase in grace → pro/in_grace; on_hold → free/on_hold
   else plan = free, status = expired|none
   ads_enabled = (plan == free)
-  write user_entitlement (bump change_seq) → the app picks it up via sync; a silent FCM `sync` is sent on change
+  write user_entitlement → a silent account push (`type=account, template=entitlement`) tells the app to refetch
+  `GET /v1/me/entitlement` and its token
 ```
 
 A housekeeping tick ends entitlements at `expires_at` (index `entitlement_expiry`). Overlapping grants never lose
 time, because expiry is the max over grants.
 
-**Feature gates** (server-side, the only place enforced): lifecycle alert sending, WhatsApp delivery, family alerts,
-clash and certificate alerts, ad-free. The API returns `403 pro_required` for Pro-only mutations (family invite,
-WhatsApp test). Timeline *viewing* stays free (`alerts_locked`).
+**Feature gates.** Server-enforced: family link creation and watch-list publishing (`403 pro_required`). Device-
+enforced from the signed `entitlement_token` (ES256, `exp` = min(entitlement expiry, now + 7 d), claims `plan`,
+`ads_enabled`, `features`): subscribing to lifecycle topics `n_{notice}`, clash and certificate notifications,
+ad-free. Lifecycle content is public catalog data, so a modified client could get it free; accepted at this price.
+Timeline *viewing* stays free (`alerts_locked`).
+
+**Account needed.** Trial and purchase need a server account. A guest who has not signed in gets a Firebase
+anonymous account at that moment (B16 `pro` first offers Google sign-in, "so you keep Pro on a new phone"); linking
+Google later keeps the same uid and entitlement. Minor mode (DOB < 18 on the device) hides purchase and trial in v1.
 
 ## 5. 14-day trial
 
@@ -114,35 +144,31 @@ WhatsApp test). Timeline *viewing* stays free (`alerts_locked`).
   Applied, the clock starts on the user's tap. Lifecycle alerts for applications made earlier are backfilled.
   There is no Play free-trial offer, so no payment method is needed. This matters for Indian
   users without cards or UPI mandates.
-- One per account (unique index). Reinstall farming creates a new anonymous account; the exposure is small because
-  the costly parts (WhatsApp) need a verified number, and the WhatsApp quota is keyed by `phone_hmac` per 120 days,
-  not by account.
-- Trial-end: B09 sheet on days 12–14 plus one push N-31 on day 12 ("Pro ट्रायल 2 दिन में ख़त्म — आपके 3 फ़ॉर्म की
-  अगली सूचना: …", `account` channel). Never via WhatsApp templates (that would be marketing; design W-90 is not sent).
+- One per account (unique index), and one per Google account for linked users. Reinstall farming as a guest creates a
+  new anonymous account; the exposure is small because no Pro feature has a per-message cost any more (no WhatsApp,
+  no SMS). App Check (Play Integrity) is required on `POST /v1/me/trial`.
+- Trial-end: B09 sheet on days 12–14 plus one account push N-31 on day 12 ("Pro ट्रायल 2 दिन में ख़त्म — आपके 3 फ़ॉर्म
+  की अगली सूचना: …", `account` channel).
 
-## 6. UPI payment links (WhatsApp test and non-Play channels)
+## 6. Removed: UPI links and gateways
 
-- **Razorpay Payment Links** API: `amount` (₹49/₹199), `upi_link: true`, `reference_id` = our purchase id,
-  `customer.contact` (phone from the test), `notes.user_ref`, `expire_by` = +48 h. The link is sent over WhatsApp
-  during the 14-day test, or returned by `POST /v1/me/purchases/upi-link` in the non-Play build.
-- Webhook `payment_link.paid` → verify `X-Razorpay-Signature` (HMAC-SHA256 with the webhook secret) → idempotent on
-  payment id → `purchase(provider=razorpay)` + `entitlement_grant(source=upi, 120 or 365 days)` → WhatsApp confirmation.
-- Fees: standard 2% + GST on UPI ([Razorpay pricing](https://razorpay.com/pricing/)), about ₹1.2 on ₹49 vs ₹7.35 to
-  Play. New-merchant zero-fee offers may apply (*verify*).
-- Refunds: Razorpay dashboard → webhook `refund.processed` → revoke the grant.
-- **Policy:** Google Play's payments policy requires Play Billing for digital goods in Play-distributed apps. India
-  allows **user-choice / alternative billing** programmes with a reduced service fee, which need enrolment and
-  Google's APIs. Until we enrol, the UPI link button exists only in the test/non-Play flavour and on the web
-  (`upi_link_purchase` feature flag). **Decision required before P0** (README open question 5).
-- During the WhatsApp test (no app), Razorpay payments are matched to test participants by phone. Conversion metrics
-  come from `purchase` rows tagged `channel=wa_test`.
+Razorpay Payment Links, the `upi` product flavour, `POST /v1/me/purchases/upi-link`, `/hooks/razorpay`, the B11 UPI
+chooser and the `upi` entitlement source are removed. UPI remains available **inside** Play's purchase sheet, where a
+UPI purchase can arrive as `PENDING` and complete via RTDN (§2 check 3).
+
+**Validation test (decision 8).** The PRD's 14-day test runs as a **Play closed-testing** release with real Play
+Billing purchases (testers who are not licence testers are charged). This also satisfies Play's rule that personal
+developer accounts created after 13 Nov 2023 run a closed test with ≥ 12 opted-in testers for 14 days before
+applying for production access ([Play Console help](https://support.google.com/googleplay/android-developer/answer/14151465)).
+`purchase.track = closed` tags test purchases; the go/stop gates use Play Console (installs, retention, revenue) plus
+the opt-in usage counters (profiles completed, Applied taps). Licence testers are used only for QA purchases.
 
 ## 7. Referrals and promos
 
 - Referral: code per user; the referee redeems within 7 days of sign-up. When the referee completes their **first
   Applied** (inventory S45), both get `entitlement_grant(source=referral, +30 days)`. Cap: 12 rewarded referrals per
-  user per year. Anti-abuse: the referee must have a verified phone **or** a Play Integrity `MEETS_DEVICE_INTEGRITY`
-  verdict at redeem time, and a referee phone can be rewarded only once ever.
+  user per year. Anti-abuse: the referee must have a Play Integrity `MEETS_DEVICE_INTEGRITY` verdict at redeem time
+  and a Google-linked account, and a Google account can be rewarded as referee only once ever.
 - Promo grants (founding members, support goodwill) are created only in the admin console, with an audit log entry.
 
 ## 8. Edge cases
@@ -154,12 +180,13 @@ WhatsApp test). Timeline *viewing* stays free (`alerts_locked`).
 | User deletes account with an active Play sub | the API warns (subscription continues billing in Play); `DELETE /v1/me` response tells the app to show the Play manage link; the purchase is unlinked on hard delete |
 | Family invitee (no purchase) | no entitlement needed; the aspirant's Pro gates the family alerts |
 | Play Developer API outage | verify returns `503 retryable`; the app keeps the purchase unacknowledged and retries (3-day window) |
-| Refund via Google | voided notification → revoke; WhatsApp quota resets to 0 |
+| Refund via Google | voided notification → revoke |
+| Guest (anonymous) buys, then reinstalls without having linked Google | "ख़रीद वापस लाएँ": `queryPurchasesAsync` → verify → the old anonymous account is inactive, so the purchase moves to the new account (check 4) |
 | Clock skew on device | server time only |
 
 ## 9. Accounting
 
 Purchases are kept (unlinked from deleted users) for statutory retention (*8 years assumed; confirm with a CA*). GST
-treatment of Play-collected vs. direct UPI revenue needs a CA's view (Google collects and remits GST on Play sales in
-India for some categories; direct Razorpay revenue is ours to invoice). A monthly CSV export from `purchase` feeds
+treatment of Play-collected revenue needs a CA's view (Google collects and remits GST on Play sales in India for some
+categories). A monthly CSV export from `purchase` feeds
 the accounts.
