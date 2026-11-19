@@ -43,7 +43,8 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 /**
- * Material Symbols Rounded (filled, as Direction C specifies) imported as Compose Multiplatform vector drawables (composeResources/drawable, Android vector XML) — no
+ * Material Symbols Rounded (filled, as Direction C specifies) imported as Compose Multiplatform vector drawables
+ * (composeResources/drawable, Android vector XML) — no
  * material-icons-extended. Directional icons are autoMirrored for RTL.
  */
 object SmIcons {

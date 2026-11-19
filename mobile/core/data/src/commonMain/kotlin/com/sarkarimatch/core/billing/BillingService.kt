@@ -57,9 +57,11 @@ class StubBillingService : BillingService {
 }
 
 /**
- * Product mapping (billing.md §1). Play: one subscription `pro` with base plans. App Store: one auto-renewable
- * subscription per plan in a subscription group, plus a non-renewing subscription for the season pass (App Store has
- * no prepaid plans). The App Store ids are placeholders until App Store Connect is set up (bundle id placeholder).
+ * Product mapping (billing.md §1/§10.1, backend payments-and-entitlements.md products table). Play: one subscription
+ * `pro` with base plans. App Store: `pro_year` = auto-renewable `in.sarkarimatch.pro.yearly` (group `pro`, 14-day
+ * intro offer), `pro_season` = non-renewing `in.sarkarimatch.pro.season4m` (App Store has no prepaid plans).
+ * The canonical store ids come from `GET /v1/products` (`appstore_product_id`, Play base plan); these constants are
+ * the same values, used as defaults until the product list is cached (FE-75) and as test fixtures.
  */
 object ProProducts {
     const val YEAR = "pro_year"
@@ -69,5 +71,5 @@ object ProProducts {
     const val PLAY_SUBSCRIPTION = "pro"
     val playBasePlan = mapOf(YEAR to "yearly-autorenew", SEASON to "season-4m-prepaid")
 
-    val appStoreProductId = mapOf(YEAR to "in.sarkarimatch.app.pro.year", SEASON to "in.sarkarimatch.app.pro.season")
+    val appStoreProductId = mapOf(YEAR to "in.sarkarimatch.pro.yearly", SEASON to "in.sarkarimatch.pro.season4m")
 }

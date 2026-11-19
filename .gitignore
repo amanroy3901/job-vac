@@ -33,3 +33,16 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Xcode / iOS (mobile/iosApp)
+xcuserdata/
+*.xcuserstate
+DerivedData/
+mobile/iosApp/build/
+Pods/
+*.ipa
+*.dSYM.zip
+*.dSYM
+.DS_Store
+# Kotlin/Native / Gradle-produced frameworks for Xcode
+mobile/composeApp/build/xcode-frameworks/

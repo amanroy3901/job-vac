@@ -74,4 +74,6 @@
     <string name="profile_age_countdown">उम्र की गिनती</string>
     <string name="profile_open_language">ऐप की भाषा</string>
     <string name="profile_open_alerts">अलर्ट सेटिंग</string>
+    <!-- ads -->
+    <string name="ad_label">विज्ञापन</string>
 </resources>

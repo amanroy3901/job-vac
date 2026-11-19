@@ -2,45 +2,44 @@ package com.sarkarimatch.core.ads
 
 /**
  * Decides whether the single native ad slot may be shown (ads.md §3): free tier only, never in minor mode, only
- * after consent (UMP on Android, UMP + App Tracking Transparency prompt on iOS), and only while `config.ads` is on.
- * The AdMob SDK is lazily initialised on first scroll-in (FE-27); until then the slot is never shown.
+ * after consent is resolved (Google UMP on both platforms; no App Tracking Transparency prompt on iOS, ads.md §7),
+ * and only while `config.ads` is on. The AdMob SDK is lazily initialised on first scroll-in (FE-27).
  */
 class AdsGate(private val ads: AdsService) {
     fun canShowAd(isPro: Boolean, isMinor: Boolean, configAdsOn: Boolean): Boolean =
         ads.isAvailable && !isPro && !isMinor && configAdsOn
 }
 
-/** A loaded native ad's assets; the slot is drawn by our own Compose layout (ads.md §4). */
-data class NativeAdContent(
-    val id: String,
-    val headline: String,
-    val body: String?,
-    val callToAction: String?,
-    val advertiser: String?,
-)
+/** Opaque id of a loaded native ad held by the platform SDK (no SDK types in common code). */
+data class AdHandle(val id: String)
+
+sealed interface AdLoadResult {
+    data class Loaded(val handle: AdHandle) : AdLoadResult
+    data object NoFill : AdLoadResult
+    data class Error(val message: String) : AdLoadResult
+}
 
 /**
- * AdMob native ads on both platforms (Google Mobile Ads Next-Gen SDK on Android, Google Mobile Ads iOS SDK from
- * Swift). Interface only in this skeleton; the SDKs are integrated with FE-27.
+ * AdMob native ads (Google Mobile Ads Next-Gen SDK on Android, Google Mobile Ads iOS SDK from Swift). The ad is
+ * always rendered by the SDK's registered native ad view (`NativeAdView` / `GADNativeAdView`, with AdChoices), hosted
+ * in Compose through `AndroidView` / `UIKitView` (`PlatformNativeAdView` in :composeApp); the SDK measures impressions
+ * and clicks itself. Interface only in this skeleton; the SDKs are integrated with FE-27 / FE-76.
  */
 interface AdsService {
     val isAvailable: Boolean
 
-    /** Shows the consent form when required; returns whether ads may be requested. */
+    /** UMP consent info update (+ form only when required); returns whether ads may be requested. */
     suspend fun ensureConsent(): Boolean
 
-    suspend fun loadNativeAd(adUnitId: String): NativeAdContent?
+    suspend fun load(adUnitId: String): AdLoadResult
 
-    /** Records an impression / click for a loaded ad (the SDK does the reporting). */
-    fun recordImpression(adId: String)
-
-    fun recordClick(adId: String)
+    /** Destroys the SDK ad object when the slot leaves composition. */
+    fun release(handle: AdHandle)
 }
 
 class NoAdsService : AdsService {
     override val isAvailable: Boolean = false
     override suspend fun ensureConsent(): Boolean = false
-    override suspend fun loadNativeAd(adUnitId: String): NativeAdContent? = null
-    override fun recordImpression(adId: String) = Unit
-    override fun recordClick(adId: String) = Unit
+    override suspend fun load(adUnitId: String): AdLoadResult = AdLoadResult.NoFill
+    override fun release(handle: AdHandle) = Unit
 }

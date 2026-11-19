@@ -20,9 +20,10 @@ import org.jetbrains.compose.resources.Font
 /*
  * tokens.json font.*: Baloo 2 600 (display: headings, prices, calendar numbers) + Hind 400/600 (body, labels).
  * Downloadable Google Fonts are Android-only, so both are bundled as Compose resources (composeResources/font),
- * subset to Latin + Devanagari and stripped of hinting: ~600 KB raw / ~250 KB compressed in the APK and IPA
- * (Baloo 2 SemiBold 345 KB, Hind 400 + 600 130 KB each). Other scripts (Bengali, Tamil, Urdu, …) fall back to the
- * system fonts (Noto on Android, the iOS system font) until their own families are added (i18n A3).
+ * subset to Latin + Devanagari without hinting by tools/fonts/subset.sh: 493 KB raw / ~230 KB compressed in the APK
+ * and IPA (Baloo 2 SemiBold 256 KB without kern/dist pairs, Hind 400 + 600 ≈ 118 KB each). That is 43 KB over the
+ * 450 KB budget (i18n B); see the README for options. Other scripts (Bengali, Tamil, Urdu, …) fall back to the
+ * system fonts (Noto on Android, the iOS system fonts) until their own families are added (i18n A3).
  */
 
 /** Baloo 2 SemiBold (headings). Compose resource fonts load in composition, hence @Composable. */

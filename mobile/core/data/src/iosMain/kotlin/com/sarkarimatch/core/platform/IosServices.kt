@@ -1,7 +1,8 @@
 package com.sarkarimatch.core.platform
 
 import com.sarkarimatch.core.ads.AdsService
-import com.sarkarimatch.core.ads.NativeAdContent
+import com.sarkarimatch.core.ads.AdHandle
+import com.sarkarimatch.core.ads.AdLoadResult
 import com.sarkarimatch.core.auth.AuthProvider
 import com.sarkarimatch.core.auth.AuthResult
 import com.sarkarimatch.core.auth.AuthService
@@ -132,16 +133,9 @@ internal class IosAdsService(private val bridge: IosAdsBridge) : AdsService {
         bridge.requestConsent(IosConsentCallback { cont.resume(it) })
     }
 
-    override suspend fun loadNativeAd(adUnitId: String): NativeAdContent? = suspendCancellableCoroutine { cont ->
-        bridge.loadNativeAd(
-            adUnitId,
-            IosNativeAdCallback { ad ->
-                cont.resume(ad?.let { NativeAdContent(it.adId, it.headline, it.body, it.callToAction, it.advertiser) })
-            },
-        )
+    override suspend fun load(adUnitId: String): AdLoadResult = suspendCancellableCoroutine { cont ->
+        bridge.loadNativeAd(adUnitId, IosNativeAdCallback { cont.resume(it) })
     }
 
-    override fun recordImpression(adId: String) = bridge.recordImpression(adId)
-
-    override fun recordClick(adId: String) = bridge.recordClick(adId)
+    override fun release(handle: AdHandle) = bridge.releaseNativeAd(handle.id)
 }

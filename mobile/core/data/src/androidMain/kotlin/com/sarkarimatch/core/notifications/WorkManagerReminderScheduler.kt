@@ -84,7 +84,9 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val data = inputData
         val id = data.getString(WorkManagerReminderScheduler.KEY_ID) ?: return Result.failure()
         val link = data.getString(WorkManagerReminderScheduler.KEY_LINK)
-        val intent = (link?.let { Intent(Intent.ACTION_VIEW, Uri.parse(it)) } ?: ctx.packageManager.getLaunchIntentForPackage(ctx.packageName))
+        val intent = (
+            link?.let { Intent(Intent.ACTION_VIEW, Uri.parse(it)) } ?: ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+        )
             ?.setPackage(ctx.packageName)
             ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pending = intent?.let {

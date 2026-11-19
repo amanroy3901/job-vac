@@ -22,6 +22,7 @@ internal object PushEvents {
  * no FirebaseApp exists and [token] returns null instead of crashing.
  */
 class FcmPushService(private val context: Context) : PushService {
+    @Suppress("DEPRECATION") // FCM 25 deprecates the token API in favour of a newer registration flow; migrate with FE-08
     override suspend fun token(): String? {
         if (FirebaseApp.getApps(context).isEmpty()) return null
         return suspendCancellableCoroutine { cont ->
@@ -37,6 +38,7 @@ class FcmPushService(private val context: Context) : PushService {
 
 /** Declared in this module's manifest. Text is composed on device from the data payload (notifications.md §3). */
 class SmMessagingService : FirebaseMessagingService() {
+    @Deprecated("Mirrors FirebaseMessagingService.onNewToken (deprecated in FCM 25); migrate with FE-08")
     override fun onNewToken(token: String) {
         PushEvents.tokens.tryEmit(token)
     }

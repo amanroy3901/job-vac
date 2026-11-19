@@ -1,5 +1,9 @@
 package com.sarkarimatch.core.platform
 
+import com.sarkarimatch.core.ads.AdHandle
+import com.sarkarimatch.core.ads.AdLoadResult
+import platform.UIKit.UIView
+
 /*
  * Swift-facing bridge protocols. StoreKit 2, Google Sign-In for iOS, Sign in with Apple, Firebase Messaging and
  * Google Mobile Ads are Swift/ObjC SDKs (StoreKit 2 is Swift-only), so they are implemented in iosApp/ by Swift
@@ -97,27 +101,29 @@ class IosConsentCallback internal constructor(private val deliver: (Boolean) -> 
     fun onResult(canRequestAds: Boolean) = deliver(canRequestAds)
 }
 
-class IosNativeAdCallback internal constructor(private val deliver: (IosNativeAd?) -> Unit) {
-    fun onAdLoaded(ad: IosNativeAd) = deliver(ad)
-
-    @Suppress("UnusedParameter") // reported by the SDK; the slot simply stays empty
-    fun onAdFailed(message: String) = deliver(null)
+class IosNativeAdCallback internal constructor(private val deliver: (AdLoadResult) -> Unit) {
+    /** [adId] identifies the loaded `GADNativeAd` on the Swift side (used by [IosAdsBridge.makeNativeAdView]). */
+    fun onAdLoaded(adId: String) = deliver(AdLoadResult.Loaded(AdHandle(adId)))
+    fun onNoFill() = deliver(AdLoadResult.NoFill)
+    fun onAdFailed(message: String) = deliver(AdLoadResult.Error(message))
 }
 
-data class IosNativeAd(
-    val adId: String,
-    val headline: String,
-    val body: String?,
-    val callToAction: String?,
-    val advertiser: String?,
-)
-
-/** Google Mobile Ads iOS SDK + UMP + App Tracking Transparency (Swift). */
+/**
+ * Google Mobile Ads iOS SDK + UMP (Swift: `AdMobNativeAdLoader` + `NativeAdViewFactory`). No App Tracking
+ * Transparency prompt (ads.md §7): requests are non-personalised.
+ */
 interface IosAdsBridge {
     fun requestConsent(callback: IosConsentCallback)
+
     fun loadNativeAd(adUnitId: String, callback: IosNativeAdCallback)
-    fun recordImpression(adId: String)
-    fun recordClick(adId: String)
+
+    /**
+     * A `GADNativeAdView` for a loaded ad, with headline/body/icon/CTA asset views registered and AdChoices shown,
+     * styled with our tokens. Compose hosts it in `UIKitView`; the SDK records impressions and clicks itself.
+     */
+    fun makeNativeAdView(adId: String): UIView
+
+    fun releaseNativeAd(adId: String)
 }
 
 /**

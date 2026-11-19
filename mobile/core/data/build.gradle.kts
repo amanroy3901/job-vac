@@ -6,8 +6,8 @@
 plugins {
     alias(libs.plugins.sm.kmp.android.library)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
-    alias(libs.plugins.room)
+    id("com.google.devtools.ksp") // on the root buildscript classpath (see ../../build.gradle.kts)
+    id("androidx.room")
 }
 
 kotlin {

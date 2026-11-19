@@ -38,7 +38,7 @@ class CredentialManagerAuthService(
             if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                 val google = GoogleIdTokenCredential.createFrom(credential.data)
                 AuthResult.Success(
-                    ProviderCredential(AuthProvider.GOOGLE, google.idToken, nonce, google.displayName, google.id),
+                    ProviderCredential(AuthProvider.GOOGLE, google.idToken, nonce, google.displayName, google.email),
                 )
             } else {
                 AuthResult.Failed("unexpected credential type ${credential.type}")

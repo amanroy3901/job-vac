@@ -5,7 +5,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.sarkarimatch.core.model.AppLanguage
 
-/** The app language chosen on S02/S40 (Hindi until the user picks another). Provided by [SmTheme][com.sarkarimatch.core.designsystem.theme.SmTheme]. */
+/** The app language chosen on S02/S40 (Hindi until the user picks another). Provided by `SmTheme`. */
 val LocalAppLanguage = staticCompositionLocalOf { AppLanguage.DEFAULT }
 
 /** The app language for LocalizedText.pick and date formatting. */
