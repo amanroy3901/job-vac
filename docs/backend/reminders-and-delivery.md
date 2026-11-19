@@ -71,16 +71,20 @@ Same states and rules as before, now evaluated in Room transactions:
 All times IST. `D` = `apply_end`. `T` = the user's reminder time (default 19:00, S28). Slots and ranks are those of
 design `03-scenarios.md` §0.2.
 
-| Kind (design slot) | When | Free | Pro adds | Cap rank | Server topic backup |
+| Kind (design slot) | When (shown to the user) | FCM | On-device | Pro adds | Cap rank |
 |---|---|---|---|---|---|
-| `last_day` (R-last) | D, 08:00 (**ignores quiet hours**; if matched late on day D, immediately) | local alarm, high importance | family (P1) | 1 (never deferred) | `p_{post}` at D 08:30 |
-| `d_minus_1` (R1) | D−1 at T | local alarm, high importance | family (P1) | 2 (never deferred) | `p_{post}` at D−1 20:30 |
-| lifecycle critical | at publish | — | push via topic `n_{notice}` | 3 (never deferred) | is itself a topic push |
-| `new_match` (R0) | when the catalog batch is evaluated (shifted out of quiet hours) | local notification | — | 4 | `catalog` sync push triggers it |
-| `extension` / `corrigendum` / `cancelled` | when the batch is evaluated, once | local notification (date earlier, verdict changed, cancelled; else quiet update) | — | 4 | `catalog` sync push |
-| `d_minus_3` (R3) | D−3 at T | local | — | 5 | — |
-| `periodic` (Rp) | every 3 days after R0 at T while ≥ 4 days are left; every 5 days after the 3rd unopened one for windows > 30 days | local | — | 6 | — |
-| `snooze_due` | snooze target | local | — | 5 | — |
+| `last_day` (R-last) | D, 08:00 (**ignores quiet hours**; if matched late on day D, immediately) | topic `p_{post}` `deadline` at 08:00, high | **backup** alarm 08:15 (design 05 §3.6), cancelled when the push is shown | family N-51 (P1) | 1 (never deferred) |
+| `d_minus_1` (R1) | D−1 at T | topic `p_{post}` `deadline` at 19:00, high; held until T if T is later | **backup** alarm at T + 30 min | family N-50 (P1) | 2 (never deferred) |
+| lifecycle critical | at publish | topic `n_{notice}` `lifecycle`, high | — | Pro only; family N-52/N-53 (P1) | 3 (never deferred) |
+| `new_match` (R0) | when the catalog batch is evaluated (shifted out of quiet hours) | topic `catalog` `sync` triggers it | composed locally | — | 4 |
+| `extension` / `corrigendum` / `cancelled` | when the batch is evaluated, once | topic `catalog` `sync` | composed locally (date earlier, verdict changed, cancelled; else quiet update) | — | 4 |
+| `d_minus_3` (R3) | D−3 at T | topic `p_{post}` `reminder` at 19:00, normal; held until T | WorkManager at T if no push arrived | — | 5 |
+| `periodic` (Rp) | every 3 days after R0 at T while ≥ 4 days are left; every 5 days after the 3rd unopened one for windows > 30 days | — | WorkManager | — | 6 |
+| `snooze_due` | snooze target | — | WorkManager / alarm | — | 5 |
+
+The server cannot know each user's reminder time `T`, so topic pushes go out at the design defaults (configurable in
+`AppConfig.reminder_backup`); a device whose `T` is later holds the push and shows it at `T` (data-only messages
+allow this), and one whose `T` is earlier has already shown the reminder and drops the push by `reminder_id`.
 
 `nextReminder(match, now)` stays a **pure function** of `(D, matched_at, status, snoozed_until, last_shown_kind,
 quiet hours, T)`, in `:matching-core`'s sibling module `:reminder-core` (unit-tested on the JVM; shared with the
@@ -92,13 +96,14 @@ server's topic backup for R1/R-last carries the **same id** and the device shows
 
 ## 3. How reminders survive a killed app
 
+Founder decision 7: **delivery = FCM push + on-device backup reminders.**
+
 | Mechanism | Covers | Notes |
 |---|---|---|
-| `AlarmManager.setAndAllowWhileIdle` for the next 3 due reminders (exact alarms only if the user grants `SCHEDULE_EXACT_ALARM`, P1 S14) | all slots | inexact window ≈ ±15 min in Doze; re-armed after each fire |
-| WorkManager one-time work per due reminder + a **daily reconcile** (24 h, flex 4 h, no network needed) | all slots; catches up after force-stop once the app runs again | reconcile also syncs the catalog when online and re-evaluates expiries |
+| **FCM topic push** (`p_{post_id}` R3/R1/R-last, `n_{notice_id}` lifecycle, `catalog` sync) | the primary delivery | high priority for R1/R-last/critical lifecycle wakes a background-killed app on most OEMs once autostart is allowed (S15); the device dedupes by `reminder_id` and suppresses if the user already acted |
+| **On-device backup reminder** for R1 (T + 30 min) and R-last (08:15): `AlarmManager.setAndAllowWhileIdle`, exact (`setExactAndAllowWhileIdle`) when `SCHEDULE_EXACT_ALARM` is granted via S14 (P0) | FCM blocked or late | cancelled when the push with the same id is shown; body suffix "(फ़ोन से याद दिलाया)"; S28 toggle "बिना इंटरनेट भी याद", default on |
+| WorkManager one-time work per due Rp/R3/snooze slot + a **daily reconcile** (24 h, flex 4 h, no network needed) | slots without a push; catch-up after force-stop once the app runs again | reconcile also syncs the catalog when online and expires matches |
 | `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED` receivers | re-arm after reboot/update/clock change | alarms are cleared on reboot |
-| **Server topic push** `p_{post_id}` (R1, R-last), high priority | the alarm did not fire (OEM killed alarms) | FCM wakes a background-killed app on most OEMs once autostart is allowed (S15); the device dedupes by `reminder_id` and suppresses if the user already acted |
-| `catalog` topic sync push (normal priority) | new matches, corrigenda | latency minutes when active, ≤ a Doze maintenance window otherwise; the daily reconcile is the fallback |
 
 Force-stop (Settings → Force stop) disables alarms, work **and** FCM until the user opens the app; this was true of
 the previous design too. The onboarding OEM guide (S13/S15), the self-test (S16) and the O02 banner remain the
@@ -112,11 +117,12 @@ Cloud Scheduler calls `POST /internal/tick/topics` every minute. The tick claims
 | Topic | Who subscribes | Sends | Priority / TTL |
 |---|---|---|---|
 | `catalog` | every install (guests and minors included) | `type=sync, seq` on every catalog batch | normal / 24 h |
-| `p_{post_id}` | installs with an **open** match on the post; family members following it | `type=deadline, kind=d_minus_1\|last_day, reminder_id, post_id, last_date` | high / until end of D |
+| `p_{post_id}` | installs with an **open** match on the post (the account's primary install, if signed in); family members following it | `type=reminder, kind=d_minus_3` (normal) and `type=deadline, kind=d_minus_1\|last_day` (high), `reminder_id, post_id, last_date` | see type / until end of D |
 | `n_{notice_id}` | installs with an Applied match and Pro/trial; family members following it | `type=lifecycle, event_id, stage, critical` | high if critical, else normal / 4 weeks |
 
-- Rows are created at publish: one `sync:{seq}` per batch, `r:{post}:{kind}:{date}` per open post and slot (rescheduled
-  or cancelled by later batches: extension, cancellation, retraction), `l:{event}` per lifecycle event.
+- Rows are created at publish: one `sync:{seq}` per batch, `r:{post}:{kind}:{date}` per open post for R3, R1 and
+  R-last (rescheduled or cancelled by later batches: extension, cancellation, retraction), `l:{event}` per lifecycle
+  event.
 - **Payload** = `PushData` ([api/README.md §10](../api/README.md#10-push-fcm-payload-contract)): data-only, ids
   and dates, no text. The device renders in its language from string resources and catalog `LocalizedText`.
 - FCM fans topic messages out on its side; there is no per-device result. `QUOTA_EXCEEDED`/`UNAVAILABLE` → retry
@@ -131,7 +137,8 @@ Cloud Scheduler calls `POST /internal/tick/topics` every minute. The tick claims
   accepted risk at ₹49.
 
 **Account pushes** (`device` rows of one account; FCM `message.token`): trial ending N-31 (day 12), Pro expiring,
-payment on hold, family link accepted/removed, `family_sync`. Text comes from `notification_text` in the device's
+payment on hold, entitlement changed, N-47 alerts moved to another phone (primary device changed, B15), and `family`
+events (`sync`, `accepted` → N-44, `removed` → N-54, `paused`). Text comes from `notification_text` in the device's
 locale with `locale.fallback`, plus the template id so a current app can render it from its own resources.
 
 ## 5. Family alerts (Pro, P1) — push to the family member's own app
@@ -156,8 +163,11 @@ sequenceDiagram
 ```
 
 - The member's app shows only what the aspirant shared (S49): the aspirant's chosen label, exam short titles, last
-  dates and critical lifecycle stages (`last_day`, `one_day_before`, `admit_card`, `dv_schedule`). No action
-  buttons (a parent cannot mark Applied).
+  dates and critical lifecycle stages (`last_day`, `one_day_before`, `admit_card`, `dv_schedule`). It turns the
+  topic pushes it receives into N-50…N-53 on its `family` channel (design 05 §3.5), with its own on-device backup
+  for N-50/N-51, respecting the member's quiet hours except N-51/N-53 within 24 h. No action buttons (a parent
+  cannot mark Applied). The aspirant's name never passes through the server in clear: it is inside the encrypted
+  watch-list.
 - The aspirant's device republishes the watch-list after every change (new match, Applied, Not interested, expiry);
   the server keeps only the latest version.
 - Either side can end the link (D06/D12) → server marks it `removed`, deletes the watch-list, pushes

@@ -98,10 +98,13 @@ CREATE TABLE device (                                       -- installs of an ac
   fcm_token            text NOT NULL,
   locale               text NOT NULL REFERENCES locale(code),
   app_version          int NOT NULL,
+  device_label         text,                                -- "Redmi 12", for N-47 / S38 (owner-visible only)
+  is_primary           boolean NOT NULL DEFAULT false,      -- the account's alert install (B15); others go quiet
   token_invalid_at     timestamptz,                         -- FCM UNREGISTERED
   updated_at           timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX device_user ON device (user_id);
+CREATE UNIQUE INDEX device_one_primary ON device (user_id) WHERE is_primary;
 
 CREATE TABLE consent_log (                                  -- append-only, minimal (DPDP s.6 proof for account features)
   id          bigserial PRIMARY KEY,

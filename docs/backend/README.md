@@ -118,7 +118,7 @@ flowchart LR
 (LLM → `rule.schema.json`) → validators → **human review in admin** → publish (creates `notice_version` and `post_rule`
 versions) → **catalog batch** written to GCS + `topic_send(sync)` → FCM topic `catalog` → every app fetches the
 batch, evaluates it against the **local** profile, and composes its own "new match" notification; R1/R-last topic
-backups are scheduled on `p_{post_id}`. Target: catalog batch out **< 5 min after publish**; notifications follow as
+backups are scheduled on `p_{post_id}` (R3/R1/R-last), with on-device backup alarms for R1/R-last. Target: catalog batch out **< 5 min after publish**; notifications follow as
 soon as each phone runs (NFR < 6 h).
 
 ## 4. Decisions (ADR summaries)
@@ -211,8 +211,8 @@ at 40 notices. See [ingestion-pipeline.md](./ingestion-pipeline.md).
 Data-only FCM so the app controls language, buttons, quiet-hour dedupe and caps. Match-related pushes go to
 **topics** (the server does not know recipients); the device composes the text from its string resources and the
 catalog. High priority only for R1/R-last backups, critical lifecycle and the self-test. No delivery receipts, no
-escalation channel, no primary-device rule: every install with a match reminds itself (a user with two phones gets
-the reminder on both, by design).
+escalation channel. A signed-in account has one primary alert install (B15): when another install becomes primary,
+the others get N-47 and stop their local reminders and deadline/lifecycle topics. Guests have a single install.
 
 ### ADR-10: Ads: client-side AdMob native, server only decides *whether*
 

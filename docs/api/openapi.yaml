@@ -4,28 +4,39 @@ info:
   version: 1.0.0
   summary: Contract between the Sarkari Match Android app and the backend.
   description: |
-    Mobile-facing API. Admin/curation and provider webhooks are NOT part of this contract
+    Mobile-facing API. Admin/curation, the Play RTDN hook and scheduler ticks are NOT part of this contract
     (see docs/backend/README.md).
 
+    Founder decisions 2026-11-19 (docs/PRD.md) shape this version:
+    - **Privacy-first (ADR-11):** the eligibility profile, matching, matches, reminders, actions, applications and
+      inbox live ON THE DEVICE. The server publishes a public, CDN-cached **catalog** (`/v1/catalog/**`) that the
+      app evaluates locally. No endpoint accepts a profile.
+    - **Login:** Google Sign-In (Credential Manager → Firebase Auth Google provider) or guest. Guests have no
+      server account until a server feature needs one (trial, purchase, family); then Firebase anonymous auth, which
+      can later be linked to Google with the same uid. No phone numbers, no OTP.
+    - **Payments:** Google Play Billing only. **No WhatsApp, no SMS.** Delivery = FCM (topics + account pushes) +
+      on-device reminders.
+    - **Languages:** content is `LocalizedText` over 13 Indian languages; hi + en are enabled at launch.
+
     Conventions (details in docs/api/README.md):
-    - Auth: `Authorization: Bearer <Firebase ID token>` on every `/v1/me/**` call, plus
-      `X-Firebase-AppCheck: <App Check token>` (Play Integrity provider) on every call.
-    - Every request sends `X-App-Version` (versionCode), `X-Installation-Id` (Firebase installation id)
-      and `Accept-Language: hi` or `en`.
+    - Auth: `Authorization: Bearer <Firebase ID token>` on `/v1/me/**`, `/v1/session`, `/v1/family/**` and family
+      accept, plus `X-Firebase-AppCheck: <App Check token>` (Play Integrity provider) on every non-public call.
+      Catalog, config, reference and health are public CDN files (no auth).
+    - Every API request sends `X-App-Version` (versionCode) and `Accept-Language` (one of the 13 codes, e.g.
+      `hi`, `ta`, `ur`; it selects `Problem.message`). `X-Installation-Id` is sent only on account calls.
     - Errors are RFC 9457 `application/problem+json` with a stable machine `code`.
     - Every mutating request carries `Idempotency-Key` (UUIDv4, generated once per user intent and
       reused on retry). Replays within 24 h return the original response with `Idempotent-Replayed: true`.
     - Timestamps are RFC 3339 with offset (`2026-08-01T09:00:00+05:30`); calendar dates (`format: date`)
       are Indian Standard Time calendar dates.
-    - User-visible strings arrive as `LocalizedText {hi, en}` so a language switch works offline.
-    - Lists use opaque cursors. Delta sync uses `sync_token` (see /v1/me/sync).
+    - User-visible strings arrive as `LocalizedText` maps (`en` always present, plus the requested languages).
+    - The catalog is delta-synced by sequence number (`/v1/catalog/head` → snapshot → batches).
     - Additive changes only within v1: clients MUST ignore unknown fields and treat unknown enum
       values as the documented fallback (`other`/`unknown`).
     - Canonical identifiers (docs/contract-alignment.md): `notice_id` (`n_…`, one advertisement, shared),
-      `post_id` (`p_…`, one post inside a notice = "the job", shared), `match_id` (`m_…`, this user × one post,
-      private), `application_id` (`a_…`, this user's tracked application, created by Applied). Per-user links use
-      `match_id`/`application_id`; anything shared between users uses `post_id`. The design's `jobId` route
-      argument is `match_id`.
+      `post_id` (`p_…`, one post inside a notice = "the job", shared), `match_id` (`m_…`, derived ON THE DEVICE as
+      `m_` + the post id without `p_`; never issued by the server), `application_id` (`a_…`, derived the same way,
+      `a_` + post suffix). The design's `jobId` route argument is `match_id`.
   contact:
     name: Sarkari Match backend
 servers:
@@ -38,18 +49,15 @@ security:
     appCheck: []
 tags:
   - name: config
+  - name: catalog
   - name: session
   - name: reference
-  - name: profile
-  - name: sync
-  - name: matches
   - name: notices
-  - name: applications
-  - name: notifications
+  - name: quality
   - name: devices
+  - name: backup
   - name: entitlements
   - name: family
-  - name: whatsapp
   - name: account
   - name: referral
 
@@ -59,9 +67,8 @@ paths:
       tags: [config]
       operationId: getAppConfig
       summary: App configuration, force/soft update, feature flags, kill switches.
-      description: Callable without a Firebase ID token (App Check still required). Cacheable; honour ETag.
-      security:
-        - appCheck: []
+      description: Public (CDN, no auth). Cacheable; honour ETag.
+      security: []
       parameters:
         - $ref: '#/components/parameters/AppVersion'
         - $ref: '#/components/parameters/IfNoneMatch'
@@ -75,31 +82,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AppConfig' }
         '304': { $ref: '#/components/responses/NotModified' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/session:
-    post:
-      tags: [session]
-      operationId: startSession
-      summary: Bootstrap after Firebase sign-in (anonymous, Google or phone). Creates the user on first call.
-      description: |
-        Call after every fresh Firebase sign-in or account link, and at most once per app start otherwise.
-        Idempotent per Firebase UID. If the Firebase user was upgraded from anonymous to a linked provider,
-        the same UID keeps all data. If the client signs in to an existing account on a new phone, the response
-        returns that account's data and `is_new_user=false`.
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/SessionRequest' }
-      responses:
-        '200':
-          description: Session established
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SessionResponse' }
         default: { $ref: '#/components/responses/Problem' }
 
   /v1/health:
@@ -119,161 +101,102 @@ paths:
                 properties:
                   status: { type: string, enum: [up, degraded, down] }
                   message: { $ref: '#/components/schemas/LocalizedText' }
-                  alerts_delayed: { type: boolean, description: 'true when the delivery pipeline is behind (e.g. FCM outage)' }
+                  alerts_delayed: { type: boolean, description: 'true when catalog publishing or topic pushes are behind (e.g. FCM outage); on-device reminders are unaffected' }
 
-  /v1/auth/otp:send:
-    post:
-      tags: [session]
-      operationId: sendOtp
-      summary: Send a 6-digit OTP to an Indian mobile number (WhatsApp authentication template first, DLT SMS fallback).
-      description: |
-        Requires a Firebase ID token (anonymous is fine) and App Check. We run our own OTP instead of Firebase
-        phone auth because Firebase bills ~US$0.07 per SMS to India vs ~₹0.12–0.25 via WhatsApp/DLT SMS.
-        Limits: 3 sends per number per 15 min, 5 per number per day, 10 per installation per day.
-        The SMS body is SMS-Retriever compatible (ends with the app hash) so the app can auto-fill.
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [phone, purpose]
-              properties:
-                phone: { type: string, pattern: '^\+91[6-9]\d{9}$' }
-                purpose: { type: string, enum: [sign_in, whatsapp_link, family_accept, delete_account] }
-                channel: { type: string, enum: [auto, whatsapp, sms], default: auto }
-                app_hash: { type: string, description: 'SMS Retriever 11-char app hash' }
-      responses:
-        '202':
-          description: OTP sent
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [otp_session_id, channel, resend_after_s, expires_at]
-                properties:
-                  otp_session_id: { type: string }
-                  channel: { type: string, enum: [whatsapp, sms] }
-                  resend_after_s: { type: integer, examples: [30] }
-                  expires_at: { type: string, format: date-time }
-        '429': { $ref: '#/components/responses/Problem' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/auth/otp:verify:
-    post:
-      tags: [session]
-      operationId: verifyOtp
-      summary: Verify the OTP. Returns a Firebase custom token; the app calls signInWithCustomToken(), then POST /v1/session.
-      description: |
-        purpose=sign_in: if the number already belongs to an account, the custom token signs into THAT account
-        (restore on a new phone). If both the current anonymous account and the existing account have a profile,
-        `merge=auto` returns 409 `profile_conflict` (the OTP session stays valid for 5 min) and the app asks
-        "इस नंबर पर पहले से प्रोफ़ाइल है। कौन-सी रखें?" (SC-03): `merge=discard_local` keeps the existing account's
-        profile, `merge=keep_local` overwrites it with this phone's profile (matches are recomputed). An anonymous
-        account without a profile is merged silently. Otherwise the number is attached to the caller's current UID.
-        5 wrong attempts invalidate the session. Other purposes return `verified=true` and no token.
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [otp_session_id, code]
-              properties:
-                otp_session_id: { type: string }
-                code: { type: string, pattern: '^\d{6}$' }
-                merge: { type: string, enum: [auto, discard_local, keep_local], default: auto }
-      responses:
-        '200':
-          description: Verified
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [verified]
-                properties:
-                  verified: { type: boolean }
-                  firebase_custom_token: { type: [string, 'null'] }
-                  existing_account: { type: boolean, description: 'true = signing into a different, existing account (show B15/restore copy)' }
-        '409': { $ref: '#/components/responses/Problem' }
-        '422': { $ref: '#/components/responses/Problem' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/family-invites/{token}:
+  /v1/catalog/head:
     get:
-      tags: [family]
-      operationId: getFamilyInvite
-      summary: Invitee side (S35) — who invited me and which alerts I will get. Token comes from the App Link.
+      tags: [catalog]
+      operationId: getCatalogHead
+      summary: Current catalog sequence, snapshot and batch list. Public, CDN-cached 60 s. The app's only input for on-device matching.
+      description: |
+        Founder decisions 2026-11-19 / ADR-11: eligibility is evaluated on the phone against this public catalog; no
+        profile is ever sent. Fetch on the `catalog` topic push (`type=sync`), on app start (debounced) and in the
+        daily reconcile worker. If `local_seq < snapshot.seq` or the local catalog is empty, load the snapshot; then
+        apply every batch with `seq > local_seq` in order, each in one Room transaction, verifying `sha256`.
+      security: []
       parameters:
-        - name: token
-          in: path
-          required: true
-          schema: { type: string }
+        - $ref: '#/components/parameters/IfNoneMatch'
       responses:
         '200':
           description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/FamilyInviteView' }
-        '410': { $ref: '#/components/responses/Problem' }
+              schema: { $ref: '#/components/schemas/CatalogHead' }
+        '304': { $ref: '#/components/responses/NotModified' }
         default: { $ref: '#/components/responses/Problem' }
-  /v1/family-invites/{token}:accept:
-    post:
-      tags: [family]
-      operationId: acceptFamilyInvite
-      summary: Accept as invitee. Requires a phone-verified session (OTP purpose=family_accept or sign_in); alerts go to this app (push) and, if chosen, WhatsApp.
+
+  /v1/catalog/snapshots/{seq}:
+    get:
+      tags: [catalog]
+      operationId: getCatalogSnapshot
+      summary: Full catalog as of `seq` (open, upcoming, recently closed notices and notices with recent lifecycle events). Immutable, CDN-cached.
+      security: []
       parameters:
-        - name: token
-          in: path
-          required: true
-          schema: { type: string }
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [consent_version]
-              properties:
-                consent_version: { type: string }
-                channels:
-                  type: array
-                  items: { type: string, enum: [push, whatsapp] }
+        - $ref: '#/components/parameters/CatalogSeq'
+        - $ref: '#/components/parameters/Locales'
       responses:
         '200':
-          description: Accepted
+          description: OK
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/FamilyInviteView' }
-        '410': { $ref: '#/components/responses/Problem' }
+              schema: { $ref: '#/components/schemas/CatalogSnapshot' }
+        '404': { $ref: '#/components/responses/Problem' }
         default: { $ref: '#/components/responses/Problem' }
-  /v1/family-invites/{token}:decline:
-    post:
-      tags: [family]
-      operationId: declineFamilyInvite
+
+  /v1/catalog/batches/{seq}:
+    get:
+      tags: [catalog]
+      operationId: getCatalogBatch
+      summary: The notices changed by one publish (full new versions) and removed notice ids. Immutable, CDN-cached.
+      security: []
       parameters:
-        - name: token
-          in: path
-          required: true
-          schema: { type: string }
+        - $ref: '#/components/parameters/CatalogSeq'
+        - $ref: '#/components/parameters/Locales'
       responses:
-        '204':
-          description: Declined
+        '200':
+          description: OK
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogBatch' }
+        '404': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/notices/{notice_id}:
+    get:
+      tags: [notices]
+      operationId: getNotice
+      summary: One notice as in the catalog (posts with public rules, dates, fees, documents, lifecycle). Public, CDN-cacheable. Used for shared `/p/{post_id}` links to notices no longer in the local catalog.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/NoticeId'
+        - $ref: '#/components/parameters/IfNoneMatch'
+        - $ref: '#/components/parameters/Locales'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notice' }
+        '304': { $ref: '#/components/responses/NotModified' }
         default: { $ref: '#/components/responses/Problem' }
 
   /v1/reference:
     get:
       tags: [reference]
       operationId: getReferenceBundle
-      summary: All reference data in one bundle (qualifications taxonomy, categories, states, exam types, PwD types, extra attributes, organisations).
+      summary: All reference data in one bundle (languages, qualifications taxonomy, categories, states, exam types, PwD types, extra attributes, organisations).
       description: Large-ish (~40 KB gzipped), changes rarely. Cache in Room; revalidate with If-None-Match daily or when `AppConfig.reference_version` changes.
-      security:
-        - appCheck: []
+      security: []
       parameters:
         - $ref: '#/components/parameters/IfNoneMatch'
       responses:
@@ -288,11 +211,37 @@ paths:
         '304': { $ref: '#/components/responses/NotModified' }
         default: { $ref: '#/components/responses/Problem' }
 
+  /v1/session:
+    post:
+      tags: [session]
+      operationId: startSession
+      summary: Bootstrap an account after Firebase sign-in (Google, or anonymous when a guest first needs a server feature). Creates the account on first call.
+      description: |
+        Guests who use only free matching and reminders never call this: they have no server account (ADR-11).
+        Call after a fresh Firebase sign-in, after `linkWithCredential` (guest → Google, same uid), and at most once
+        per app start for accounts. Idempotent per Firebase UID. Signing in with a Google account that already has
+        an account returns that account (`is_new_user=false`, `has_backup` tells the app whether to offer restore /
+        the D10 profile-conflict choice). Never called in minor mode.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SessionRequest' }
+      responses:
+        '200':
+          description: Session established
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+        default: { $ref: '#/components/responses/Problem' }
+
   /v1/me:
     get:
       tags: [account]
       operationId: getMe
-      summary: Current user summary (no profile body).
+      summary: Summary of everything the server holds about this account (DPDP access right; the profile is on the phone).
       responses:
         '200':
           description: OK
@@ -303,12 +252,11 @@ paths:
     delete:
       tags: [account]
       operationId: deleteAccount
-      summary: Request account deletion (DPDP Act right to erasure).
+      summary: Request account deletion (DPDP Act right to erasure). The app wipes local data separately.
       description: |
-        Immediately disables alerts and revokes WhatsApp/family delivery; hard-deletes all personal data
-        within 7 days (grace period during which `POST /v1/me/deletion:cancel` restores the account).
-        Play subscriptions are NOT cancelled by this call; the client must show the Play subscription
-        management deep link if `Entitlement.source` is a Play product.
+        Ends family links, removes devices and the backup, and hard-deletes the account within 7 days (grace period
+        during which `POST /v1/me/deletion:cancel` restores it). Play subscriptions are NOT cancelled by this call;
+        the client must show the Play subscription management deep link if `Entitlement.source` is a Play product.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -345,43 +293,11 @@ paths:
               schema: { $ref: '#/components/schemas/DeletionStatus' }
         default: { $ref: '#/components/responses/Problem' }
 
-  /v1/me/exports:
-    post:
-      tags: [account]
-      operationId: requestExport
-      summary: Request a machine-readable export of all personal data (JSON).
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      responses:
-        '202':
-          description: Export job accepted; poll it.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ExportJob' }
-        default: { $ref: '#/components/responses/Problem' }
-  /v1/me/exports/{export_id}:
-    get:
-      tags: [account]
-      operationId: getExport
-      summary: Poll an export job. When ready, `download_url` is a signed URL valid for 15 minutes.
-      parameters:
-        - name: export_id
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ExportJob' }
-        default: { $ref: '#/components/responses/Problem' }
-
   /v1/me/consents:
     get:
       tags: [account]
       operationId: listConsents
-      summary: Current consent state per purpose.
+      summary: Current state of the account-level consent purposes (privacy notice version, cloud backup, family link).
       responses:
         '200':
           description: OK
@@ -398,7 +314,7 @@ paths:
     post:
       tags: [account]
       operationId: recordConsent
-      summary: Grant or withdraw consent for a purpose (append-only log server side).
+      summary: Grant or withdraw an account-level consent (append-only log server side). Device-only choices are never sent.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -414,482 +330,58 @@ paths:
               schema: { $ref: '#/components/schemas/Consent' }
         default: { $ref: '#/components/responses/Problem' }
 
-  /v1/me/profile:
-    get:
-      tags: [profile]
-      operationId: getProfile
-      summary: The eligibility profile. 404 `profile_missing` before onboarding completes.
-      responses:
-        '200':
-          description: OK
-          headers:
-            ETag: { $ref: '#/components/headers/ETag' }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Profile' }
-        default: { $ref: '#/components/responses/Problem' }
-    put:
-      tags: [profile]
-      operationId: putProfile
-      summary: Create or replace the eligibility profile; re-matches synchronously against all open posts.
-      description: |
-        Full replace. Send `If-Match: <ETag>` when updating (omit on first create). A 412 `profile_conflict`
-        means another device changed it: GET, merge, retry. The response contains the fresh match summary;
-        the client should then call `/v1/me/sync` to pull the changed matches. Allowed at most 20 times/day.
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - name: If-Match
-          in: header
-          required: false
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/ProfileInput' }
-      responses:
-        '200':
-          description: Saved and re-matched
-          headers:
-            ETag: { $ref: '#/components/headers/ETag' }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ProfileSaveResult' }
-        '412': { $ref: '#/components/responses/Problem' }
-        '422': { $ref: '#/components/responses/Problem' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/eligibility/check:
+  /v1/reports:
     post:
-      tags: [profile]
-      operationId: checkEligibilityPreview
-      summary: Stateless eligibility preview for a profile draft (onboarding "You match 7 jobs" and the shareable check).
-      description: Does not persist anything. Works for anonymous Firebase users. Rate limited to 10/min.
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/ProfileInput' }
-      responses:
-        '200':
-          description: Preview
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/EligibilityPreview' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/sync:
-    get:
-      tags: [sync]
-      operationId: sync
-      summary: Delta sync of everything the offline-first Room cache holds (matches, applications, lifecycle events, entitlement, prefs, inbox).
-      description: |
-        First call without `since` returns a full snapshot (paged). Store `next_sync_token` after the last
-        page (`has_more=false`) and pass it as `since` next time. Deleted/hidden objects come back as
-        tombstones in `removed`. A 410 `sync_token_expired` (tokens older than 30 days or after server-side
-        compaction) means: drop the cache tables listed in the problem `details.reset` and resync from scratch.
-        Call on app start, on pull-to-refresh, on FCM `sync` messages, and from a 12-hourly WorkManager job.
-      parameters:
-        - name: since
-          in: query
-          required: false
-          schema: { type: string }
-        - name: page_token
-          in: query
-          required: false
-          description: Continuation within one sync when `has_more=true`.
-          schema: { type: string }
-        - name: limit
-          in: query
-          required: false
-          schema: { type: integer, minimum: 1, maximum: 200, default: 100 }
-      responses:
-        '200':
-          description: Changes
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SyncResponse' }
-        '410': { $ref: '#/components/responses/Problem' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/matches:
-    get:
-      tags: [matches]
-      operationId: listMatches
-      summary: Paged matches feed (online fallback; prefer /v1/me/sync for the cache).
-      parameters:
-        - name: status
-          in: query
-          required: false
-          description: Comma-separated filter. Default `open` = new,seen,reminded,snoozed.
-          schema:
-            type: string
-            examples: ['open', 'applied', 'not_interested,expired']
-        - name: cursor
-          in: query
-          required: false
-          schema: { type: string }
-        - name: limit
-          in: query
-          required: false
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [items]
-                properties:
-                  items:
-                    type: array
-                    items: { $ref: '#/components/schemas/MatchSummary' }
-                  next_cursor: { type: [string, 'null'] }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/matches/{match_id}:
-    get:
-      tags: [matches]
-      operationId: getMatch
-      summary: Match detail — what-you-need card, why-you-match, reminder plan, corrigenda.
-      parameters:
-        - $ref: '#/components/parameters/MatchId'
-        - $ref: '#/components/parameters/IfNoneMatch'
-      responses:
-        '200':
-          description: OK
-          headers:
-            ETag: { $ref: '#/components/headers/ETag' }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MatchDetail' }
-        '304': { $ref: '#/components/responses/NotModified' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/matches/{match_id}/actions:
-    post:
-      tags: [matches]
-      operationId: actOnMatch
-      summary: Applied / Not interested / Snooze / Undo for one match.
-      description: |
-        Safe to replay (dedup on `action_id`). The server applies actions in `occurred_at` order;
-        an action older than the match's last applied action is recorded but ignored (`applied=false`).
-        `applied` never starts the trial by itself. When the user is not Pro, the result carries a `paywall`
-        hint: `trial_offer` while the 14-day trial is unused (B02 "14 दिन मुफ़्त शुरू करें" → `POST /v1/me/trial`
-        on tap), `plans` once it is used. `applied` is also accepted on `expired` matches
-        up to 30 days after the last date ("हाँ, भरा था", SC-17); other actions on closed matches return
-        409 `match_closed`.
-      parameters:
-        - $ref: '#/components/parameters/MatchId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/MatchActionInput' }
-      responses:
-        '200':
-          description: Result
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MatchActionResult' }
-        '409': { $ref: '#/components/responses/Problem' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/actions:batch:
-    post:
-      tags: [matches]
-      operationId: actOnMatchesBatch
-      summary: Flush the offline action queue (up to 50 actions, any matches).
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [actions]
-              properties:
-                actions:
-                  type: array
-                  maxItems: 50
-                  items:
-                    allOf:
-                      - $ref: '#/components/schemas/MatchActionInput'
-                      - type: object
-                        required: [match_id]
-                        properties:
-                          match_id: { type: string }
-      responses:
-        '200':
-          description: Per-action results in input order (partial success allowed).
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [results]
-                properties:
-                  results:
-                    type: array
-                    items:
-                      type: object
-                      required: [action_id, ok]
-                      properties:
-                        action_id: { type: string, format: uuid }
-                        ok: { type: boolean }
-                        result: { $ref: '#/components/schemas/MatchActionResult' }
-                        error: { $ref: '#/components/schemas/Problem' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/matches/{match_id}/reports:
-    post:
-      tags: [matches]
+      tags: [quality]
       operationId: reportMatch
-      summary: One-tap "wrong match" report (feeds the curation queue; may trigger second review).
+      summary: Anonymous wrong-match / wrong-data report (B05). No account needed; no user id is stored.
+      description: |
+        `attributes` (the minimal profile fields needed to re-check the rule) are sent ONLY when the user ticks "send
+        the details needed to check this" for this report, and never in minor mode. Requires a limited-use App Check token.
+      security:
+        - appCheck: []
       parameters:
-        - $ref: '#/components/parameters/MatchId'
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/MatchReportInput' }
+            schema: { $ref: '#/components/schemas/ReportInput' }
       responses:
         '201':
-          description: Report received
+          description: Received
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MatchReport' }
         default: { $ref: '#/components/responses/Problem' }
 
-  /v1/notices:
-    get:
-      tags: [notices]
-      operationId: listNotices
-      summary: Browse currently open notices (all, not only matched) — each post carries the caller's verdict.
-      parameters:
-        - name: exam_type
-          in: query
-          required: false
-          schema: { type: string }
-        - name: state
-          in: query
-          required: false
-          schema: { type: string, description: 'State code, e.g. UP' }
-        - name: q
-          in: query
-          required: false
-          schema: { type: string, maxLength: 60 }
-        - name: cursor
-          in: query
-          required: false
-          schema: { type: string }
-        - name: limit
-          in: query
-          required: false
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [items]
-                properties:
-                  items:
-                    type: array
-                    items: { $ref: '#/components/schemas/NoticeSummary' }
-                  next_cursor: { type: [string, 'null'] }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/notices/{notice_id}:
-    get:
-      tags: [notices]
-      operationId: getNotice
-      summary: Shared, user-independent notice content (posts, dates, fees, documents, corrigenda, sources). CDN-cacheable.
+  /v1/telemetry:
+    post:
+      tags: [quality]
+      operationId: postUsageCounters
+      summary: Opt-in, identifier-free daily usage counters (no user, install or device id). Never sent in minor mode.
       security:
         - appCheck: []
       parameters:
-        - $ref: '#/components/parameters/NoticeId'
-        - $ref: '#/components/parameters/IfNoneMatch'
-      responses:
-        '200':
-          description: OK
-          headers:
-            ETag: { $ref: '#/components/headers/ETag' }
-            Cache-Control: { $ref: '#/components/headers/CacheControl' }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Notice' }
-        '304': { $ref: '#/components/responses/NotModified' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/posts/{post_id}/eligibility:
-    get:
-      tags: [notices]
-      operationId: getMyEligibilityForPost
-      summary: On-demand evaluation of the caller against any post, including "why not" explanations.
-      parameters:
-        - name: post_id
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Evaluation' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/applications:
-    get:
-      tags: [applications]
-      operationId: listApplications
-      summary: Applications the user marked Applied, with their next lifecycle event.
-      parameters:
-        - name: cursor
-          in: query
-          required: false
-          schema: { type: string }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [items]
-                properties:
-                  items:
-                    type: array
-                    items: { $ref: '#/components/schemas/Application' }
-                  next_cursor: { type: [string, 'null'] }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/applications/{application_id}:
-    get:
-      tags: [applications]
-      operationId: getApplication
-      summary: Lifecycle timeline for one application (past, announced and expected events).
-      parameters:
-        - $ref: '#/components/parameters/ApplicationId'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ApplicationDetail' }
-        default: { $ref: '#/components/responses/Problem' }
-    patch:
-      tags: [applications]
-      operationId: updateApplication
-      summary: Report progress (cleared/not cleared a stage) or stop tracking.
-      description: Reporting `not_cleared` for a stage stops alerts for later stages of that application.
-      parameters:
-        - $ref: '#/components/parameters/ApplicationId'
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ApplicationUpdate' }
+            schema: { $ref: '#/components/schemas/UsageCounters' }
       responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ApplicationDetail' }
+        '204':
+          description: Accepted
         default: { $ref: '#/components/responses/Problem' }
 
-  /v1/me/clashes:
-    get:
-      tags: [applications]
-      operationId: listClashes
-      summary: (Pro, P1) Exam-date clashes among the user's applications and open matches.
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [items]
-                properties:
-                  items:
-                    type: array
-                    items: { $ref: '#/components/schemas/Clash' }
-        '403': { $ref: '#/components/responses/Problem' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/notification-prefs:
-    get:
-      tags: [notifications]
-      operationId: getNotificationPrefs
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/NotificationPrefs' }
-        default: { $ref: '#/components/responses/Problem' }
-    put:
-      tags: [notifications]
-      operationId: putNotificationPrefs
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/NotificationPrefs' }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/NotificationPrefs' }
-        '422': { $ref: '#/components/responses/Problem' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/notifications:
-    get:
-      tags: [notifications]
-      operationId: listInbox
-      summary: In-app notification history (last 90 days), mirrors what was pushed/WhatsApp'd.
-      parameters:
-        - name: cursor
-          in: query
-          required: false
-          schema: { type: string }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [items]
-                properties:
-                  items:
-                    type: array
-                    items: { $ref: '#/components/schemas/InboxItem' }
-                  next_cursor: { type: [string, 'null'] }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/delivery-receipts:
+  /v1/push-tests:
     post:
-      tags: [notifications]
-      operationId: postDeliveryReceipts
-      summary: Batch of push receipts (received / displayed / opened / dismissed). Drives WhatsApp escalation.
-      description: |
-        Send `received`+`displayed` immediately from FirebaseMessagingService via an expedited WorkManager job;
-        batch the rest. Unknown or duplicate `message_id`s are ignored. Always returns 202.
+      tags: [devices]
+      operationId: startPushTest
+      summary: Delivery self-test (S16, S29). Sends one high-priority `type=self_test` message to the given FCM token. No account needed.
+      description: The token is stored encrypted only until the test ends (≤ 120 s), then erased.
+      security:
+        - appCheck: []
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -898,22 +390,56 @@ paths:
           application/json:
             schema:
               type: object
-              required: [receipts]
+              required: [fcm_token]
               properties:
-                receipts:
-                  type: array
-                  maxItems: 100
-                  items: { $ref: '#/components/schemas/DeliveryReceipt' }
+                fcm_token: { type: string }
+                kind: { type: string, enum: [immediate, killed_app], default: immediate }
+                delay_seconds: { type: integer, minimum: 0, maximum: 120, default: 0, description: 'killed_app: send after the user swipes the app away' }
       responses:
         '202':
-          description: Accepted
+          description: Sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PushTest' }
+        '429': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/push-tests/{test_id}:
+    get:
+      tags: [devices]
+      operationId: getPushTest
+      summary: Poll a self-test (`received` or `timeout` at 120 s). Advice is computed on the device from its own state.
+      security:
+        - appCheck: []
+      parameters:
+        - $ref: '#/components/parameters/TestId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PushTest' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/push-tests/{test_id}:received:
+    post:
+      tags: [devices]
+      operationId: ackPushTest
+      summary: Called from `onMessageReceived` (expedited work) when the test message arrives.
+      security:
+        - appCheck: []
+      parameters:
+        - $ref: '#/components/parameters/TestId'
+      responses:
+        '204':
+          description: Recorded
         default: { $ref: '#/components/responses/Problem' }
 
   /v1/me/devices:
     get:
       tags: [devices]
       operationId: listDevices
-      summary: Devices signed in to this account (S38 "linked devices", B15 device name). Which one is primary.
+      summary: Installs signed in to this account (S38 "linked devices").
       responses:
         '200':
           description: OK
@@ -932,7 +458,7 @@ paths:
     put:
       tags: [devices]
       operationId: upsertDevice
-      summary: Register/refresh this device (FCM token, permission and battery state). Call on token refresh, app start (if changed) and after the permission guide.
+      summary: Register/refresh this install for account pushes (trial/Pro/family). Accounts only; call on sign-in, `onNewToken` and locale change.
       parameters:
         - $ref: '#/components/parameters/InstallationId'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -963,7 +489,7 @@ paths:
     post:
       tags: [devices]
       operationId: makeDevicePrimary
-      summary: Make this device the one that receives alerts (B15). Only the primary device gets reminder pushes; others get `sync` only.
+      summary: Make this install the account's alert device (B15). Other installs of the account get N-47 (`account` push) and go quiet (keep data, stop local reminders, unsubscribe deadline/lifecycle topics). Guests have one install and never call this.
       parameters:
         - $ref: '#/components/parameters/InstallationId'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -975,53 +501,59 @@ paths:
               schema: { $ref: '#/components/schemas/Device' }
         default: { $ref: '#/components/responses/Problem' }
 
-  /v1/me/devices/{installation_id}/self-tests:
-    post:
-      tags: [devices]
-      operationId: startSelfTest
-      summary: Ask the server to send a test push to this device now (onboarding step and weekly check).
-      description: |
-        Server sends a high-priority FCM data message `type=self_test` carrying `test_id`. The app shows a
-        visible notification (template N-41 on the `critical` channel, so the test proves heads-up delivery) and posts `received`/`displayed` receipts with `message_id = test_id`.
-        Poll GET .../self-tests/{test_id} (or wait for the receipt locally). Times out after 120 s.
-        Max 5 per hour per device. `delay_seconds` (0–120) supports the "swipe the app away, then wait" killed-app
-        step (SC-35).
-      parameters:
-        - $ref: '#/components/parameters/InstallationId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                delay_seconds: { type: integer, minimum: 0, maximum: 120, default: 0 }
-                kind: { type: string, enum: [manual, killed_app], default: manual }
-      responses:
-        '202':
-          description: Test push sent
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SelfTest' }
-        '429': { $ref: '#/components/responses/Problem' }
-        default: { $ref: '#/components/responses/Problem' }
-  /v1/me/devices/{installation_id}/self-tests/{test_id}:
+  /v1/me/backup:
     get:
-      tags: [devices]
-      operationId: getSelfTest
-      parameters:
-        - $ref: '#/components/parameters/InstallationId'
-        - name: test_id
-          in: path
-          required: true
-          schema: { type: string }
+      tags: [backup]
+      operationId: getBackup
+      summary: The account's end-to-end-encrypted backup (opt-in). Requires a Google-linked account. 404 when none.
+      description: |
+        The blob is the app's local state (profile, matches' statuses, applications, prefs, device consent choices)
+        encrypted on the device (AES-256-GCM) with a key kept in Google Block Store (`shouldBackupToCloud`). The
+        server cannot read it. Used for restore on a new phone and the D10 profile-conflict choice.
       responses:
         '200':
           description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/SelfTest' }
+              schema: { $ref: '#/components/schemas/Backup' }
+        '404': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [backup]
+      operationId: putBackup
+      summary: Replace the backup (compare-and-swap with If-Match; 412 `backup_conflict` when another device wrote first).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: If-Match
+          in: header
+          required: false
+          description: ETag (version) of the backup this write is based on; omit only for the first write.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BackupInput' }
+      responses:
+        '200':
+          description: Stored
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Backup' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '412': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [backup]
+      operationId: deleteBackup
+      summary: Turn backup off and erase the blob.
+      responses:
+        '204':
+          description: Deleted
         default: { $ref: '#/components/responses/Problem' }
 
   /v1/products:
@@ -1029,8 +561,7 @@ paths:
       tags: [entitlements]
       operationId: listProducts
       summary: Plan catalogue (ids map to Play product/base plan ids). Prices MUST be shown from Play Billing ProductDetails, not from here.
-      security:
-        - appCheck: []
+      security: []
       responses:
         '200':
           description: OK
@@ -1049,7 +580,7 @@ paths:
     get:
       tags: [entitlements]
       operationId: getEntitlement
-      summary: The single source of truth for Pro access. Re-fetch on app start and after any purchase.
+      summary: The single source of truth for Pro access, with a signed `token` for offline gating and lifecycle-topic subscription. Re-fetch on app start (accounts only), after any purchase and on an `account` push with template `entitlement`.
       responses:
         '200':
           description: OK
@@ -1064,9 +595,10 @@ paths:
       operationId: startTrial
       summary: Start the 14-day Pro trial when the user taps the trial CTA (B02 after the first Applied, or S30). 409 `trial_already_used`.
       description: |
-        The trial is offered at the first Applied (`MatchActionResult.paywall.variant = trial_offer`) and starts only
-        on this call; it runs 14 days from the tap. No payment method is needed (server-granted, not a Play offer).
-        Pending lifecycle alerts for applications made before the tap are backfilled.
+        The trial is offered on the device at the first Applied (B02, while `Entitlement.trial_available`) and starts
+        only on this call; it runs 14 days from the tap. No payment method is needed (server-granted, not a Play
+        offer). A guest without an account first signs in (B16 `pro`) or gets an anonymous account. The app then
+        subscribes lifecycle topics for its existing applications. Not available in minor mode.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
@@ -1106,7 +638,7 @@ paths:
         Call from `PurchasesUpdatedListener` and for every unacknowledged purchase found by `queryPurchasesAsync`
         on app start. The client must NOT call `acknowledgePurchase` itself (server acknowledges). Launch the
         billing flow with `setObfuscatedAccountId(User.billing_account_ref)`. 409 `purchase_owned_by_other_account`
-        when the token is linked to a different user.
+        when the token is linked to a different active account ("sign in with the Google account you used then").
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1124,50 +656,6 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         default: { $ref: '#/components/responses/Problem' }
 
-  /v1/me/purchases/upi-link:
-    post:
-      tags: [entitlements]
-      operationId: createUpiPaymentLink
-      summary: Create a UPI payment link (Razorpay) for a plan — used by the WhatsApp payment test and as a Play fallback where policy allows.
-      description: Entitlement is granted only by the provider webhook; the app polls GET /v1/me/entitlement after returning.
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [product_id]
-              properties:
-                product_id: { type: string, examples: ['pro_season', 'pro_year'] }
-      responses:
-        '201':
-          description: Link created
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/UpiLink' }
-        '403': { $ref: '#/components/responses/Problem' }
-        default: { $ref: '#/components/responses/Problem' }
-
-  /v1/me/purchases/upi-link/{link_id}:
-    get:
-      tags: [entitlements]
-      operationId: getUpiPaymentLink
-      summary: Poll a UPI payment's state after returning from the UPI app (every 3 s, up to 60 s). Entitlement is granted by the gateway webhook.
-      parameters:
-        - name: link_id
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/UpiLink' }
-        default: { $ref: '#/components/responses/Problem' }
-
   /v1/me/referral:
     get:
       tags: [referral]
@@ -1180,6 +668,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Referral' }
         default: { $ref: '#/components/responses/Problem' }
+
   /v1/me/referral:redeem:
     post:
       tags: [referral]
@@ -1205,40 +694,31 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         default: { $ref: '#/components/responses/Problem' }
 
-  /v1/me/whatsapp:
+  /v1/family-invites/{token}:
     get:
-      tags: [whatsapp]
-      operationId: getWhatsApp
-      summary: WhatsApp backup channel status for the user.
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/WhatsAppStatus' }
-        default: { $ref: '#/components/responses/Problem' }
-    delete:
-      tags: [whatsapp]
-      operationId: optOutWhatsApp
-      summary: Opt out of WhatsApp messages and forget the number.
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/WhatsAppStatus' }
-        default: { $ref: '#/components/responses/Problem' }
-  /v1/me/whatsapp/opt-in:
-    post:
-      tags: [whatsapp]
-      operationId: startWhatsAppOptIn
-      summary: Opt in to WhatsApp backup alerts.
-      description: |
-        Two modes. (a) `use_verified_phone=true`: the account's OTP-verified number is used and the in-app consent
-        is the opt-in → `state=active` immediately. (b) different number: returns a wa.me deep link with a
-        prefilled `START <code>`; when the user sends it from WhatsApp, the webhook binds that number
-        (`state` pending → active; poll GET /v1/me/whatsapp). No OTP cost in either mode.
+      tags: [family]
+      operationId: getFamilyInvite
+      summary: Family member side (S35) — state of an invite. The token comes from the App Link or QR; the decryption key in the URL fragment is never sent.
+      security:
+        - appCheck: []
       parameters:
+        - $ref: '#/components/parameters/InviteToken'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilyInviteView' }
+        '410': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/family-invites/{token}:accept:
+    post:
+      tags: [family]
+      operationId: acceptFamilyInvite
+      summary: Accept as family member. Needs an account (Google or anonymous); no phone, no OTP. Alerts go to this app as push.
+      parameters:
+        - $ref: '#/components/parameters/InviteToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -1248,33 +728,34 @@ paths:
               type: object
               required: [consent_version]
               properties:
-                use_verified_phone: { type: boolean, default: true }
-                consent_version: { type: string }
+                consent_version: { type: string, description: 'S47 privacy notice version shown on S35 (recorded as family_link_member)' }
       responses:
-        '201':
-          description: Pending opt-in
+        '200':
+          description: Accepted
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/WhatsAppStatus' }
+              schema: { $ref: '#/components/schemas/FamilyFollowing' }
+        '410': { $ref: '#/components/responses/Problem' }
         default: { $ref: '#/components/responses/Problem' }
-  /v1/me/whatsapp/test:
+
+  /v1/family-invites/{token}:decline:
     post:
-      tags: [whatsapp]
-      operationId: sendWhatsAppTest
-      summary: Send one test utility message to the linked number (max 2/day; counts against quota).
+      tags: [family]
+      operationId: declineFamilyInvite
+      security:
+        - appCheck: []
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/InviteToken'
       responses:
-        '202':
-          description: Sent
-        '403': { $ref: '#/components/responses/Problem' }
+        '204':
+          description: Declined
         default: { $ref: '#/components/responses/Problem' }
 
   /v1/me/family:
     get:
       tags: [family]
       operationId: listFamily
-      summary: (Pro, P1) Family recipients of critical alerts (max 2).
+      summary: (Pro, P1) Aspirant side (S34/S48) — my family links (max 2).
       responses:
         '200':
           description: OK
@@ -1286,17 +767,17 @@ paths:
                 properties:
                   items:
                     type: array
-                    items: { $ref: '#/components/schemas/FamilyMember' }
+                    items: { $ref: '#/components/schemas/FamilyLink' }
                   max: { type: integer, examples: [2] }
         default: { $ref: '#/components/responses/Problem' }
     post:
       tags: [family]
       operationId: inviteFamily
-      summary: Create an invite. Returns a share text + wa.me link the family member uses to opt in from their own WhatsApp. We never message a family member before they opt in.
+      summary: (Pro) Create an invite link. The app appends `#k=<key>` (generated on the device) and shares it via the sharesheet or a QR (S48).
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema: { $ref: '#/components/schemas/FamilyInviteInput' }
@@ -1305,22 +786,92 @@ paths:
           description: Invite created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/FamilyMember' }
+              schema: { $ref: '#/components/schemas/FamilyLink' }
         '403': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         default: { $ref: '#/components/responses/Problem' }
-  /v1/me/family/{member_id}:
+
+  /v1/me/family/{link_id}:
     delete:
       tags: [family]
       operationId: removeFamily
+      summary: Aspirant ends a link (D06). The member gets a `family_removed` account push.
       parameters:
-        - name: member_id
-          in: path
-          required: true
-          schema: { type: string }
+        - $ref: '#/components/parameters/LinkId'
       responses:
         '204':
           description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/me/family/{link_id}/watchlist:
+    put:
+      tags: [family]
+      operationId: putFamilyWatchlist
+      summary: (Pro) Publish the encrypted watch-list for one link. The server stores only the latest version and pushes `family_sync` to the member.
+      parameters:
+        - $ref: '#/components/parameters/LinkId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EncryptedWatchlist' }
+      responses:
+        '204':
+          description: Stored
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/family/following:
+    get:
+      tags: [family]
+      operationId: listFollowing
+      summary: Family member side (S49) — links where I receive someone's alerts.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/FamilyFollowing' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/family/following/{link_id}:
+    delete:
+      tags: [family]
+      operationId: stopFollowing
+      summary: Family member stops getting the aspirant's alerts (D12).
+      parameters:
+        - $ref: '#/components/parameters/LinkId'
+      responses:
+        '204':
+          description: Stopped
+        default: { $ref: '#/components/responses/Problem' }
+
+  /v1/family/following/{link_id}/watchlist:
+    get:
+      tags: [family]
+      operationId: getFamilyWatchlist
+      summary: Family member fetches the latest encrypted watch-list (after a `family_sync` push), decrypts it with the key from the invite URL fragment, subscribes topics and schedules local alarms.
+      parameters:
+        - $ref: '#/components/parameters/LinkId'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EncryptedWatchlist' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '404': { $ref: '#/components/responses/Problem' }
         default: { $ref: '#/components/responses/Problem' }
 
 components:
@@ -1329,7 +880,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Firebase Auth ID token (anonymous, Google or phone provider). Refresh via Firebase SDK; on 401 `token_expired` refresh once and retry.
+      description: Firebase Auth ID token (Google or anonymous provider). Refresh via Firebase SDK; on 401 `token_expired` refresh once and retry.
     appCheck:
       type: apiKey
       in: header
@@ -1354,19 +905,35 @@ components:
       required: false
       description: Android versionCode. Sent on every request (listed here where it changes the response).
       schema: { type: integer }
-    MatchId:
-      name: match_id
-      in: path
-      required: true
-      description: Per-user match id (`m_…`); the `{matchId}` in `https://sarkarimatch.in/j/{match_id}` and S21 `job/{matchId}`.
-      schema: { type: string, examples: ['m_01JD3X7Q5M2V8K'] }
     NoticeId:
       name: notice_id
       in: path
       required: true
       schema: { type: string }
-    ApplicationId:
-      name: application_id
+    CatalogSeq:
+      name: seq
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Locales:
+      name: locales
+      in: query
+      required: false
+      description: 'Comma-separated LanguageCode list (the app language + its fallbacks). The server normalises it (sorted, `en` always added) so the CDN keeps one copy per set. Default: from Accept-Language, else `hi,en`.'
+      schema: { type: string, examples: ['hi,en', 'en,ta', 'en,hi,ur'] }
+    TestId:
+      name: test_id
+      in: path
+      required: true
+      schema: { type: string }
+    InviteToken:
+      name: token
+      in: path
+      required: true
+      description: Family invite token from `https://sarkarimatch.in/f/{token}` (the `#k=` fragment is never sent).
+      schema: { type: string }
+    LinkId:
+      name: link_id
       in: path
       required: true
       schema: { type: string }
@@ -1402,19 +969,18 @@ components:
       type: object
       required: [type, title, status, code]
       properties:
-        type: { type: string, format: uri, examples: ['https://api.sarkarimatch.in/problems/profile_conflict'] }
+        type: { type: string, format: uri, examples: ['https://api.sarkarimatch.in/problems/pro_required'] }
         title: { type: string, description: English, for logs. Show `message` to users. }
         status: { type: integer }
         code:
           type: string
           description: |
             Stable machine code. Known values: unauthenticated, token_expired, app_check_failed,
-            upgrade_required, forbidden, pro_required, not_found, profile_missing, profile_conflict,
-            validation_failed, idempotency_key_reused, rate_limited, sync_token_expired, match_closed,
-            trial_already_used, purchase_invalid, purchase_pending, purchase_owned_by_other_account,
-            family_limit_reached, whatsapp_not_linked, whatsapp_quota_exhausted, account_pending_deletion,
-            maintenance, internal. Unknown codes: treat by HTTP status.
-        message: { $ref: '#/components/schemas/LocalizedText' }
+            upgrade_required, forbidden, pro_required, google_link_required, not_found, validation_failed,
+            idempotency_key_reused, rate_limited, backup_conflict, trial_already_used, purchase_invalid,
+            purchase_pending, purchase_owned_by_other_account, family_limit_reached, invite_expired,
+            account_pending_deletion, maintenance, internal. Unknown codes: treat by HTTP status.
+        message: { $ref: '#/components/schemas/LocalizedText', description: 'In the Accept-Language language (+ en)' }
         detail: { type: string }
         retryable: { type: boolean }
         request_id: { type: string }
@@ -1434,10 +1000,50 @@ components:
 
     LocalizedText:
       type: object
-      required: [hi, en]
+      description: |
+        Text per BCP-47 language code. The 13 supported codes are as, bn, en, gu, hi, kn, ml, mr, or, pa, ta, te, ur
+        (ur is right-to-left). `en` is always present; every language whose `ReferenceBundle.languages[].status` is
+        `enabled` is present on published content (hi + en at launch). Catalog files contain only the languages
+        requested with `?locales=` (plus `en`). Clients resolve with `languages[].fallback` (e.g. mr → hi → en).
+      required: [en]
+      minProperties: 1
+      additionalProperties: false
       properties:
-        hi: { type: string }
+        as: { type: string }
+        bn: { type: string }
         en: { type: string }
+        gu: { type: string }
+        hi: { type: string }
+        kn: { type: string }
+        ml: { type: string }
+        mr: { type: string }
+        or: { type: string }
+        pa: { type: string }
+        ta: { type: string }
+        te: { type: string }
+        ur: { type: string }
+
+    LanguageCode:
+      type: string
+      enum: [hi, en, bn, mr, te, ta, gu, kn, or, ml, pa, as, ur]
+      description: 'App/content language. Unknown → en.'
+
+    Language:
+      type: object
+      required: [code, name_native, script, rtl, status, fallback]
+      properties:
+        code: { $ref: '#/components/schemas/LanguageCode' }
+        name_native: { type: string, examples: ['हिन्दी', 'தமிழ்', 'اردو'] }
+        script: { type: string, description: 'ISO 15924 (Deva, Latn, Beng, Telu, Taml, Gujr, Knda, Orya, Mlym, Guru, Arab); drives the font chain (design tokens font.script.*)' }
+        rtl: { type: boolean }
+        status:
+          type: string
+          enum: [enabled, coming_soon]
+          description: 'enabled = selectable in S02/S40 (hi, en at launch) and present on all published content; coming_soon = listed as "जल्द आ रही हैं". Unknown → coming_soon.'
+        fallback:
+          type: array
+          description: 'Resolution order after the language itself, e.g. mr → [hi, en], ta → [en, hi].'
+          items: { $ref: '#/components/schemas/LanguageCode' }
 
     Money:
       type: object
@@ -1457,7 +1063,7 @@ components:
 
     AppConfig:
       type: object
-      required: [min_supported_version, latest_version, update, reference_version, features, support]
+      required: [min_supported_version, latest_version, update, reference_version, features, support, privacy_notice_version]
       properties:
         min_supported_version: { type: integer, description: 'Below this: blocking update screen (code upgrade_required on all calls).' }
         latest_version: { type: integer }
@@ -1470,7 +1076,7 @@ components:
           description: Remote flags. Unknown keys ignored.
           additionalProperties: { type: boolean }
           examples:
-            - { paywall_enabled: true, family_alerts: false, clash_alerts: false, upi_link_purchase: true, digest: true, ads: true }
+            - { paywall_enabled: true, family_alerts: false, clash_alerts: false, digest: true, ads: true, cloud_backup: true, usage_counters_prompt: true }
         kill_switches:
           type: object
           additionalProperties: { type: boolean }
@@ -1485,7 +1091,7 @@ components:
             enabled: { type: boolean }
             placements:
               type: array
-              description: 'Only these two exist. Never in pushes, WhatsApp, the what-you-need card or why-you-match.'
+              description: 'Only these two exist. Never in pushes, the what-you-need card or why-you-match.'
               items: { type: string, enum: [feed_bottom, digest] }
             min_app_version: { type: [integer, 'null'], description: 'Disable ads on older builds (e.g. a bad SDK version)' }
             frequency:
@@ -1505,8 +1111,8 @@ components:
         support:
           type: object
           properties:
-            whatsapp_number: { type: string }
             email: { type: string }
+            grievance_officer: { type: string, description: 'DPDP grievance contact shown in S47/S39' }
             privacy_policy_url: { type: string, format: uri }
             terms_url: { type: string, format: uri }
         disclaimer:
@@ -1520,48 +1126,57 @@ components:
               steps: { type: array, items: { $ref: '#/components/schemas/LocalizedText' } }
               intent_actions: { type: array, items: { type: string } }
         self_test_interval_days: { type: integer, default: 7 }
+        privacy_notice_version: { type: string, examples: ['2026-11-19'], description: 'Current S47 notice version; the app re-shows S47 when its stored privacy_notice_ack.version differs' }
+        entitlement_token_jwks:
+          type: object
+          additionalProperties: true
+          description: 'Public key set (ES256) to verify Entitlement.token offline'
+        reminder_backup:
+          type: object
+          description: 'Server topic-push times for R3/R1/R-last (IST) so the on-device backup can be scheduled after them (design 05 §3.6)'
+          properties:
+            d_minus_3: { type: string, default: '19:00' }
+            d_minus_1: { type: string, default: '19:00' }
+            last_day: { type: string, default: '08:00' }
+            backup_delay_minutes: { type: object, additionalProperties: { type: integer }, examples: [ { d_minus_1: 30, last_day: 15 } ] }
 
     SessionRequest:
       type: object
       required: [installation_id, locale]
       properties:
         installation_id: { type: string }
-        locale: { type: string, enum: [hi, en] }
+        locale: { $ref: '#/components/schemas/LanguageCode' }
+        privacy_notice_version: { type: string, description: 'S47 version the user acknowledged (recorded once as consent purpose privacy_notice)' }
         referral_code: { type: [string, 'null'] }
-        install_referrer: { type: [string, 'null'], description: 'Play Install Referrer utm string, first session only' }
+        merge_anonymous_id_token: { type: [string, 'null'], description: 'Google sign-in collided with an existing account (FirebaseAuthUserCollisionException) while this phone had an anonymous account: send that account''s last ID token; the server moves its entitlement grants, purchases and family links to the signed-in account and deletes it.' }
         device: { $ref: '#/components/schemas/DeviceInput' }
 
     SessionResponse:
       type: object
-      required: [user, is_new_user, has_profile, entitlement, sync_hint]
+      required: [user, is_new_user, entitlement, has_backup]
       properties:
         user: { $ref: '#/components/schemas/User' }
         is_new_user: { type: boolean }
-        has_profile: { type: boolean }
         entitlement: { $ref: '#/components/schemas/Entitlement' }
-        sync_hint:
-          type: string
-          enum: [none, delta, full]
-          description: '`full` after account switch/restore: wipe local cache and sync from scratch.'
-        required_consents:
-          type: array
-          description: Consent purposes whose current version the user has not yet accepted.
-          items: { type: string }
+        has_backup: { type: boolean, description: 'An encrypted backup exists. If this phone also has a local profile, show D10 (keep the saved profile = restore the backup, or keep this phone''s = overwrite the backup).' }
+        backup_updated_at: { type: [string, 'null'], format: date-time }
+        primary_installation_id: { type: [string, 'null'], description: 'The account''s current alert device (B15/N-47)' }
 
     User:
       type: object
-      required: [id, created_at, locale, auth_providers, billing_account_ref]
+      required: [id, created_at, locale, auth_provider, billing_account_ref]
+      description: 'Everything the server holds about an account (GET /v1/me is the DPDP access summary). No profile, no phone.'
       properties:
         id: { type: string, examples: ['u_01JD3X5ZQ7'] }
         created_at: { type: string, format: date-time }
-        locale: { type: string, enum: [hi, en] }
-        auth_providers:
-          type: array
-          items: { type: string, enum: [anonymous, google, phone] }
-          description: '`phone` = verified through /v1/auth/otp:verify (custom token), not Firebase phone auth.'
-        recovery_linked: { type: boolean, description: 'false for anonymous-only accounts; nudge to verify phone (S11) or link Google' }
-        phone_masked: { type: [string, 'null'], examples: ['+91 98xxxxxx21'] }
+        locale: { $ref: '#/components/schemas/LanguageCode' }
+        auth_provider: { type: string, enum: [anonymous, google], description: 'anonymous = guest who bought/joined without signing in; nudge B16 to link Google' }
+        google_email: { type: [string, 'null'], description: 'Shown in S26/S38 from the Firebase token; not stored in our database' }
         billing_account_ref: { type: string, description: 'Opaque value for BillingFlowParams.setObfuscatedAccountId' }
+        devices_count: { type: integer }
+        backup: { type: [object, 'null'], properties: { version: { type: integer }, updated_at: { type: string, format: date-time }, size_bytes: { type: integer } } }
+        family_links_count: { type: integer }
+        consents: { type: array, items: { $ref: '#/components/schemas/Consent' } }
         deletion: { $ref: '#/components/schemas/DeletionStatus' }
 
     DeletionStatus:
@@ -1571,40 +1186,40 @@ components:
         state: { type: string, enum: [none, pending, deleted] }
         hard_delete_at: { type: [string, 'null'], format: date-time }
 
-    ExportJob:
-      type: object
-      required: [id, state]
-      properties:
-        id: { type: string }
-        state: { type: string, enum: [queued, running, ready, failed, expired] }
-        download_url: { type: [string, 'null'], format: uri }
-        expires_at: { type: [string, 'null'], format: date-time }
-
     Consent:
       type: object
       required: [purpose, version, granted, recorded_at]
+      description: 'Account-level purposes only. Device-only choices (crash reports, usage counters, ads notice seen, notification explanation seen) are kept on the phone.'
       properties:
         purpose:
           type: string
-          enum: [terms_privacy, eligibility_processing, push_alerts, whatsapp_alerts, family_alerts, analytics, ads_personalisation]
-          description: '`ads_personalisation` is reserved: v1 never asks for it and requests non-personalised ads only (default off).'
-        version: { type: string, examples: ['2026-11-01'] }
+          enum: [privacy_notice, cloud_backup, family_link_owner, family_link_member]
+        version: { type: string, examples: ['2026-11-19'] }
         granted: { type: boolean }
         recorded_at: { type: string, format: date-time }
+
     ConsentInput:
       type: object
       required: [purpose, version, granted]
       properties:
-        purpose: { type: string }
+        purpose: { type: string, enum: [privacy_notice, cloud_backup, family_link_owner, family_link_member] }
         version: { type: string }
         granted: { type: boolean }
-        notice_language: { type: string, enum: [hi, en] }
+        notice_language: { $ref: '#/components/schemas/LanguageCode' }
 
     ReferenceBundle:
       type: object
-      required: [version, qualifications, categories, states, exam_types, pwd_types, extra_attributes]
+      required: [version, languages, qualifications, categories, states, exam_types, pwd_types, extra_attributes]
       properties:
         version: { type: string }
+        languages:
+          type: array
+          description: 'All 13 languages with status (S02/S40 list enabled ones; the rest as "जल्द आ रही हैं")'
+          items: { $ref: '#/components/schemas/Language' }
+        code_map:
+          type: object
+          additionalProperties: { type: string }
+          description: 'Renamed/merged taxonomy codes (old → new); the app migrates the local profile on load'
         qualifications:
           type: array
           description: Taxonomy tree; `level` orders education levels so "graduate in any discipline" includes all graduate codes.
@@ -1656,228 +1271,13 @@ components:
           type: integer
           description: '10=class10, 20=iti, 25=class12, 30=diploma, 40=graduate, 50=postgraduate, 60=doctorate'
         name: { $ref: '#/components/schemas/LocalizedText' }
-        aliases: { type: array, items: { type: string } }
+        aliases: { type: array, items: { type: string }, description: 'Search aliases in any script (B.A., बीए, বি.এ.)' }
         selectable: { type: boolean, description: 'false for grouping nodes like grad.any' }
-
-    QualificationInput:
-      type: object
-      required: [code, status]
-      properties:
-        code: { type: string }
-        status:
-          type: string
-          enum: [completed, final_year, appearing]
-          description: '`final_year`/`appearing`: result not yet declared — some notices allow these (provisional eligibility). S05 maps "पास हो गया" → completed and "आखिरी साल / रिज़ल्ट बाकी" → final_year; `appearing` is not offered in v1 UI.'
-        result_date: { type: [string, 'null'], format: date, description: 'Optional; completed: date result declared; used when a notice requires qualification by a cutoff date.' }
-        percentage_band:
-          type: [string, 'null']
-          enum: [lt_50, '50_55', '55_60', ge_60, null]
-          description: 'Optional coarse band; only some posts need minimum marks.'
-
-    ProfileInput:
-      type: object
-      required: [dob, gender, category, domicile_state, qualifications, interests]
-      properties:
-        dob: { type: string, format: date }
-        gender:
-          type: [string, 'null']
-          enum: [male, female, transgender, null]
-          description: 'S09 chips पुरुष / महिला / ट्रांसजेंडर. null = skipped ("छोड़ें"): gender-restricted posts become check_yourself.'
-        category: { type: string, enum: [gen, ews, obc, sc, st] }
-        category_unsure:
-          type: boolean
-          default: false
-          description: 'S07 "पता नहीं": send category=gen with category_unsure=true. Matching uses gen; posts a reserved category would unlock come back as check_yourself (design SC-02).'
-        obc_non_creamy_layer: { type: [boolean, 'null'], description: 'Required when category=obc; false → treated as gen for relaxation.' }
-        domicile_state: { type: string }
-        pwd:
-          type: object
-          properties:
-            has_benchmark_disability: { type: boolean, default: false }
-            type: { type: [string, 'null'] }
-        ex_serviceman:
-          type: object
-          properties:
-            is_ex_serviceman: { type: boolean, default: false }
-            service_years: { type: [number, 'null'], minimum: 0, maximum: 40 }
-            release_date: { type: [string, 'null'], format: date }
-        govt_employee:
-          type: [object, 'null']
-          description: 'Optional (P1): departmental relaxations.'
-          properties:
-            is_central_govt: { type: boolean }
-            is_state_govt: { type: boolean }
-            state: { type: [string, 'null'] }
-            continuous_service_years: { type: [number, 'null'] }
-        marital_status:
-          type: [string, 'null']
-          enum: [unmarried, married, widowed, divorced, null]
-          description: 'Optional; only used for posts restricted by marital status (else check_yourself).'
-        qualifications:
-          type: array
-          minItems: 1
-          maxItems: 8
-          items: { $ref: '#/components/schemas/QualificationInput' }
-        extra_attributes:
-          type: array
-          items: { type: string }
-        certificates:
-          type: object
-          description: '(Pro P1) For certificate-validity alerts. No documents are uploaded.'
-          properties:
-            obc_ncl_financial_year: { type: [string, 'null'], pattern: '^\d{4}-\d{2}$' }
-            ews_financial_year: { type: [string, 'null'], pattern: '^\d{4}-\d{2}$' }
-            domicile_certificate: { type: [boolean, 'null'] }
-            domicile_certificate_issued_on: { type: [string, 'null'], format: date }
-            pwd_certificate: { type: [boolean, 'null'] }
-        interests:
-          type: object
-          required: [exam_types]
-          properties:
-            exam_types:
-              type: array
-              minItems: 1
-              items: { type: string }
-            job_states:
-              type: array
-              description: 'States whose state-level recruitments the user wants (domicile state is added implicitly).'
-              items: { type: string }
-            include_all_india: { type: boolean, default: true }
-
-    Profile:
-      allOf:
-        - $ref: '#/components/schemas/ProfileInput'
-        - type: object
-          required: [version, updated_at, completeness]
-          properties:
-            version: { type: integer }
-            updated_at: { type: string, format: date-time }
-            completeness:
-              type: number
-              minimum: 0
-              maximum: 1
-            missing_optional:
-              type: array
-              description: Optional fields that would turn some check_yourself verdicts into firm ones.
-              items: { type: string }
-
-    ProfileSaveResult:
-      type: object
-      required: [profile, match_summary]
-      properties:
-        profile: { $ref: '#/components/schemas/Profile' }
-        match_summary: { $ref: '#/components/schemas/MatchSummaryCounts' }
-
-    MatchSummaryCounts:
-      type: object
-      required: [eligible, check_yourself]
-      properties:
-        eligible: { type: integer }
-        check_yourself: { type: integer }
-        added: { type: integer, description: 'New matches created by this save' }
-        removed: { type: integer, description: 'Open matches that no longer match (status → withdrawn)' }
-
-    EligibilityPreview:
-      type: object
-      required: [summary, top]
-      properties:
-        summary: { $ref: '#/components/schemas/MatchSummaryCounts' }
-        top:
-          type: array
-          maxItems: 10
-          items:
-            type: object
-            required: [post_id, notice_id, title, verdict, last_date]
-            properties:
-              post_id: { type: string }
-              notice_id: { type: string }
-              title: { $ref: '#/components/schemas/LocalizedText' }
-              verdict: { $ref: '#/components/schemas/Verdict' }
-              last_date: { type: string, format: date }
-        share_card:
-          type: object
-          properties:
-            text: { $ref: '#/components/schemas/LocalizedText' }
-            url: { type: string, format: uri }
 
     Verdict:
       type: string
       enum: [eligible, not_eligible, check_yourself]
       description: '`check_yourself` = we cannot decide from the profile (e.g. physical standards, marks, rule ambiguity). Never shown as eligible.'
-
-    MatchStatus:
-      type: string
-      enum: [new, seen, reminded, snoozed, applied, not_interested, expired, withdrawn]
-      description: '`withdrawn` = no longer matches after corrigendum/profile change. Unknown values: treat as `seen`.'
-
-    Priority:
-      type: string
-      enum: [high, normal, low]
-      description: 'low = digest only'
-
-    MatchSummary:
-      type: object
-      required: [id, post_id, notice_id, verdict, status, title, org, last_date, updated_at]
-      properties:
-        id: { type: string, description: 'match_id (`m_…`), per user' }
-        post_id: { type: string, description: 'Shared post id (`p_…`); use for share links `/p/{post_id}`' }
-        notice_id: { type: string }
-        notice_etag: { type: string, description: 'If different from the cached Notice ETag, refetch /v1/notices/{id}' }
-        verdict: { $ref: '#/components/schemas/Verdict' }
-        status: { $ref: '#/components/schemas/MatchStatus' }
-        status_reason:
-          type: [string, 'null']
-          enum: [corrigendum, profile_edit, notice_cancelled, age, retracted, deadline_passed, null]
-          description: 'Why the match is withdrawn/expired (S25 tabs, SC-18/19). notice_cancelled shows the cancellation banner.'
-        title: { $ref: '#/components/schemas/LocalizedText' }
-        org: { $ref: '#/components/schemas/LocalizedText' }
-        exam_type: { type: string }
-        vacancies_total: { type: [integer, 'null'] }
-        vacancies_for_category: { type: [integer, 'null'] }
-        last_date: { type: string, format: date }
-        last_date_time: { type: [string, 'null'], description: 'HH:MM IST if the notice states one' }
-        fee_for_you: { oneOf: [ { $ref: '#/components/schemas/Money' }, { type: 'null' } ] }
-        priority: { $ref: '#/components/schemas/Priority' }
-        badges:
-          type: array
-          items: { type: string, enum: [new, closing_soon, last_day, extended, corrigendum, check_yourself] }
-        snoozed_until: { type: [string, 'null'], format: date-time }
-        next_reminder_at: { type: [string, 'null'], format: date-time }
-        next_reminder_id: { type: [string, 'null'], description: 'Deterministic id `r:{match_id}:{kind}:{YYYYMMDD IST}`; the FCM msg_id of that reminder equals it, so a local mirror alarm can dedupe' }
-        next_reminder_kind: { oneOf: [ { $ref: '#/components/schemas/ReminderKind' }, { type: 'null' } ] }
-        headline_reason: { $ref: '#/components/schemas/LocalizedText' }
-        matched_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
-        application_id: { type: [string, 'null'] }
-        user_confirmed_eligible: { type: boolean, default: false, description: 'User tapped "मैंने जाँच लिया — मैं योग्य हूँ" in B06 (`confirm_eligible`). The verdict stays check_yourself; the app hides the "?" prompt.' }
-
-    MatchDetail:
-      allOf:
-        - $ref: '#/components/schemas/MatchSummary'
-        - type: object
-          required: [why, what_you_need, disclaimer]
-          properties:
-            why:
-              type: array
-              description: One line per rule, in display order.
-              items: { $ref: '#/components/schemas/RuleExplanation' }
-            what_you_need: { $ref: '#/components/schemas/WhatYouNeed' }
-            reminder_plan:
-              type: array
-              description: Upcoming reminders (for the "We'll remind you on…" row).
-              items:
-                type: object
-                required: [reminder_id, kind, at]
-                properties:
-                  reminder_id: { type: string }
-                  kind: { $ref: '#/components/schemas/ReminderKind' }
-                  at: { type: string, format: date-time }
-                  channels: { type: array, items: { type: string, enum: [push, whatsapp, family] } }
-            corrigenda:
-              type: array
-              items: { $ref: '#/components/schemas/CorrigendumSummary' }
-            rule_version: { type: integer }
-            disclaimer: { $ref: '#/components/schemas/LocalizedText' }
 
     ReminderKind:
       type: string
@@ -1886,6 +1286,7 @@ components:
 
     RuleExplanation:
       type: object
+      description: 'Documentation-only: one "why you match" line as produced by `:matching-core` ON THE DEVICE (text from app string resources in the app language; never returned by the server).'
       required: [rule, result, text]
       properties:
         rule:
@@ -1905,30 +1306,17 @@ components:
         text: { $ref: '#/components/schemas/LocalizedText' }
         source: { $ref: '#/components/schemas/Link' }
 
-    WhatYouNeed:
+    KeyDate:
       type: object
-      required: [key_dates, links]
+      required: [kind, date]
       properties:
-        key_dates:
-          type: array
-          items: { $ref: '#/components/schemas/KeyDate' }
-        fee_for_you: { oneOf: [ { $ref: '#/components/schemas/Money' }, { type: 'null' } ] }
-        fee_note: { $ref: '#/components/schemas/LocalizedText' }
-        payment_modes: { type: array, items: { type: string } }
-        documents:
-          type: array
-          items: { $ref: '#/components/schemas/LocalizedText' }
-        photo_spec: { $ref: '#/components/schemas/UploadSpec' }
-        signature_spec: { $ref: '#/components/schemas/UploadSpec' }
-        other_uploads:
-          type: array
-          items: { $ref: '#/components/schemas/UploadSpec' }
-        selection_process: { $ref: '#/components/schemas/LocalizedText' }
-        exam_pattern_note: { $ref: '#/components/schemas/LocalizedText' }
-        physical_standards: { $ref: '#/components/schemas/LocalizedText' }
-        links:
-          type: array
-          items: { $ref: '#/components/schemas/Link' }
+        kind:
+          type: string
+          enum: [notification, apply_start, apply_end, fee_end, correction_start, correction_end, exam_tentative, other]
+        date: { type: string, format: date }
+        time: { type: [string, 'null'], description: 'HH:MM IST' }
+        label: { $ref: '#/components/schemas/LocalizedText' }
+        changed_from: { type: [string, 'null'], format: date, description: 'Previous date if changed by corrigendum' }
 
     UploadSpec:
       type: object
@@ -1943,18 +1331,6 @@ components:
         height_cm: { type: [number, 'null'] }
         notes: { $ref: '#/components/schemas/LocalizedText' }
 
-    KeyDate:
-      type: object
-      required: [kind, date]
-      properties:
-        kind:
-          type: string
-          enum: [notification, apply_start, apply_end, fee_end, correction_start, correction_end, exam_tentative, other]
-        date: { type: string, format: date }
-        time: { type: [string, 'null'], description: 'HH:MM IST' }
-        label: { $ref: '#/components/schemas/LocalizedText' }
-        changed_from: { type: [string, 'null'], format: date, description: 'Previous date if changed by corrigendum' }
-
     CorrigendumSummary:
       type: object
       required: [id, published_on, summary]
@@ -1965,60 +1341,6 @@ components:
         affects_you: { type: boolean }
         link: { $ref: '#/components/schemas/Link' }
 
-    MatchActionInput:
-      type: object
-      required: [action_id, type, occurred_at]
-      properties:
-        action_id: { type: string, format: uuid, description: 'Client-generated, unique per action; dedup key.' }
-        type:
-          type: string
-          enum: [seen, applied, not_interested, snooze, undo, confirm_eligible]
-          description: '`confirm_eligible` (B06 "मैंने जाँच लिया — मैं योग्य हूँ"): only on check_yourself matches; logs the `rule` for curation, sets `user_confirmed_eligible`, reminders continue unchanged.'
-        occurred_at: { type: string, format: date-time, description: 'Device time of the tap (server clamps skew).' }
-        snooze:
-          type: object
-          description: 'PRD options: tomorrow = 09:00 IST next day; two_days_before_last_date = 09:00 IST on L−2 (offered when ≥ 4 days left). today_evening = 19:00 IST today (offered instead of L−2 when 2–3 days left). No snooze with ≤ 1 day left. Never later than the last-day morning reminder.'
-          properties:
-            option: { type: string, enum: [tomorrow, two_days_before_last_date, today_evening] }
-        rule: { type: [string, 'null'], description: 'confirm_eligible only: the RuleExplanation.rule the user checked' }
-        fee_paid: { type: [boolean, 'null'], description: 'Applied only: user ticked "fee also paid" (P2 payment-status watch)' }
-        source:
-          type: string
-          enum: [notification_action, match_detail, feed, whatsapp, other]
-        not_interested_reasons:
-          type: array
-          maxItems: 6
-          description: 'B03 chips (multi-select, optional): पोस्ट पसंद नहीं = not_interested_in_post · जगह दूर है = location · तैयारी नहीं है = not_prepared · पहले से नौकरी है = already_employed · मैं योग्य नहीं हूँ = not_eligible (the app also opens B05 → reportMatch). Unknown → other.'
-          items: { type: string, enum: [not_interested_in_post, location, not_prepared, already_employed, not_eligible, other] }
-
-    MatchActionResult:
-      type: object
-      required: [match, applied]
-      properties:
-        applied: { type: boolean, description: 'false if the action was stale/ignored' }
-        match: { $ref: '#/components/schemas/MatchSummary' }
-        application: { oneOf: [ { $ref: '#/components/schemas/Application' }, { type: 'null' } ] }
-        entitlement: { oneOf: [ { $ref: '#/components/schemas/Entitlement' }, { type: 'null' } ], description: 'Present when it changed' }
-        paywall:
-          type: [object, 'null']
-          description: 'Present after Applied for a non-Pro user: the client shows B02 "इस फ़ॉर्म को आखिर तक ट्रैक करें?". Null for Pro/trial users. The first Applied always shows B02; after that the client shows it at most once per 7 days (either variant). The trial stays available from S30 until taken.'
-          required: [variant]
-          properties:
-            variant:
-              type: string
-              enum: [trial_offer, plans]
-              description: 'trial_offer = trial unused → "14 दिन मुफ़्त शुरू करें" calls POST /v1/me/trial; plans = trial used → plan cards → S30. Unknown → plans.'
-            trial_days: { type: [integer, 'null'], examples: [14] }
-
-    MatchReportInput:
-      type: object
-      required: [reason]
-      properties:
-        reason:
-          type: string
-          enum: [not_eligible_age, not_eligible_qualification, not_eligible_domicile, not_eligible_gender, not_eligible_category, wrong_dates, wrong_fee, wrong_link, duplicate, other]
-        rule: { type: [string, 'null'] }
-        comment: { type: [string, 'null'], maxLength: 500 }
     MatchReport:
       type: object
       required: [id, state]
@@ -2026,50 +1348,20 @@ components:
         id: { type: string }
         state: { type: string, enum: [received, confirmed_fixed, rejected] }
 
-    Evaluation:
-      type: object
-      required: [post_id, verdict, why]
-      properties:
-        post_id: { type: string }
-        verdict: { $ref: '#/components/schemas/Verdict' }
-        why:
-          type: array
-          items: { $ref: '#/components/schemas/RuleExplanation' }
-        match_id: { type: [string, 'null'] }
-
-    NoticeSummary:
-      type: object
-      required: [id, title, org, status, posts]
-      properties:
-        id: { type: string }
-        title: { $ref: '#/components/schemas/LocalizedText' }
-        org: { $ref: '#/components/schemas/LocalizedText' }
-        exam_type: { type: string }
-        status: { type: string, enum: [upcoming, open, closed, cancelled] }
-        apply_end: { type: [string, 'null'], format: date }
-        vacancies_total: { type: [integer, 'null'] }
-        posts:
-          type: array
-          items:
-            type: object
-            required: [id, name, my_verdict]
-            properties:
-              id: { type: string }
-              name: { $ref: '#/components/schemas/LocalizedText' }
-              my_verdict: { $ref: '#/components/schemas/Verdict' }
-              match_id: { type: [string, 'null'] }
-
     Notice:
       type: object
       required: [id, version, title, org, status, posts, key_dates, links, source, updated_at]
       properties:
         id: { type: string }
         version: { type: integer, description: 'Bumps with each published corrigendum/edit' }
+        catalog_seq: { type: integer, description: 'Batch that carried this version' }
         title: { $ref: '#/components/schemas/LocalizedText' }
+        short_title: { $ref: '#/components/schemas/LocalizedText', description: '≤ 32 characters per language; notification titles and cards' }
+        new_match_paused: { type: boolean, description: 'Curation paused new-match notifications (3+ wrong-match reports); devices still evaluate and remind existing matches' }
         org: { $ref: '#/components/schemas/LocalizedText' }
         advt_no: { type: [string, 'null'] }
         exam_type: { type: string }
-        status: { type: string, enum: [upcoming, open, closed, cancelled] }
+        status: { type: string, enum: [upcoming, open, closed, cancelled, retracted] }
         scope: { type: string, enum: [all_india, state] }
         state: { type: [string, 'null'] }
         summary: { $ref: '#/components/schemas/LocalizedText' }
@@ -2084,10 +1376,13 @@ components:
             properties:
               applies_to: { $ref: '#/components/schemas/LocalizedText' }
               amount: { $ref: '#/components/schemas/Money' }
+              note: { $ref: '#/components/schemas/LocalizedText' }
         posts:
           type: array
           items: { $ref: '#/components/schemas/Post' }
         documents: { type: array, items: { $ref: '#/components/schemas/LocalizedText' } }
+        payment_modes: { type: array, items: { type: string } }
+        selection_process: { $ref: '#/components/schemas/LocalizedText' }
         photo_spec: { $ref: '#/components/schemas/UploadSpec' }
         signature_spec: { $ref: '#/components/schemas/UploadSpec' }
         links: { type: array, items: { $ref: '#/components/schemas/Link' } }
@@ -2108,10 +1403,15 @@ components:
 
     Post:
       type: object
-      required: [id, name]
+      required: [id, name, exam_tags, rule_version, rule]
       properties:
         id: { type: string }
         name: { $ref: '#/components/schemas/LocalizedText' }
+        short_name: { $ref: '#/components/schemas/LocalizedText' }
+        exam_tags: { type: array, items: { type: string } }
+        rule_version: { type: integer }
+        rule: { $ref: '#/components/schemas/RuleDocument' }
+        status: { type: string, enum: [active, retracted], default: active }
         vacancies_total: { type: [integer, 'null'] }
         vacancies_by_category:
           type: object
@@ -2141,174 +1441,29 @@ components:
         expected_window: { type: [string, 'null'], description: 'Free text e.g. "Feb 2027 (tentative)" for expected events' }
         links: { type: array, items: { $ref: '#/components/schemas/Link' } }
         published_at: { type: [string, 'null'], format: date-time }
-        critical: { type: boolean, description: 'Critical events escalate to WhatsApp/family for Pro' }
-
-    Application:
-      type: object
-      required: [id, match_id, notice_id, post_id, title, applied_at, tracking, alerts_locked]
-      properties:
-        id: { type: string }
-        match_id: { type: string }
-        notice_id: { type: string }
-        post_id: { type: string }
-        title: { $ref: '#/components/schemas/LocalizedText' }
-        applied_at: { type: string, format: date-time }
-        tracking: { type: string, enum: [active, stopped, completed] }
-        current_stage: { type: [string, 'null'] }
-        next_event: { oneOf: [ { $ref: '#/components/schemas/LifecycleEvent' }, { type: 'null' } ] }
-        alerts_locked: { type: boolean, description: 'true when not Pro: timeline visible, lifecycle alerts not sent' }
-        updated_at: { type: string, format: date-time }
-
-    ApplicationDetail:
-      allOf:
-        - $ref: '#/components/schemas/Application'
-        - type: object
-          required: [timeline]
-          properties:
-            timeline:
-              type: array
-              items: { $ref: '#/components/schemas/LifecycleEvent' }
-            progress:
-              type: array
-              items:
-                type: object
-                properties:
-                  stage: { type: string }
-                  outcome: { type: string, enum: [cleared, not_cleared, absent, unknown] }
-
-    ApplicationUpdate:
-      type: object
-      properties:
-        tracking: { type: string, enum: [active, stopped] }
-        progress:
-          type: object
-          required: [stage, outcome]
-          properties:
-            stage: { type: string }
-            outcome: { type: string, enum: [cleared, not_cleared, absent] }
-
-    Clash:
-      type: object
-      required: [id, date_from, date_to, items]
-      properties:
-        id: { type: string }
-        date_from: { type: string, format: date }
-        date_to: { type: string, format: date }
-        severity: { type: string, enum: [same_day, same_week] }
-        items:
-          type: array
-          items:
-            type: object
-            properties:
-              application_id: { type: [string, 'null'] }
-              match_id: { type: [string, 'null'] }
-              event: { $ref: '#/components/schemas/LifecycleEvent' }
-
-    NotificationPrefs:
-      type: object
-      required: [quiet_hours, digest, channels]
-      properties:
-        quiet_hours:
-          type: object
-          required: [start, end]
-          properties:
-            start: { type: string, pattern: '^\d{2}:\d{2}$', default: '22:00' }
-            end: { type: string, pattern: '^\d{2}:\d{2}$', default: '07:00' }
-          description: IST. Last-day alerts ignore quiet hours (they are sent from 07:00 anyway).
-        digest:
-          type: object
-          properties:
-            enabled: { type: boolean, default: true }
-            time: { type: string, pattern: '^\d{2}:\d{2}$', default: '19:00' }
-        channels:
-          type: object
-          properties:
-            push: { type: boolean, default: true }
-            whatsapp: { type: boolean, default: false, description: 'Effective only when Pro and WhatsApp linked' }
-        reminder_time: { type: string, pattern: '^\d{2}:\d{2}$', default: '19:00', description: 'IST time for periodic, 3-days-before and 1-day-before reminders. The last-day reminder is always 08:00.' }
-        lifecycle_alerts: { type: boolean, default: true }
-        family_alerts: { type: boolean, default: true }
-        max_push_per_day: { type: integer, minimum: 1, maximum: 3, default: 3, readOnly: true }
-
-    InboxItem:
-      type: object
-      required: [id, kind, title, created_at]
-      properties:
-        id: { type: string }
-        kind:
-          type: string
-          enum: [match_new, reminder, deadline, extension, corrigendum, cancelled, lifecycle, digest, clash, certificate, account]
-          description: 'Same values as PushData.type (minus self_test/ping/sync). Unknown → account.'
-        template: { type: [string, 'null'], description: 'Design template id, e.g. N-04, W-02' }
-        title: { $ref: '#/components/schemas/LocalizedText' }
-        body: { $ref: '#/components/schemas/LocalizedText' }
-        match_id: { type: [string, 'null'] }
-        post_id: { type: [string, 'null'] }
-        application_id: { type: [string, 'null'] }
-        digest:
-          type: [object, 'null']
-          description: '(P1) kind=digest only: what S44 `digest/{date}` lists. The app renders the rows from its Room cache (matches and inbox arrive via sync); no separate digest endpoint.'
-          properties:
-            date: { type: string, format: date }
-            match_ids: { type: array, items: { type: string } }
-            inbox_ids: { type: array, items: { type: string } }
-        channels: { type: array, items: { type: string, enum: [push, whatsapp, sms, family] } }
-        created_at: { type: string, format: date-time }
-        opened_at: { type: [string, 'null'], format: date-time }
-        delivery:
-          type: object
-          description: Per-channel status for the S24 icons.
-          additionalProperties: { type: string, enum: [queued, sent, delivered, read, failed, skipped] }
-
-    DeliveryReceipt:
-      type: object
-      required: [message_id, event, at]
-      properties:
-        message_id: { type: string, description: 'The `msg_id` from the FCM data payload (or test_id)' }
-        event: { type: string, enum: [received, displayed, opened, dismissed, action_tapped, blocked] }
-        at: { type: string, format: date-time }
-        notification_channel: { type: [string, 'null'] }
-        app_state: { type: [string, 'null'], enum: [foreground, background, killed, null] }
+        critical: { type: boolean, description: 'Critical events are sent with high priority on topic n_{notice_id} and are family-eligible (admit card, DV/medical)' }
+        post_ids: { type: [array, 'null'], items: { type: string }, description: 'null = all posts' }
+        regions: { type: [array, 'null'], items: { type: string } }
 
     DeviceInput:
       type: object
-      required: [fcm_token, app_version]
+      required: [fcm_token, app_version, locale]
+      description: 'Accounts only. Guests never register a device; they receive topic pushes only.'
       properties:
         fcm_token: { type: string }
         app_version: { type: integer }
-        os_api_level: { type: integer }
-        manufacturer: { type: string, description: 'Build.MANUFACTURER lowercased' }
-        model: { type: string }
-        notifications_enabled: { type: boolean }
-        channels_blocked: { type: array, items: { type: string } }
-        battery_optimization_ignored: { type: [boolean, 'null'] }
-        autostart_confirmed: { type: [boolean, 'null'], description: 'User said they enabled autostart in the OEM guide' }
-        timezone: { type: string, examples: ['Asia/Kolkata'] }
+        locale: { $ref: '#/components/schemas/LanguageCode' }
+        device_label: { type: [string, 'null'], description: 'e.g. "Redmi 12" for N-47 / S38; user-visible only to the account owner' }
 
     Device:
       allOf:
         - $ref: '#/components/schemas/DeviceInput'
         - type: object
-          required: [installation_id, updated_at]
+          required: [installation_id, updated_at, primary]
           properties:
             installation_id: { type: string }
             updated_at: { type: string, format: date-time }
-            last_self_test: { oneOf: [ { $ref: '#/components/schemas/SelfTest' }, { type: 'null' } ] }
-            delivery_health: { type: string, enum: [good, degraded, failing, unknown] }
-            primary: { type: boolean, description: 'Receives alert pushes. Newest signed-in device becomes primary automatically.' }
-
-    SelfTest:
-      type: object
-      required: [test_id, status, sent_at]
-      properties:
-        test_id: { type: string }
-        status: { type: string, enum: [sent, received, displayed, timeout, fcm_error] }
-        sent_at: { type: string, format: date-time }
-        received_at: { type: [string, 'null'], format: date-time }
-        latency_ms: { type: [integer, 'null'] }
-        advice:
-          type: array
-          items: { type: string, enum: [enable_notifications, enable_autostart, disable_battery_optimization, unblock_channel, update_play_services, link_whatsapp] }
+            primary: { type: boolean, description: 'The account''s alert device (B15). Newest restored/signed-in device becomes primary; others get N-47 and go quiet.' }
 
     Product:
       type: object
@@ -2319,6 +1474,8 @@ components:
         play_product_id: { type: string, examples: ['pro'] }
         play_base_plan_id: { type: string, examples: ['season-4m-prepaid', 'yearly-autorenew'] }
         duration_days: { type: integer }
+        billing_period: { type: string, examples: ['P4M', 'P1Y'], description: 'ISO 8601 period of the Play base plan' }
+        renews: { type: boolean, description: 'false for the prepaid season (S30 copy: "अपने-आप रिन्यू नहीं होगा")' }
         highlight: { type: boolean }
         title: { $ref: '#/components/schemas/LocalizedText' }
         features: { type: array, items: { $ref: '#/components/schemas/LocalizedText' } }
@@ -2329,7 +1486,7 @@ components:
       properties:
         plan: { type: string, enum: [free, pro] }
         status: { type: string, enum: [active, in_grace, on_hold, expired, none] }
-        source: { type: [string, 'null'], enum: [trial, play_season, play_year, play_month, upi, referral, promo, null] }
+        source: { type: [string, 'null'], enum: [trial, play_season, play_year, play_month, referral, promo, null] }
         starts_at: { type: [string, 'null'], format: date-time }
         expires_at: { type: [string, 'null'], format: date-time }
         auto_renewing: { type: boolean }
@@ -2342,16 +1499,12 @@ components:
           properties:
             ad_free: { type: boolean }
             lifecycle_alerts: { type: boolean }
-            whatsapp_backup: { type: boolean }
             family_alerts: { type: boolean }
             clash_alerts: { type: boolean }
             certificate_alerts: { type: boolean }
-        whatsapp_quota:
-          type: [object, 'null']
-          properties:
-            used: { type: integer }
-            limit: { type: integer, examples: [30] }
-            period_ends_at: { type: string, format: date-time }
+        token:
+          type: string
+          description: 'Signed entitlement (JWT, ES256; claims plan, ads_enabled, features, exp ≤ min(expires_at, now + 7 d)). Verified on the device with AppConfig.entitlement_token_jwks; gates lifecycle-topic subscription and ad-free while offline.'
         manage_url: { type: [string, 'null'], format: uri, description: 'Play subscription deep link' }
 
     PlayPurchaseInput:
@@ -2368,7 +1521,7 @@ components:
       required: [id, provider, product_id, state, created_at]
       properties:
         id: { type: string }
-        provider: { type: string, enum: [play, razorpay] }
+        provider: { type: string, enum: [play] }
         product_id: { type: string }
         state: { type: string, enum: [pending, active, in_grace, on_hold, paused, canceled, expired, revoked, refunded] }
         order_id: { type: [string, 'null'] }
@@ -2376,17 +1529,6 @@ components:
         created_at: { type: string, format: date-time }
         expiry_at: { type: [string, 'null'], format: date-time }
         auto_renewing: { type: boolean }
-
-    UpiLink:
-      type: object
-      required: [id, url, amount, expires_at, state]
-      properties:
-        id: { type: string }
-        state: { type: string, enum: [created, paid, expired, failed] }
-        url: { type: string, format: uri, description: 'Hosted payment-link page (fallback)' }
-        upi_intent_url: { type: [string, 'null'], description: 'upi://pay?... intent with the gateway reference, for ACTION_VIEW (B11). Null if the gateway cannot issue one.' }
-        amount: { $ref: '#/components/schemas/Money' }
-        expires_at: { type: string, format: date-time }
 
     Referral:
       type: object
@@ -2399,123 +1541,274 @@ components:
         pro_days_earned: { type: integer }
         redeemed_code: { type: [string, 'null'] }
 
-    WhatsAppStatus:
-      type: object
-      required: [state]
-      properties:
-        state: { type: string, enum: [none, pending, active, opted_out, blocked] }
-        masked_number: { type: [string, 'null'], examples: ['+91 98xxxxxx21'] }
-        opt_in_link: { type: [string, 'null'], format: uri, description: 'wa.me link with prefilled "START <code>"' }
-        opt_in_code: { type: [string, 'null'] }
-        expires_at: { type: [string, 'null'], format: date-time }
-        quota: { $ref: '#/components/schemas/Entitlement/properties/whatsapp_quota' }
-
-    FamilyInviteInput:
-      type: object
-      required: [display_name, relation]
-      properties:
-        display_name: { type: string, maxLength: 30 }
-        relation: { type: string, enum: [parent, sibling, spouse, other] }
-        alert_kinds:
-          type: array
-          description: 'v1 sends last_day, one_day_before, admit_card and dv_schedule (design S34, backend §3.4; also the default). exam_date and result are reserved.'
-          items: { type: string, enum: [last_day, one_day_before, admit_card, exam_date, dv_schedule, result] }
-
-    FamilyMember:
-      type: object
-      required: [id, display_name, relation, state]
-      properties:
-        id: { type: string }
-        display_name: { type: string }
-        relation: { type: string }
-        state: { type: string, enum: [invited, active, opted_out, expired] }
-        masked_number: { type: [string, 'null'] }
-        invite_link: { type: [string, 'null'], format: uri }
-        invite_text: { $ref: '#/components/schemas/LocalizedText' }
-        alert_kinds: { type: array, items: { type: string } }
-
-    FamilyInviteView:
-      type: object
-      required: [state, inviter_first_name, alert_kinds]
-      properties:
-        state: { type: string, enum: [invited, active, declined, expired] }
-        inviter_first_name: { type: string, description: 'Display name the aspirant chose to share; nothing else about them' }
-        relation: { type: string }
-        alert_kinds: { type: array, items: { type: string } }
-        expires_at: { type: [string, 'null'], format: date-time }
-
     PushData:
       type: object
       description: |
         Documentation-only schema of the FCM **data** map (every value is a string on the wire; not an HTTP body).
-        Canonical channel IDs are the design's (05-notifications §1) and are immutable after release.
-        type → channel: match_new → new_match · reminder → reminders · deadline → critical ·
-        extension/corrigendum/cancelled/clash/certificate → job_updates (corrigendum that makes the user newly
-        eligible, N-11c → new_match) · lifecycle → critical when `critical=1`, else job_updates · digest → digest ·
-        account → account · self_test → critical · ping/sync → no notification.
+        Canonical channel IDs are the design's (05-notifications §1, seven incl. `family`) and are immutable after
+        release. Since 2026-11-19 the server sends only: `sync` (topic `catalog`), `reminder`/`deadline` (topic
+        `p_{post_id}`: kinds d_minus_3, d_minus_1, last_day), `lifecycle` (topic `n_{notice_id}`), `account` and
+        `family` (one account's devices) and `self_test` (one token). Every other type (match_new, extension,
+        corrigendum, cancelled, digest, clash, certificate, snooze/periodic reminders, N-50…N-53 family alerts) is
+        **composed on the device** from the catalog and app string resources and never travels over FCM. No text is
+        sent: the device renders every template in the app language.
+        Device rendering type → channel: match_new → new_match · reminder → reminders · deadline → critical ·
+        extension/corrigendum/cancelled/clash/certificate → job_updates (newly eligible after a corrigendum, N-11c →
+        new_match) · lifecycle → critical when `critical=1`, else job_updates · digest → digest · account → account ·
+        family alerts (on a member's phone) → family · self_test → critical · sync → no notification.
       required: [type, msg_id]
       properties:
         type:
           type: string
-          enum: [match_new, reminder, deadline, extension, corrigendum, cancelled, lifecycle, digest, clash, certificate, account, self_test, ping, sync]
-          description: 'reminder = periodic / d_minus_3 / snooze_due; deadline = d_minus_1 / last_day. Unknown → sync.'
-        msg_id: { type: string, description: 'Receipt id. For scheduled reminders it equals `reminder_id`.' }
-        reminder_id: { type: string, examples: ['r:m_01JD3X7Q5M2V8K:d_minus_1:20260731'], description: 'Deterministic `r:{match_id}:{kind}:{YYYYMMDD IST}`; same value as MatchSummary.next_reminder_id and reminder_plan[].reminder_id, so the on-device mirror dedupes against FCM.' }
+          enum: [match_new, reminder, deadline, extension, corrigendum, cancelled, lifecycle, digest, clash, certificate, account, family, self_test, sync]
+          description: 'reminder = periodic / d_minus_3 / snooze_due; deadline = d_minus_1 / last_day. Unknown → sync. (`ping` retired 2026-11-19.)'
+        msg_id: { type: string, description: 'Dedupe id. For reminders it equals `reminder_id`; for sync `sync:{seq}`; for lifecycle `l:{event_id}`.' }
+        reminder_id: { type: string, examples: ['r:m_01JD3X7Q5M2V8K:d_minus_1:20260731'], description: 'Deterministic `r:{match_id}:{kind}:{YYYYMMDD IST}` with match_id derived from post_id, so the server (which never knows the user) and the device compute the same id; the on-device backup reminder is cancelled when this push is shown.' }
+        seq: { type: string, description: 'type=sync: catalog sequence to fetch up to' }
         kind: { $ref: '#/components/schemas/ReminderKind' }
         rank: { type: string, enum: ['1', '2', '3', '4', '5', '6'], description: 'Daily-cap rank (ReminderKind description). The device gate never defers ranks 1–3.' }
         template: { type: string, examples: ['N-04'], description: 'Design template id; the app adds it as `nid` to the deep link for analytics' }
-        channel: { type: string, enum: [critical, new_match, reminders, job_updates, digest, account], description: 'Android notification channel id. Unknown → reminders.' }
+        channel: { type: string, enum: [critical, new_match, reminders, job_updates, digest, account, family], description: 'Android notification channel id. Unknown → reminders.' }
         priority: { type: string, enum: [high, normal] }
         link: { type: string, examples: ['sarkarimatch://job/m_01JD3X7Q5M2V8K?src=push'], description: 'Content-intent deep link (docs/api/README.md §1a)' }
-        match_id: { type: string }
-        post_id: { type: string }
+        post_id: { type: string, description: 'Topic pushes carry post_id; the device derives match_id' }
         notice_id: { type: string }
-        application_id: { type: string }
         event_id: { type: string, description: 'Lifecycle event id (lifecycle pushes)' }
         stage: { type: string, examples: ['tier1', 'dv'] }
         critical: { type: string, enum: ['0', '1'] }
-        title_hi: { type: string }
-        title_en: { type: string }
-        body_hi: { type: string }
-        body_en: { type: string }
+        family_link_id: { type: string, description: 'type=family' }
+        family_event: { type: string, enum: [sync, accepted, removed, paused, resumed], description: 'type=family: sync → GET the watch-list; accepted → N-44; removed → N-54' }
+        device_label: { type: string, description: 'type=account, template N-47: the new alert device' }
+        fallback_title: { type: string, description: 'account/family pushes only: server-rendered text (notification_text, device locale + fallback) for app versions that lack the template' }
+        fallback_body: { type: string }
         actions: { type: string, examples: ['applied,snooze', 'applied,not_interested', 'open_site,applied', 'view'], description: 'Comma list of buttons: applied (भर दिया), snooze (बाद में), not_interested (रुचि नहीं), open_site (साइट खोलें), view (देखें)' }
         last_date: { type: string, format: date }
         last_date_time: { type: string, examples: ['23:00'] }
         apply_url: { type: string, format: uri, description: 'Official apply URL for "साइट खोलें" (N-05) — opened directly, never through our redirect' }
         pdf_url: { type: string, format: uri, description: 'Official notice PDF' }
-        collapse: { type: string, description: 'Notification tag (match_id, or application_id:stage) so a newer alert replaces the older one' }
-        digest_date: { type: string, format: date, description: 'type=digest: opens S44 `digest/{date}`' }
+        collapse: { type: string, description: 'Notification tag (post_id, or notice_id:stage) so a newer alert replaces the older one' }
         test_id: { type: string, description: 'type=self_test' }
-        sync: { type: string, enum: ['0', '1'], description: '1 = also run a delta sync' }
+        sync: { type: string, enum: ['0', '1'], description: '1 = also run a catalog sync' }
 
-    SyncResponse:
+    CatalogHead:
       type: object
-      required: [has_more, changes, removed]
+      required: [seq, server_time, snapshot, batches, evaluator_min_version_any]
       properties:
-        has_more: { type: boolean }
-        page_token: { type: [string, 'null'] }
-        next_sync_token: { type: [string, 'null'], description: 'Present on the last page only' }
-        server_time: { type: string, format: date-time }
-        changes:
+        seq: { type: integer, description: 'Latest published catalog sequence' }
+        server_time: { type: string, format: date-time, description: 'Detect device clock skew (> 10 min → schedule with server date)' }
+        snapshot:
+          type: object
+          required: [seq, url, sha256]
+          properties:
+            seq: { type: integer }
+            url: { type: string, description: 'Relative path, e.g. /v1/catalog/snapshots/1234 (append ?locales=)' }
+            sha256: { type: object, additionalProperties: { type: string }, description: 'Per normalised locales value, e.g. {"en,hi": "…"}' }
+            size_bytes: { type: integer }
+        batches:
+          type: array
+          description: 'Batches after the snapshot, ascending seq (at most 200; older devices load the snapshot)'
+          items:
+            type: object
+            required: [seq, url, sha256]
+            properties:
+              seq: { type: integer }
+              url: { type: string }
+              sha256: { type: object, additionalProperties: { type: string } }
+              reason: { type: string, enum: [publish, corrigendum, extension, cancel, lifecycle, retract, translation] }
+        evaluator_min_version_any: { type: integer, description: 'Highest evaluator_min_version used by any open rule; an app below it shows the update banner' }
+
+    CatalogBatch:
+      type: object
+      required: [seq, published_at, notices, removed_notice_ids]
+      properties:
+        seq: { type: integer }
+        published_at: { type: string, format: date-time }
+        locales: { type: array, items: { $ref: '#/components/schemas/LanguageCode' } }
+        notices:
+          type: array
+          description: Full current version of every notice changed by this publish (replace the local copy).
+          items: { $ref: '#/components/schemas/Notice' }
+        removed_notice_ids: { type: array, items: { type: string } }
+
+    CatalogSnapshot:
+      type: object
+      required: [seq, built_at, notices]
+      properties:
+        seq: { type: integer }
+        built_at: { type: string, format: date-time }
+        locales: { type: array, items: { $ref: '#/components/schemas/LanguageCode' } }
+        notices: { type: array, items: { $ref: '#/components/schemas/Notice' } }
+
+    RuleDocument:
+      type: object
+      additionalProperties: true
+      description: |
+        A published eligibility rule: a `docs/backend/rule.schema.json` document (schema_version "1") in its public
+        form (no `review`, no `source.quote`). Evaluated ON THE DEVICE by `:matching-core`; never evaluated by the
+        server for a user. Text fields are LocalizedText.
+      required: [schema_version, post, exam_tags, age, qualification, fees, source]
+      properties:
+        schema_version: { type: string, const: '1' }
+        evaluator_min_version: { type: integer, minimum: 1 }
+
+    LocalProfile:
+      type: object
+      description: |
+        Documentation-only: the eligibility profile as stored ON THE DEVICE (Room) and inside the user's end-to-end
+        encrypted backup. It is never sent to the server in clear. `ReportInput.attributes` may carry a subset when
+        the user ticks the box for one report.
+      required: [dob, gender, category, domicile_state, qualifications, interests]
+      properties:
+        dob: { type: string, format: date }
+        gender:
+          type: [string, 'null']
+          enum: [male, female, transgender, null]
+          description: 'S09 chips पुरुष / महिला / ट्रांसजेंडर. null = skipped ("छोड़ें"): gender-restricted posts become check_yourself.'
+        category: { type: string, enum: [gen, ews, obc, sc, st] }
+        category_unsure: { type: boolean, default: false, description: 'S07 "पता नहीं": evaluated as gen; reserved-category posts come back as check_yourself (SC-02).' }
+        obc_non_creamy_layer: { type: [boolean, 'null'] }
+        domicile_state: { type: string }
+        pwd:
           type: object
           properties:
-            matches: { type: array, items: { $ref: '#/components/schemas/MatchSummary' } }
-            applications: { type: array, items: { $ref: '#/components/schemas/Application' } }
-            notices:
-              type: array
-              description: Notice ids+etags whose shared content changed; fetch with /v1/notices/{id}.
-              items:
-                type: object
-                properties:
-                  id: { type: string }
-                  etag: { type: string }
-            inbox: { type: array, items: { $ref: '#/components/schemas/InboxItem' } }
-            entitlement: { oneOf: [ { $ref: '#/components/schemas/Entitlement' }, { type: 'null' } ] }
-            notification_prefs: { oneOf: [ { $ref: '#/components/schemas/NotificationPrefs' }, { type: 'null' } ] }
-            profile_version: { type: [integer, 'null'] }
-        removed:
+            has_benchmark_disability: { type: boolean, default: false }
+            type: { type: [string, 'null'] }
+        ex_serviceman:
           type: object
           properties:
-            matches: { type: array, items: { type: string } }
-            applications: { type: array, items: { type: string } }
-            inbox: { type: array, items: { type: string } }
+            is_ex_serviceman: { type: boolean, default: false }
+            service_years: { type: [number, 'null'], minimum: 0, maximum: 40 }
+            release_date: { type: [string, 'null'], format: date }
+        marital_status: { type: [string, 'null'], enum: [unmarried, married, widowed, divorced, null] }
+        qualifications:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items:
+            type: object
+            required: [code, status]
+            properties:
+              code: { type: string }
+              status: { type: string, enum: [completed, final_year, appearing], description: 'S05 "पास हो गया" → completed, "आखिरी साल / रिज़ल्ट बाकी" → final_year' }
+              result_date: { type: [string, 'null'], format: date }
+              percentage_band: { type: [string, 'null'], enum: [lt_50, '50_55', '55_60', ge_60, null] }
+        extra_attributes: { type: array, items: { type: string } }
+        certificates:
+          type: object
+          properties:
+            obc_ncl_financial_year: { type: [string, 'null'], pattern: '^\d{4}-\d{2}$' }
+            ews_financial_year: { type: [string, 'null'], pattern: '^\d{4}-\d{2}$' }
+            domicile_certificate_issued_on: { type: [string, 'null'], format: date }
+        interests:
+          type: object
+          required: [exam_types]
+          properties:
+            exam_types: { type: array, minItems: 1, items: { type: string } }
+            job_states: { type: array, items: { type: string } }
+            include_all_india: { type: boolean, default: true }
+
+    ReportInput:
+      type: object
+      required: [post_id, rule_version, reason]
+      properties:
+        post_id: { type: string }
+        rule_version: { type: integer }
+        reason:
+          type: string
+          enum: [not_eligible_age, not_eligible_qualification, not_eligible_domicile, not_eligible_gender, not_eligible_category, wrong_dates, wrong_fee, wrong_link, duplicate, other]
+        rule: { type: [string, 'null'], description: 'RuleExplanation.rule the user disputes' }
+        verdict_shown: { $ref: '#/components/schemas/Verdict' }
+        comment: { type: [string, 'null'], maxLength: 500 }
+        attributes:
+          type: [object, 'null']
+          additionalProperties: true
+          description: 'ONLY with the per-report "send the details needed to check this" tick; only the LocalProfile fields that the disputed rule reads (e.g. dob + category for an age rule). Never in minor mode.'
+
+    UsageCounters:
+      type: object
+      required: [ist_date, app_version, locale, counters]
+      description: 'Opt-in aggregate for one IST day from one install, with NO identifier of the install or user. Values are clamped server-side.'
+      properties:
+        ist_date: { type: string, format: date }
+        app_version: { type: integer }
+        locale: { $ref: '#/components/schemas/LanguageCode' }
+        counters:
+          type: object
+          additionalProperties: { type: integer, minimum: 0, maximum: 1000 }
+          examples:
+            - { onboarding_completed: 1, matches_shown: 4, applied: 1, not_interested: 1, notif_blocked: 0, reminder_shown_push: 2, reminder_shown_backup: 1, report_sent: 0, reason_check_yourself_marks: 1 }
+
+    PushTest:
+      type: object
+      required: [test_id, status, sent_at]
+      properties:
+        test_id: { type: string }
+        status: { type: string, enum: [sent, received, timeout, fcm_error] }
+        sent_at: { type: string, format: date-time }
+        received_at: { type: [string, 'null'], format: date-time }
+        latency_ms: { type: [integer, 'null'] }
+        fcm_error: { type: [string, 'null'], examples: ['UNREGISTERED'] }
+
+    BackupInput:
+      type: object
+      required: [ciphertext, key_id, format_version]
+      properties:
+        ciphertext: { type: string, contentEncoding: base64, maxLength: 87400, description: 'AES-256-GCM(nonce ‖ ciphertext ‖ tag) of the app state JSON, ≤ 64 KB raw' }
+        key_id: { type: string, description: 'Id of the device-held key in Block Store (not the key)' }
+        format_version: { type: integer, minimum: 1 }
+
+    Backup:
+      allOf:
+        - $ref: '#/components/schemas/BackupInput'
+        - type: object
+          required: [version, updated_at]
+          properties:
+            version: { type: integer }
+            updated_at: { type: string, format: date-time }
+
+    EncryptedWatchlist:
+      type: object
+      required: [version, ciphertext]
+      description: |
+        The aspirant's watch-list for one family link, encrypted on the aspirant's phone with the key from the invite
+        URL fragment (AES-256-GCM, AAD = link_id ‖ version). Plaintext (documentation only): {label, relation,
+        items: [{post_id, notice_id, short_title: LocalizedText, last_date, last_date_time, kinds: [one_day_before,
+        last_day, admit_card, dv_schedule]}]}.
+      properties:
+        version: { type: integer, minimum: 1 }
+        ciphertext: { type: string, contentEncoding: base64, maxLength: 43700 }
+        updated_at: { type: string, format: date-time, readOnly: true }
+
+    FamilyInviteInput:
+      type: object
+      properties:
+        relation: { type: string, enum: [parent, sibling, spouse, other], description: 'Shown to the aspirant only (S34); the member sees what the aspirant puts in the encrypted watch-list' }
+
+    FamilyLink:
+      type: object
+      required: [id, state, created_at]
+      properties:
+        id: { type: string, examples: ['f_01JD…'] }
+        state: { type: string, enum: [invited, active, paused, removed, expired], description: 'paused = owner Pro lapsed' }
+        relation: { type: [string, 'null'] }
+        invite_url: { type: [string, 'null'], format: uri, description: 'https://sarkarimatch.in/f/{token} (only while invited); the app appends #k=<key> before sharing / drawing the QR' }
+        invite_expires_at: { type: [string, 'null'], format: date-time }
+        accepted_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    FamilyInviteView:
+      type: object
+      required: [link_id, state]
+      properties:
+        link_id: { type: string }
+        state: { type: string, enum: [invited, active, declined, expired, removed] }
+        expires_at: { type: [string, 'null'], format: date-time }
+
+    FamilyFollowing:
+      type: object
+      required: [link_id, state]
+      properties:
+        link_id: { type: string }
+        state: { type: string, enum: [active, paused, removed] }
+        watchlist_version: { type: [integer, 'null'] }
+        accepted_at: { type: [string, 'null'], format: date-time }

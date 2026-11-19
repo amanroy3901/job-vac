@@ -61,7 +61,7 @@ Removed in this revision (they held per-user eligibility data or served WhatsApp
 | `translation_task` | Non-launch locales are filled by an LLM draft + human review per field; a published translation creates a `translation` catalog batch. Launch locales are authored in review. |
 | `notification_text(template, locale)` | Only for the few pushes the server composes for one account (N-31 trial ending, Pro expiry, payment hold, family link changes). Match/reminder/lifecycle pushes are composed on the device from app string resources. |
 | `app_user.auth_kind` (`anonymous`/`google`) | A guest gets a Firebase anonymous account only when a server feature first needs one; linking Google keeps the same uid. No email, name or phone is copied into our database. |
-| `device` only for accounts | Needed for account pushes and family relay; guests receive topic pushes only, which need no registration with us. |
+| `device` only for accounts | Needed for account pushes, family relay and the primary alert install (`is_primary`, B15/N-47); guests receive topic pushes only, which need no registration with us. |
 | `backup_blob` | One opaque ciphertext ≤ 64 KB per account, compare-and-swap by `version`. Key in Google Block Store on the device; we hold only `key_id`. |
 | `family_link` + `family_watchlist` | Link ids, states and one encrypted watch-list; the key is in the invite URL fragment, so the server cannot read who or what is being followed. |
 | `topic_send` with deterministic ids (`r:{post}:{kind}:{date}`, `l:{event}`, `sync:{seq}`) | Idempotent scheduling of the backup topic pushes; the same `reminder_id` the device uses for its local alarm. |

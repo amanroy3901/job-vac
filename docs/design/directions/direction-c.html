@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sarkari Match — Marigold Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Hind:wght@400;600&family=Inter:wght@400;600&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..500,0..1,0&display=block" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{padding:48px;min-width:1700px}
+button{font:inherit;color:inherit;border:0;background:none}
+.ms{font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';flex-shrink:0;user-select:none}
+.tnum{font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}
+.grid{display:grid;grid-template-columns:repeat(4,376px);gap:48px 40px}
+.fr{display:flex;flex-direction:column;gap:14px}
+.fr figcaption{font:500 14px/20px 'Inter',system-ui,sans-serif;opacity:.8}
+.ph{width:376px;height:816px;border-radius:44px;padding:8px;display:flex;flex-direction:column;overflow:hidden;background:#0D0D0F;box-shadow:0 30px 60px -20px rgba(20,16,10,.35),0 0 0 1px rgba(0,0,0,.25)}
+.ph>*{flex-shrink:0;width:360px}
+.sb{height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 18px 0 22px;font:500 12px/1 Roboto,'Inter',system-ui,sans-serif;border-radius:36px 36px 0 0}
+.sb .ms{font-size:15px;margin-left:3px}
+.scr{height:748px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.gb{height:24px;display:flex;align-items:center;justify-content:center;border-radius:0 0 36px 36px}
+.gb i{display:block;width:108px;height:4px;border-radius:2px}
+.fill{flex:1;min-height:0;overflow:hidden;position:relative}
+.row{display:flex;align-items:center}
+.col{display:flex;flex-direction:column}
+.grow{flex:1;min-width:0}
+.nw{white-space:nowrap}
+/* header strip */
+.hd{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:40px;margin-bottom:48px;padding:40px;border-radius:28px;width:1624px}
+.hd h1{font-size:44px;line-height:1.15;margin:8px 0 12px;letter-spacing:-.02em}
+.hd .kicker{font:600 12px/1 'Inter',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+.hd .mood{font-size:18px;line-height:1.5;max-width:560px;opacity:.9}
+.hd h3{font:600 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;margin:0 0 12px;opacity:.6}
+.hd p,.hd li{font-family:'Inter',system-ui,sans-serif}
+.sw{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+.sw div{width:84px}
+.sw i{display:block;height:44px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(128,128,128,.25)}
+.sw span{display:block;font:500 11px/1.35 ui-monospace,Menlo,monospace;margin-top:6px;opacity:.85}
+.sw span b{font:600 11px/1.35 'Inter',system-ui,sans-serif;display:block;opacity:1}
+.traits{font-size:15px;line-height:1.55;padding-left:18px;margin-top:20px}
+.traits li{margin-bottom:6px}
+.fontrow{margin-bottom:16px}
+.fontrow .spec{font:500 12px/1.4 'Inter',system-ui,sans-serif;opacity:.65;margin-top:2px}
+.langhd{font:600 13px/1 'Inter',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;margin:0 0 20px;opacity:.6}
+.langblock{margin-bottom:56px}
+body.only-en .langblock.hi, body.only-hi .langblock.en{display:none}
+.toggle{position:fixed;top:12px;right:12px;display:flex;gap:4px;padding:4px;border-radius:999px;background:rgba(0,0,0,.7);z-index:9}
+.toggle button{color:#fff;font:600 12px/1 'Inter',system-ui,sans-serif;padding:8px 12px;border-radius:999px;cursor:pointer}
+body.shot .toggle{display:none}
+
+
+body.dir-c{background:#F1E7D8;color:#2A1E14;font-family:Hind,'Baloo 2',sans-serif}
+.dir-c .hd{background:#FBF5EC;box-shadow:0 2px 4px rgba(120,70,10,.05),0 16px 40px rgba(120,70,10,.08)}
+.dir-c .ph{font-family:Hind,sans-serif}
+.dir-c .ms{font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
+.dir-c .ms.o{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.ph.light{--bg:#FBF5EC;--card:#FFFFFF;--tx:#2A1E14;--mut:#6E5D4E;--hair:#EFE4D4;--sunk:#F5ECDF;--pri:#1E5B46;--onPri:#FFFFFF;--priC:#E2F0E8;--mari:#F2A93B;--mariC:#FDEFD6;--onMari:#3A2405;--tc:#B3361E;--tcC:#FBE4DC;--onTc:#8A2A15;--q:#8A5A00;--qC:#F8EDD4;--sh:0 2px 4px rgba(120,70,10,.05),0 12px 28px rgba(120,70,10,.08);--glass:rgba(251,245,236,.9);--police:#FDEBD3;--policeI:#9A5B00;--ssc:#E2F0E8;--sscI:#1E5B46;--rail:#FBE4DC;--railI:#A23A1E;--bank:#E1EEF2;--bankI:#1D5E73;--state:#F1E4F2;--stateI:#7A3D80}
+.ph.dark{--bg:#17120D;--card:#231C15;--tx:#F6EDE1;--mut:#C2B19E;--hair:#3A2F24;--sunk:#2D241B;--pri:#86D4B2;--onPri:#0D2A1F;--priC:#1D3329;--mari:#F4B755;--mariC:#3A2A12;--onMari:#2A1A02;--tc:#FF8A6B;--tcC:#3E2018;--onTc:#FFC9B8;--q:#EBC46E;--qC:#362A12;--sh:0 1px 0 rgba(255,255,255,.04) inset,0 12px 28px rgba(0,0,0,.35);--glass:rgba(23,18,13,.9);--police:#3A2A14;--policeI:#F4B755;--ssc:#1D3329;--sscI:#86D4B2;--rail:#3E2018;--railI:#FF9F85;--bank:#16303A;--bankI:#8CCFE4;--state:#33203A;--stateI:#E3A8EA}
+.dir-c .sb,.dir-c .gb{background:var(--bg);color:var(--tx)}
+.dir-c .gb i{background:var(--tx);opacity:.35}
+.dir-c .scr{background:var(--bg);color:var(--tx)}
+.dir-c .t28{font-family:'Baloo 2',Hind,sans-serif;font-size:28px;line-height:36px;font-weight:600}
+.dir-c .ph[lang=hi] .t28{line-height:40px}
+.dir-c .t19{font-family:'Baloo 2',Hind,sans-serif;font-size:19px;line-height:26px;font-weight:600}
+.dir-c .ph[lang=hi] .t19{line-height:30px}
+.dir-c .t16{font-size:16px;line-height:24px}
+.dir-c .t14{font-size:14px;line-height:20px}
+.dir-c .ph[lang=hi] .t14{line-height:22px}
+.dir-c .b{font-weight:600}
+.dir-c .mut{color:var(--mut)}
+.dir-c .tnum{font-feature-settings:'tnum'}
+.dir-c .tb{height:56px;display:flex;align-items:center;gap:4px;padding:0 8px 0 16px}
+.dir-c .ib{width:48px;height:48px;display:grid;place-items:center;position:relative;border-radius:50%}
+.dir-c .ib.c:before{content:'';position:absolute;inset:4px;border-radius:50%;background:var(--card);box-shadow:var(--sh)}
+.dir-c .ib .ms{position:relative}
+.dir-c .dot{position:absolute;top:10px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--tc);box-shadow:0 0 0 2px var(--bg)}
+.dir-c .logo{display:flex;align-items:center;gap:8px;font-family:'Baloo 2';font-weight:600;font-size:19px}
+.dir-c .logo i{width:28px;height:28px;border-radius:9px;background:var(--mari);display:grid;place-items:center;color:var(--onMari)}
+.dir-c .logo i .ms{font-size:18px}
+/* greeting */
+.dir-c .greet{margin:4px 16px 0;padding:16px;border-radius:24px;background:linear-gradient(135deg,var(--mariC),var(--card) 70%);box-shadow:var(--sh);position:relative;overflow:hidden}
+.dir-c .greet svg{position:absolute;right:-12px;top:-12px}
+.dir-c .pills{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;position:relative}
+.dir-c .pill{display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 10px;border-radius:999px;background:var(--card);box-shadow:inset 0 0 0 1px var(--hair);font-size:14px;font-weight:600}
+.dir-c .pill .ms{font-size:18px}
+.dir-c .pill.today{background:var(--tc);color:#fff;box-shadow:none}
+.dir-c .ph.dark .pill.today{color:#2A1205}
+.dir-c .pill.urgent{background:var(--tcC);color:var(--onTc);box-shadow:none}
+.dir-c .sh{display:flex;align-items:center;gap:8px;padding:20px 20px 10px}
+.dir-c .sh .ms{font-size:22px}
+.dir-c .sh.today{color:var(--tc)}
+.dir-c .sh .n{margin-left:auto;min-width:28px;height:28px;border-radius:14px;background:var(--sunk);display:grid;place-items:center;font-size:14px;font-weight:600;color:var(--tx)}
+/* card */
+.dir-c .card{margin:0 16px 12px;background:var(--card);border-radius:24px;box-shadow:var(--sh);overflow:hidden}
+.dir-c .rib{display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:14px;font-weight:600;line-height:20px}
+.dir-c .rib .ms{font-size:20px}
+.dir-c .rib.today{background:var(--tc);color:#fff}
+.dir-c .ph.dark .rib.today{color:#2A1205}
+.dir-c .rib.urgent{background:var(--tcC);color:var(--onTc)}
+.dir-c .cb{padding:14px 16px 16px}
+.dir-c .tile{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;flex-shrink:0}
+.dir-c .tile.police{background:var(--police);color:var(--policeI)}
+.dir-c .tile.ssc{background:var(--ssc);color:var(--sscI)}
+.dir-c .tile.rail{background:var(--rail);color:var(--railI)}
+.dir-c .tile.bank{background:var(--bank);color:var(--bankI)}
+.dir-c .tile.state{background:var(--state);color:var(--stateI)}
+.dir-c .vchip{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border-radius:999px;font-size:14px;font-weight:600;white-space:nowrap}
+.dir-c .vchip .ms{font-size:18px}
+.dir-c .vchip.ok{background:var(--priC);color:var(--pri)}
+.dir-c .vchip.q{background:var(--qC);color:var(--q)}
+.dir-c .vchip.n{background:var(--sunk);color:var(--tx)}
+.dir-c .facts{display:flex;gap:8px;margin:12px 0}
+.dir-c .facts div{flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:14px;background:var(--sunk);font-size:15px;font-weight:600;line-height:20px;white-space:nowrap}
+.dir-c .facts .ms{font-size:18px;color:var(--mut)}
+.dir-c .why{display:flex;gap:8px;align-items:flex-start}
+.dir-c .why .ms{font-size:20px;margin-top:1px}
+.dir-c .why.ok .ms{color:var(--pri)}
+.dir-c .why.q .ms{color:var(--q)}
+.dir-c .acts{display:flex;gap:8px;margin-top:14px}
+.dir-c .btn{height:52px;border-radius:999px;padding:0 20px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:600;white-space:nowrap}
+.dir-c .btn .ms{font-size:22px}
+.dir-c .btn.sm{height:44px;padding:0 16px;font-size:15px}
+.dir-c .btn.pri{background:var(--pri);color:var(--onPri);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 18px -8px rgba(30,91,70,.65)}
+.dir-c .btn.ton{background:var(--sunk);color:var(--tx)}
+.dir-c .btn.out{background:var(--card);color:var(--tx);box-shadow:inset 0 0 0 1.5px var(--hair)}
+.dir-c .btn.mari{background:var(--mari);color:var(--onMari);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 18px -8px rgba(242,169,59,.8)}
+.dir-c .btn.full{width:100%}
+/* later list */
+.dir-c .lr{display:flex;gap:12px;padding:14px 16px;align-items:flex-start}
+.dir-c .lr+.lr{box-shadow:0 -1px 0 var(--hair)}
+.dir-c .ad{margin:4px 16px 12px;border-radius:20px;padding:12px;display:flex;gap:12px;align-items:center;border:1.5px dashed var(--hair)}
+.dir-c .adl{font-size:12px;line-height:16px;font-weight:600;color:var(--mut);box-shadow:inset 0 0 0 1px var(--hair);border-radius:6px;padding:2px 6px}
+.dir-c .adimg{width:44px;height:44px;border-radius:14px;background:var(--sunk);display:grid;place-items:center;color:var(--mut)}
+.dir-c .disc{display:flex;gap:8px;margin:4px 20px;color:var(--mut)}
+.dir-c .disc .ms{font-size:18px;margin-top:1px}
+/* nav */
+.dir-c .nav{height:80px;display:flex;align-items:center;padding:0 12px;background:var(--glass);backdrop-filter:blur(16px);box-shadow:0 -1px 0 var(--hair)}
+.dir-c .nav div{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--mut);font-size:14px;line-height:20px;position:relative}
+.dir-c .nav .pp{width:64px;height:32px;border-radius:16px;display:grid;place-items:center;position:relative}
+.dir-c .nav .on{color:var(--tx);font-weight:600}
+.dir-c .nav .on .pp{background:var(--mari);color:var(--onMari)}
+.dir-c .nav .bdg{position:absolute;top:-4px;right:8px;min-width:20px;height:20px;border-radius:10px;background:var(--tc);color:#fff;font-size:12px;font-weight:600;display:grid;place-items:center;padding:0 5px;box-shadow:0 0 0 2px var(--bg)}
+/* detail */
+.dir-c .dh{margin:0 16px;padding:16px;border-radius:24px;background:var(--card);box-shadow:var(--sh)}
+.dir-c .cal{width:76px;flex-shrink:0;border-radius:16px;overflow:hidden;box-shadow:0 1px 0 var(--hair),0 6px 14px -6px rgba(120,70,10,.3);text-align:center;background:var(--card)}
+.dir-c .cal .m{background:var(--tc);color:#fff;font-size:13px;font-weight:600;line-height:22px}
+.dir-c .ph.dark .cal .m{color:#2A1205}
+.dir-c .cal .dd{font-family:'Baloo 2';font-size:28px;line-height:34px;font-weight:600}
+.dir-c .cal .wd{font-size:12px;line-height:16px;color:var(--mut);padding-bottom:6px}
+.dir-c .left{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;background:var(--tcC);color:var(--onTc);font-weight:600;font-size:15px}
+.dir-c .left .ms{font-size:18px}
+.dir-c .chg{display:flex;gap:8px;align-items:center;margin-top:12px;padding:8px 12px;border-radius:14px;background:var(--qC);color:var(--q);font-size:14px;font-weight:600}
+.dir-c .chg .ms{font-size:18px}
+.dir-c .sec{margin:12px 16px 0;padding:16px;border-radius:24px;background:var(--card);box-shadow:var(--sh)}
+.dir-c .st{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.dir-c .st .ic{width:36px;height:36px;border-radius:12px;background:var(--mariC);color:#B06E00;display:grid;place-items:center}
+.dir-c .ph.dark .st .ic{color:var(--mari)}
+.dir-c .st .ic .ms{font-size:20px}
+.dir-c .wy{display:flex;gap:10px;padding:6px 0;align-items:flex-start}
+.dir-c .wy .bub{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
+.dir-c .wy .bub .ms{font-size:18px}
+.dir-c .wy.ok .bub{background:var(--priC);color:var(--pri)}
+.dir-c .wy.q .bub{background:var(--qC);color:var(--q)}
+.dir-c .abar{position:absolute;left:0;right:0;bottom:0;padding:4px 16px 16px;background:var(--glass);backdrop-filter:blur(16px);box-shadow:0 -1px 0 var(--hair)}
+.dir-c .abar .ni{display:flex;justify-content:center;align-items:center;gap:6px;height:40px;color:var(--mut);font-size:14px;font-weight:600}
+.dir-c .abar .ni .ms{font-size:18px}
+.dir-c .dts{display:flex;gap:8px;overflow:hidden;margin:4px -16px 0;padding:0 16px}
+.dir-c .dt{flex-shrink:0;min-width:96px;border-radius:16px;padding:8px 12px;background:var(--sunk)}
+.dir-c .dt.key{background:var(--tc);color:#fff}
+.dir-c .ph.dark .dt.key{color:#2A1205}
+.dir-c .dt.key .mut{color:inherit;opacity:.9}
+.dir-c .dt.past{opacity:.6}
+.dir-c .dt b{display:block;font-family:'Baloo 2';font-size:19px;line-height:26px;font-weight:600}
+.dir-c .chk{display:flex;gap:12px;align-items:center;padding:6px 0}
+.dir-c .cbx{width:28px;height:28px;border-radius:9px;box-shadow:inset 0 0 0 2px var(--hair);display:grid;place-items:center;flex-shrink:0}
+.dir-c .cbx.on{background:var(--pri);color:var(--onPri);box-shadow:none}
+.dir-c .cbx .ms{font-size:20px}
+.dir-c .specs{display:flex;gap:8px}
+.dir-c .spc{flex:1;border-radius:16px;padding:10px 12px;background:var(--sunk)}
+.dir-c .spc .hdr{display:flex;align-items:center;gap:6px;font-weight:600;margin-bottom:4px}
+.dir-c .spc .hdr .ms{font-size:18px;color:var(--mut)}
+.dir-c .lnk{display:flex;align-items:center;gap:12px;min-height:60px}
+.dir-c .lnk+.lnk{box-shadow:0 -1px 0 var(--hair)}
+/* tracker */
+.dir-c .segs{display:flex;gap:8px;padding:4px 16px 0}
+.dir-c .segs div{height:40px;padding:0 16px;border-radius:999px;display:grid;place-items:center;font-weight:600;font-size:15px;box-shadow:inset 0 0 0 1.5px var(--hair)}
+.dir-c .segs .on{background:var(--tx);color:var(--bg);box-shadow:none}
+.dir-c .up{margin:12px 16px 0;padding:12px 12px 12px 14px;border-radius:20px;display:flex;align-items:center;gap:10px;background:var(--mariC)}
+.dir-c .up .ms{color:#B06E00}
+.dir-c .ph.dark .up .ms{color:var(--mari)}
+.dir-c .path{position:relative;margin-top:8px}
+.dir-c .stp{display:flex;align-items:center;gap:12px;padding:5px 0;position:relative}
+.dir-c .stp .cc{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;position:relative;z-index:1;background:var(--card);box-shadow:inset 0 0 0 2px var(--hair);color:var(--mut)}
+.dir-c .stp .cc .ms{font-size:18px}
+.dir-c .stp:not(:last-child):after{content:'';position:absolute;left:17px;top:38px;height:calc(100% - 30px);width:2px;background:repeating-linear-gradient(var(--hair) 0 4px,transparent 4px 8px)}
+.dir-c .stp.done .cc{background:var(--pri);color:var(--onPri);box-shadow:none}
+.dir-c .stp.done:after{background:var(--pri)!important}
+.dir-c .stp.next .cc{background:var(--mari);color:var(--onMari);box-shadow:0 0 0 4px var(--mariC)}
+.dir-c .stp.locked .tt{color:var(--mut)}
+.dir-c .lockp{margin-left:auto;display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 8px;border-radius:999px;background:var(--mariC);color:#8A5200;font-size:12px;font-weight:600;white-space:nowrap}
+.dir-c .ph.dark .lockp{color:var(--mari)}
+.dir-c .lockp .ms{font-size:14px}
+/* paywall */
+.dir-c .peak{position:relative;text-align:center;padding:0 24px 10px}
+.dir-c .medal{width:80px;height:80px;margin:0 auto 8px;border-radius:50%;display:grid;place-items:center;background:var(--pri);color:var(--onPri);box-shadow:0 0 0 8px var(--priC),0 14px 28px -10px rgba(30,91,70,.6),inset 0 2px 0 rgba(255,255,255,.25)}
+.dir-c .medal .ms{font-size:44px}
+.dir-c .pcard{margin:0 12px;padding:16px;border-radius:28px;background:linear-gradient(180deg,var(--mariC),var(--card) 55%);box-shadow:var(--sh),inset 0 0 0 1.5px rgba(242,169,59,.45)}
+.dir-c .bn{display:flex;gap:10px;align-items:center;padding:3px 0}
+.dir-c .bn .bi{width:32px;height:32px;border-radius:10px;background:var(--card);display:grid;place-items:center;color:#B06E00;box-shadow:0 1px 2px rgba(120,70,10,.1);flex-shrink:0}
+.dir-c .ph.dark .bn .bi{color:var(--mari)}
+.dir-c .bn .bi .ms{font-size:18px}
+.dir-c .plans{display:flex;gap:8px;margin:12px 0}
+.dir-c .plan{flex:1;border-radius:20px;padding:10px 12px;background:var(--card);box-shadow:inset 0 0 0 1.5px var(--hair);position:relative}
+.dir-c .plan.sel{box-shadow:inset 0 0 0 2.5px var(--pri)}
+.dir-c .plan .pr{font-family:'Baloo 2';font-size:28px;line-height:34px;font-weight:600}
+.dir-c .plan .bd{position:absolute;top:-10px;left:12px;background:var(--pri);color:var(--onPri);font-size:12px;font-weight:600;border-radius:999px;padding:1px 8px;line-height:18px}
+.dir-c .plan .ck{position:absolute;top:10px;right:10px;color:var(--pri)}
+</style></head>
+<body class="dir-c">
+<div class="toggle"><button onclick="document.body.classList.remove('only-hi');document.body.classList.add('only-en')">English</button><button onclick="document.body.classList.remove('only-en');document.body.classList.add('only-hi')">हिंदी</button><button onclick="document.body.classList.remove('only-en','only-hi')">Both</button></div>
+<header class="hd">
+  <div><div class="kicker">Sarkari Match · Direction C</div><h1>Marigold Home</h1><p class="mood">Warm, reassuring and proudly Indian without kitsch, like a trusted elder sibling. Soft cream paper, forest-green actions, marigold highlights, big icons beside every word, and a real celebration when you apply.</p>
+  <ul class="traits"><li>60/30/10: cream 60 · cocoa text and white cards 30 · forest green + marigold 10 (actions, Pro, celebration)</li><li>Built for low literacy: largest type of the three (body 16, titles 19), an icon beside every label, and deadlines written as a full ribbon sentence</li><li>Category tiles with soft tinted backgrounds (Police, SSC, Railway, Bank, State) for recognition without reading</li><li>Tear-off calendar tile for the last date, a journey path for the lifecycle</li><li>Peak moment: a green check medallion with marigold confetti, then a cream-and-marigold Pro card</li></ul></div>
+  <div><h3>Palette · light (default)</h3><div class="sw"><div><i style="background:#FBF5EC"></i><span><b>cream 60%</b>#FBF5EC</span></div><div><i style="background:#FFFFFF"></i><span><b>card</b>#FFFFFF</span></div><div><i style="background:#2A1E14"></i><span><b>cocoa 30%</b>#2A1E14</span></div><div><i style="background:#6E5D4E"></i><span><b>muted</b>#6E5D4E</span></div><div><i style="background:#EFE4D4"></i><span><b>hairline</b>#EFE4D4</span></div><div><i style="background:#1E5B46"></i><span><b>forest 10%</b>#1E5B46</span></div><div><i style="background:#F2A93B"></i><span><b>marigold</b>#F2A93B</span></div><div><i style="background:#B3361E"></i><span><b>terracotta</b>#B3361E</span></div><div><i style="background:#8A5A00"></i><span><b>ochre ?</b>#8A5A00</span></div></div><h3 style="margin-top:20px">Palette · dark</h3><div class="sw"><div><i style="background:#17120D"></i><span><b>bg</b>#17120D</span></div><div><i style="background:#231C15"></i><span><b>card</b>#231C15</span></div><div><i style="background:#F6EDE1"></i><span><b>text</b>#F6EDE1</span></div><div><i style="background:#C2B19E"></i><span><b>muted</b>#C2B19E</span></div><div><i style="background:#3A2F24"></i><span><b>hairline</b>#3A2F24</span></div><div><i style="background:#86D4B2"></i><span><b>forest</b>#86D4B2</span></div><div><i style="background:#F4B755"></i><span><b>marigold</b>#F4B755</span></div><div><i style="background:#FF8A6B"></i><span><b>terracotta</b>#FF8A6B</span></div><div><i style="background:#EBC46E"></i><span><b>ochre</b>#EBC46E</span></div></div></div>
+  <div><h3>Type</h3><div class="fontrow"><div style="font:600 32px/1.3 'Baloo 2'">Baloo 2 · आखिरी तारीख</div><div class="spec">Headings and numbers. Rounded, warm, designed for Devanagari + Latin. 600 only</div></div>
+  <div class="fontrow"><div style="font:400 22px/1.5 Hind">Hind · फ़ॉर्म भरने की साइट खोलें</div><div class="spec">Body and labels. Weights 400 / 600; tabular figures via tnum</div></div>
+  <div class="spec">Scale: 28 display · 19 title · 16 body · 14 meta (4 sizes, the largest of the three directions)</div><h3 style="margin-top:20px">Shape · depth · icons</h3><p style="font-size:15px;line-height:1.55">Radius 24 cards / 16 tiles / pill buttons 52 dp tall. Soft warm shadows tinted brown (0 2px 4px + 0 12px 28px rgba(120,70,10,.08)). Green CTA with inner top highlight and green-tinted shadow. Icons: Material Symbols Rounded, filled, weight 500. 8-pt grid, 16 dp gutters, roomy.</p></div>
+</header>
+<section class="langblock en"><div class="langhd">English</div><div class="grid"><figure class="fr"><div class="ph light" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="logo"><i><span class="ms " aria-hidden="true">notifications_active</span></i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms o" aria-hidden="true">notifications</span><span class="dot"></span></span></div>
+    <div class="greet"><svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle cx="80" cy="40" r="26" fill="#F2A93B" opacity=".35"/><circle cx="80" cy="40" r="44" fill="none" stroke="#F2A93B" stroke-opacity=".25" stroke-width="2" stroke-dasharray="2 8"/></svg><div class="t28" style="position:relative">Hi, Ravi</div><div class="t16 mut" style="position:relative;max-width:260px">Thu, 19 Nov · 5 jobs need your reply</div>
+      <div class="pills"><span class="pill today"><span class="ms " aria-hidden="true">alarm</span><span class="tnum">1</span> Today</span><span class="pill urgent"><span class="ms " aria-hidden="true">timer</span><span class="tnum">1</span> In 3 days</span><span class="pill calm"><span class="ms " aria-hidden="true">event</span><span class="tnum">3</span> Later</span></div></div>
+    <div class="sh today t19"><span class="ms " aria-hidden="true">alarm</span><span>Last day today</span><span class="n">1</span></div><div class="card"><div class="rib today"><span class="ms " aria-hidden="true">alarm</span>Last day today · until 11 pm</div><div class="cb">
+    <div class="row" style="gap:12px;align-items:flex-start"><span class="tile police"><span class="ms " aria-hidden="true">local_police</span></span><div class="grow"><div class="t19">UP Police Constable 2026</div><div class="t14 mut">UPPRPB · 19,220 posts</div></div></div>
+    <div class="facts"><div><span class="ms " aria-hidden="true">currency_rupee</span><span class="tnum">400</span></div><div style="flex:1.6"><span class="ms " aria-hidden="true">school</span>Class 12</div></div>
+    <div class="why ok t16"><span class="ms " aria-hidden="true">check_circle</span><span><span class="b">Age:</span> 23 (limit 22, OBC +5 = 27)</span></div>
+    <div class="acts"><span class="btn pri sm" style="flex:1"><span class="ms " aria-hidden="true">task_alt</span>Applied</span><span class="btn ton sm"><span class="ms " aria-hidden="true">snooze</span>Later</span></div>
+  </div></div><div class="sh urgent t19"><span class="ms " aria-hidden="true">timer</span><span>Closing in 3 days</span><span class="n">1</span></div><div class="card"><div class="rib urgent"><span class="ms " aria-hidden="true">timer</span>Only 2 days left · until 21 Nov</div><div class="cb">
+    <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ssc"><span class="ms " aria-hidden="true">account_balance</span></span><div class="grow"><div class="t19">SSC GD Constable 2027</div><div class="t14 mut">Staff Selection Commission · 39,481 posts</div></div></div>
+    <div class="facts"><div><span class="ms " aria-hidden="true">currency_rupee</span><span class="tnum">100</span></div><div style="flex:1.6"><span class="ms " aria-hidden="true">school</span>Class 10</div></div>
+    <div class="why ok t16"><span class="ms " aria-hidden="true">check_circle</span><span><span class="b">Age:</span> 23 (limit 23, OBC +3 = 26)</span></div>
+    <div class="acts"><span class="btn pri sm" style="flex:1"><span class="ms " aria-hidden="true">task_alt</span>Applied</span><span class="btn ton sm"><span class="ms " aria-hidden="true">snooze</span>Later</span></div>
+  </div></div>
+  </div><div class="nav"><div class="on"><span class="pp"><span class="ms " aria-hidden="true">work</span><span class="bdg">5</span></span>Jobs</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">assignment_turned_in</span></span>My forms</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">account_circle</span></span>Profile</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1</b> · Home · matches feed</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="logo"><i><span class="ms " aria-hidden="true">notifications_active</span></i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms o" aria-hidden="true">notifications</span></span></div>
+    <div class="sh t19"><span class="ms " aria-hidden="true">event</span><span>Later</span><span class="n">3</span></div>
+    <div class="card"><div class="lr"><span class="tile rail"><span class="ms " aria-hidden="true">train</span></span><div class="grow"><div class="t16 b">RRB NTPC Graduate 2026</div><div class="t14 mut tnum">₹500 · Graduate · Last date 25 Nov</div><div class="row" style="gap:6px;margin-top:6px"><span class="vchip ok"><span class="ms " aria-hidden="true">check_circle</span>Eligible</span><span class="vchip n"><span class="ms " aria-hidden="true">event</span>6 days left</span></div></div></div><div class="lr"><span class="tile bank"><span class="ms " aria-hidden="true">savings</span></span><div class="grow"><div class="t16 b">IBPS Clerk (CSA) 2026</div><div class="t14 mut tnum">₹850 · Graduate · Last date 28 Nov</div><div class="row" style="gap:6px;margin-top:6px"><span class="vchip ok"><span class="ms " aria-hidden="true">check_circle</span>Eligible</span><span class="vchip n"><span class="ms " aria-hidden="true">event</span>9 days left</span></div></div></div><div class="lr"><span class="tile state"><span class="ms " aria-hidden="true">location_city</span></span><div class="grow"><div class="t16 b">UPSSSC Junior Assistant</div><div class="t14 mut tnum">₹25 · Class 12 + CCC · Last date 10 Dec</div><div class="row" style="gap:6px;margin-top:6px"><span class="vchip q"><span class="ms " aria-hidden="true">help</span>Check yourself</span><span class="vchip n"><span class="ms " aria-hidden="true">event</span>Until 10 Dec</span></div></div></div></div>
+    <div class="ad"><span class="adimg"><span class="ms o" aria-hidden="true">storefront</span></span><div class="grow"><div class="row" style="gap:6px"><span class="adl">Ad</span><span class="t14 mut">Remove ads</span></div><div class="t16 b">Kisan Mobile Store</div><div class="t14 mut">New smartphones on easy EMI</div></div><span class="btn out sm">View</span></div>
+    <div class="disc t14"><span class="ms o" aria-hidden="true">info</span><span>Not a government app · Always verify with the official notice</span></div>
+  </div><div class="nav"><div class="on"><span class="pp"><span class="ms " aria-hidden="true">work</span><span class="bdg">5</span></span>Jobs</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">assignment_turned_in</span></span>My forms</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">account_circle</span></span>Profile</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1b</b> · Home · feed end with ad slot</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill"><div class="tb" style="padding-left:8px"><span class="ib c"><span class="ms o" aria-hidden="true">arrow_back</span></span><span class="grow"></span><span class="ib c"><span class="ms o" aria-hidden="true">share</span></span><span class="ib c"><span class="ms o" aria-hidden="true">more_vert</span></span></div>
+    <div class="dh">
+      <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ssc"><span class="ms " aria-hidden="true">account_balance</span></span><div class="grow"><div class="t19">SSC GD Constable 2027</div><div class="t14 mut">Staff Selection Commission · 39,481 posts · All India</div></div></div>
+      <div class="row" style="gap:14px;margin-top:14px"><div class="cal"><div class="m">NOV</div><div class="dd tnum">21</div><div class="wd">Friday</div></div>
+        <div class="grow"><span class="vchip ok"><span class="ms " aria-hidden="true">check_circle</span>Eligible</span><div style="margin-top:8px"><span class="left"><span class="ms " aria-hidden="true">timer</span>2 days left</span></div><div class="t14 mut" style="margin-top:6px">until 11 pm</div></div></div>
+      <div class="chg"><span class="ms " aria-hidden="true">update</span><span>Last date extended: 14 → 21 Nov</span></div>
+    </div>
+    <div class="sec"><div class="st"><span class="ic"><span class="ms " aria-hidden="true">fact_check</span></span><span class="t19">Why you match</span></div>
+      <div class="wy ok t16"><span class="bub"><span class="ms " aria-hidden="true">check</span></span><span><span class="b">Age:</span> 23 y 9 m on 1 Jan 2027 — limit 23, OBC +3 = 26</span></div><div class="wy ok t16"><span class="bub"><span class="ms " aria-hidden="true">check</span></span><span><span class="b">Education:</span> Class 10 needed — you are a graduate</span></div><div class="wy ok t16"><span class="bub"><span class="ms " aria-hidden="true">check</span></span><span><span class="b">Category:</span> OBC (non-creamy layer) — central list</span></div><div class="wy q t16"><span class="bub"><span class="ms " aria-hidden="true">question_mark</span></span><span><span class="b">Physical standard:</span> Check height/chest yourself — notice p. 12</span></div>
+    </div>
+    <div class="sec"><div class="st"><span class="ic"><span class="ms " aria-hidden="true">event</span></span><span class="t19">Key dates</span></div>
+      <div class="dts"><div class="dt past"><span class="t14 mut">Form opened</span><b class="tnum">5 Nov</b></div><div class="dt key"><span class="t14 mut">Last date</span><b class="tnum">21 Nov · 11 pm</b></div><div class="dt next"><span class="t14 mut">Fee payment by</span><b class="tnum">22 Nov</b></div><div class="dt next"><span class="t14 mut">Correction window</span><b class="tnum">25–27 Nov</b></div><div class="dt next"><span class="t14 mut">Exam (expected)</span><b class="tnum">Feb–Mar 2027</b></div></div>
+    </div>
+  </div><div class="abar"><div class="ni"><span class="ms o" aria-hidden="true">visibility_off</span>Not interested</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5"><span class="ms " aria-hidden="true">task_alt</span>Applied</span><span class="btn out" style="flex:1"><span class="ms o" aria-hidden="true">snooze</span>Later</span></div></div></div><div class="gb"><i></i></div></div><figcaption><b>2</b> · Job detail · calendar, why you match, dates</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill"><div class="tb" style="padding-left:8px"><span class="ib c"><span class="ms o" aria-hidden="true">arrow_back</span></span><span class="grow"></span><span class="ib c"><span class="ms o" aria-hidden="true">share</span></span><span class="ib c"><span class="ms o" aria-hidden="true">more_vert</span></span></div>
+    <div class="sec" style="margin-top:0"><div class="st"><span class="ic"><span class="ms " aria-hidden="true">checklist</span></span><span class="t19">What you need</span></div>
+      <div class="row" style="gap:12px;padding:10px 12px;border-radius:16px;background:var(--sunk)"><span class="t28 tnum">₹100</span><div class="grow"><div class="t14 b">Your fee · OBC, male</div><div class="t14 mut">SC/ST/women/ex-servicemen: no fee</div></div></div>
+      <div class="row" style="margin:14px 0 4px"><span class="t16 b grow">Keep documents ready</span><span class="vchip ok">2 of 4 ready</span></div>
+      <div class="chk t16"><span class="cbx on"><span class="ms " aria-hidden="true">check</span></span><span class="mut">Class 10 marksheet</span></div><div class="chk t16"><span class="cbx "></span><span class="">OBC-NCL certificate (central format)</span></div><div class="chk t16"><span class="cbx "></span><span class="">Aadhaar or any photo ID</span></div><div class="chk t16"><span class="cbx on"><span class="ms " aria-hidden="true">check</span></span><span class="mut">Working mobile number and email</span></div>
+      <div class="specs" style="margin-top:10px">
+        <div class="spc"><div class="hdr t14"><span class="ms " aria-hidden="true">photo_camera</span>Photo</div><div class="t14 tnum">JPEG · 20–50 KB</div><div class="t14 tnum">3.5 × 4.5 cm</div><div class="t14 mut">White</div></div>
+        <div class="spc"><div class="hdr t14"><span class="ms " aria-hidden="true">draw</span>Signature</div><div class="t14 tnum">JPEG · 10–20 KB</div><div class="t14 tnum">6 × 2 cm</div><div class="t14 mut">Black/blue</div></div>
+      </div>
+    </div>
+    <div class="sec" style="padding:4px 16px">
+      <div class="lnk"><span class="tile rail" style="width:40px;height:40px;border-radius:12px"><span class="ms " aria-hidden="true">picture_as_pdf</span></span><div class="grow"><div class="t16 b">Official notice (PDF)</div><div class="t14 mut">ssc.gov.in · 2.1 MB</div></div><span class="ms o" aria-hidden="true">download</span></div>
+      <div class="lnk"><span class="tile ssc" style="width:40px;height:40px;border-radius:12px"><span class="ms " aria-hidden="true">language</span></span><div class="grow"><div class="t16 b">Open the apply website</div><div class="t14 mut">ssc.gov.in — official website</div></div><span class="ms o" aria-hidden="true">open_in_new</span></div>
+    </div>
+  </div><div class="abar"><div class="ni"><span class="ms o" aria-hidden="true">visibility_off</span>Not interested</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5"><span class="ms " aria-hidden="true">task_alt</span>Applied</span><span class="btn out" style="flex:1"><span class="ms o" aria-hidden="true">snooze</span>Later</span></div></div></div><div class="gb"><i></i></div></div><figcaption><b>2b</b> · Job detail · what you need, links</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="t28">My forms</span></div>
+    <div class="segs"><div class="on">Active (3)</div><div class="">Completed (1)</div></div>
+    <div class="up"><span class="ms " aria-hidden="true">workspace_premium</span><span class="t14 b grow">Alerts after you apply are part of Pro</span><span class="btn mari sm" style="height:40px;padding:0 12px;font-size:14px">From ₹17/mo</span></div>
+    <div class="sec">
+      <div class="row" style="gap:12px"><span class="tile ssc"><span class="ms " aria-hidden="true">account_balance</span></span><div class="grow"><div class="t19">SSC CGL 2026</div><div class="t14 mut">Applied 15 Jul</div></div></div>
+      <div class="path"><div class="stp done"><span class="cc"><span class="ms " aria-hidden="true">check</span></span><div class="grow tt"><div class="t16 b">Applied</div><div class="t14 mut tnum">15 Jul</div></div></div><div class="stp next"><span class="cc"><span class="ms " aria-hidden="true">location_city</span></span><div class="grow tt"><div class="t16 b">City slip <span class="t14 mut">· next</span></div><div class="t14 mut tnum">Expected 25 Nov</div></div></div><div class="stp locked"><span class="cc"><span class="ms " aria-hidden="true">badge</span></span><div class="grow tt"><div class="t16 ">Admit card</div><div class="t14 mut tnum">Expected 1 Dec</div></div><span class="lockp"><span class="ms " aria-hidden="true">lock</span>Pro</span></div><div class="stp locked"><span class="cc"><span class="ms " aria-hidden="true">edit_note</span></span><div class="grow tt"><div class="t16 ">Exam</div><div class="t14 mut tnum">9–26 Dec</div></div><span class="lockp"><span class="ms " aria-hidden="true">lock</span>Pro</span></div><div class="stp locked"><span class="cc"><span class="ms " aria-hidden="true">key</span></span><div class="grow tt"><div class="t16 ">Answer key</div><div class="t14 mut tnum">Expected Jan</div></div><span class="lockp"><span class="ms " aria-hidden="true">lock</span>Pro</span></div><div class="stp locked"><span class="cc"><span class="ms " aria-hidden="true">emoji_events</span></span><div class="grow tt"><div class="t16 ">Result</div><div class="t14 mut tnum">Expected Feb</div></div><span class="lockp"><span class="ms " aria-hidden="true">lock</span>Pro</span></div><div class="stp locked"><span class="cc"><span class="ms " aria-hidden="true">fact_check</span></span><div class="grow tt"><div class="t16 ">Document verification</div><div class="t14 mut tnum">After result</div></div><span class="lockp"><span class="ms " aria-hidden="true">lock</span>Pro</span></div></div>
+    </div>
+  </div><div class="nav"><div class=""><span class="pp"><span class="ms o" aria-hidden="true">work</span><span class="bdg">5</span></span>Jobs</div><div class="on"><span class="pp"><span class="ms " aria-hidden="true">assignment_turned_in</span></span>My forms</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">account_circle</span></span>Profile</div></div></div><div class="gb"><i></i></div></div><figcaption><b>3</b> · My forms · journey path, free user (Pro-locked)</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb" style="height:48px;padding-left:4px"><span class="ib"><span class="ms o" aria-hidden="true">close</span></span></div>
+    <div class="peak"><svg width="300" height="120" viewBox="0 0 300 120" style="position:absolute;left:30px;top:-6px" aria-hidden="true">
+<g fill="#F2A93B"><rect x="40" y="30" width="8" height="14" rx="3" transform="rotate(-25 44 37)"/><rect x="250" y="40" width="8" height="14" rx="3" transform="rotate(30 254 47)"/><circle cx="70" cy="80" r="4"/><circle cx="232" cy="88" r="5"/></g>
+<g fill="#1E5B46" opacity=".55"><rect x="20" y="70" width="6" height="12" rx="3" transform="rotate(40 23 76)"/><rect x="268" y="74" width="6" height="12" rx="3" transform="rotate(-35 271 80)"/><circle cx="210" cy="20" r="3"/></g>
+<g fill="#B3361E" opacity=".6"><circle cx="96" cy="16" r="3"/><rect x="190" y="60" width="6" height="10" rx="2" transform="rotate(20 193 65)"/><circle cx="18" cy="30" r="3"/></g>
+</svg><div class="medal"><span class="ms " aria-hidden="true">check</span></div><div class="t28" style="position:relative">Well done, applied!</div><div class="t14 mut">SSC GD Constable 2027 · added to My forms</div></div>
+    <div class="pcard">
+      <div class="row" style="gap:8px"><span class="vchip" style="background:var(--mari);color:var(--onMari)"><span class="ms " aria-hidden="true">workspace_premium</span>Pro</span></div>
+      <div class="t19" style="margin-top:8px">Track it to the end?</div>
+      <div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">badge</span></span><span>Admit card & city slip the moment they’re out</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">update</span></span><span>Instant alert if the exam date changes</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">key</span></span><span>Answer key, result, cut-off and DV</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">block</span></span><span>No ads, anywhere</span></div>
+      <div class="plans"><div class="plan sel"><span class="bd">Best value</span><span class="ck"><span class="ms " aria-hidden="true">check_circle</span></span><div class="t14 mut">Yearly</div><div class="pr tnum">₹199</div><div class="t14 mut">Just ₹17/month</div></div><div class="plan "><div class="t14 mut">One season</div><div class="pr tnum">₹49</div><div class="t14 mut">4 months</div></div></div>
+      <span class="btn pri full">Try 14 days free</span>
+      <div class="t14 mut" style="text-align:center;margin-top:4px">No payment, no card needed</div>
+      <div class="t14 b" style="color:var(--pri);display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px">Get Pro for ₹199 · Google Play</div>
+    </div>
+  </div></div><div class="gb"><i></i></div></div><figcaption><b>4</b> · Applied ✓ celebration + Pro paywall</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="logo"><i><span class="ms " aria-hidden="true">notifications_active</span></i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms o" aria-hidden="true">notifications</span><span class="dot"></span></span></div>
+    <div class="greet"><svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle cx="80" cy="40" r="26" fill="#F2A93B" opacity=".35"/><circle cx="80" cy="40" r="44" fill="none" stroke="#F2A93B" stroke-opacity=".25" stroke-width="2" stroke-dasharray="2 8"/></svg><div class="t28" style="position:relative">Hi, Ravi</div><div class="t16 mut" style="position:relative;max-width:260px">Thu, 19 Nov · 5 jobs need your reply</div>
+      <div class="pills"><span class="pill today"><span class="ms " aria-hidden="true">alarm</span><span class="tnum">1</span> Today</span><span class="pill urgent"><span class="ms " aria-hidden="true">timer</span><span class="tnum">1</span> In 3 days</span><span class="pill calm"><span class="ms " aria-hidden="true">event</span><span class="tnum">3</span> Later</span></div></div>
+    <div class="sh today t19"><span class="ms " aria-hidden="true">alarm</span><span>Last day today</span><span class="n">1</span></div><div class="card"><div class="rib today"><span class="ms " aria-hidden="true">alarm</span>Last day today · until 11 pm</div><div class="cb">
+    <div class="row" style="gap:12px;align-items:flex-start"><span class="tile police"><span class="ms " aria-hidden="true">local_police</span></span><div class="grow"><div class="t19">UP Police Constable 2026</div><div class="t14 mut">UPPRPB · 19,220 posts</div></div></div>
+    <div class="facts"><div><span class="ms " aria-hidden="true">currency_rupee</span><span class="tnum">400</span></div><div style="flex:1.6"><span class="ms " aria-hidden="true">school</span>Class 12</div></div>
+    <div class="why ok t16"><span class="ms " aria-hidden="true">check_circle</span><span><span class="b">Age:</span> 23 (limit 22, OBC +5 = 27)</span></div>
+    <div class="acts"><span class="btn pri sm" style="flex:1"><span class="ms " aria-hidden="true">task_alt</span>Applied</span><span class="btn ton sm"><span class="ms " aria-hidden="true">snooze</span>Later</span></div>
+  </div></div><div class="sh urgent t19"><span class="ms " aria-hidden="true">timer</span><span>Closing in 3 days</span><span class="n">1</span></div><div class="card"><div class="rib urgent"><span class="ms " aria-hidden="true">timer</span>Only 2 days left · until 21 Nov</div><div class="cb">
+    <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ssc"><span class="ms " aria-hidden="true">account_balance</span></span><div class="grow"><div class="t19">SSC GD Constable 2027</div><div class="t14 mut">Staff Selection Commission · 39,481 posts</div></div></div>
+    <div class="facts"><div><span class="ms " aria-hidden="true">currency_rupee</span><span class="tnum">100</span></div><div style="flex:1.6"><span class="ms " aria-hidden="true">school</span>Class 10</div></div>
+    <div class="why ok t16"><span class="ms " aria-hidden="true">check_circle</span><span><span class="b">Age:</span> 23 (limit 23, OBC +3 = 26)</span></div>
+    <div class="acts"><span class="btn pri sm" style="flex:1"><span class="ms " aria-hidden="true">task_alt</span>Applied</span><span class="btn ton sm"><span class="ms " aria-hidden="true">snooze</span>Later</span></div>
+  </div></div>
+  </div><div class="nav"><div class="on"><span class="pp"><span class="ms " aria-hidden="true">work</span><span class="bdg">5</span></span>Jobs</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">assignment_turned_in</span></span>My forms</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">account_circle</span></span>Profile</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1</b> · Home · dark mode</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="en"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb" style="height:48px;padding-left:4px"><span class="ib"><span class="ms o" aria-hidden="true">close</span></span></div>
+    <div class="peak"><svg width="300" height="120" viewBox="0 0 300 120" style="position:absolute;left:30px;top:-6px" aria-hidden="true">
+<g fill="#F2A93B"><rect x="40" y="30" width="8" height="14" rx="3" transform="rotate(-25 44 37)"/><rect x="250" y="40" width="8" height="14" rx="3" transform="rotate(30 254 47)"/><circle cx="70" cy="80" r="4"/><circle cx="232" cy="88" r="5"/></g>
+<g fill="#1E5B46" opacity=".55"><rect x="20" y="70" width="6" height="12" rx="3" transform="rotate(40 23 76)"/><rect x="268" y="74" width="6" height="12" rx="3" transform="rotate(-35 271 80)"/><circle cx="210" cy="20" r="3"/></g>
+<g fill="#B3361E" opacity=".6"><circle cx="96" cy="16" r="3"/><rect x="190" y="60" width="6" height="10" rx="2" transform="rotate(20 193 65)"/><circle cx="18" cy="30" r="3"/></g>
+</svg><div class="medal"><span class="ms " aria-hidden="true">check</span></div><div class="t28" style="position:relative">Well done, applied!</div><div class="t14 mut">SSC GD Constable 2027 · added to My forms</div></div>
+    <div class="pcard">
+      <div class="row" style="gap:8px"><span class="vchip" style="background:var(--mari);color:var(--onMari)"><span class="ms " aria-hidden="true">workspace_premium</span>Pro</span></div>
+      <div class="t19" style="margin-top:8px">Track it to the end?</div>
+      <div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">badge</span></span><span>Admit card & city slip the moment they’re out</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">update</span></span><span>Instant alert if the exam date changes</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">key</span></span><span>Answer key, result, cut-off and DV</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">block</span></span><span>No ads, anywhere</span></div>
+      <div class="plans"><div class="plan sel"><span class="bd">Best value</span><span class="ck"><span class="ms " aria-hidden="true">check_circle</span></span><div class="t14 mut">Yearly</div><div class="pr tnum">₹199</div><div class="t14 mut">Just ₹17/month</div></div><div class="plan "><div class="t14 mut">One season</div><div class="pr tnum">₹49</div><div class="t14 mut">4 months</div></div></div>
+      <span class="btn pri full">Try 14 days free</span>
+      <div class="t14 mut" style="text-align:center;margin-top:4px">No payment, no card needed</div>
+      <div class="t14 b" style="color:var(--pri);display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px">Get Pro for ₹199 · Google Play</div>
+    </div>
+  </div></div><div class="gb"><i></i></div></div><figcaption><b>4</b> · Paywall · dark mode</figcaption></figure></div></section>
+<section class="langblock hi"><div class="langhd">हिंदी · Hindi</div><div class="grid"><figure class="fr"><div class="ph light" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="logo"><i><span class="ms " aria-hidden="true">notifications_active</span></i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms o" aria-hidden="true">notifications</span><span class="dot"></span></span></div>
+    <div class="greet"><svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle cx="80" cy="40" r="26" fill="#F2A93B" opacity=".35"/><circle cx="80" cy="40" r="44" fill="none" stroke="#F2A93B" stroke-opacity=".25" stroke-width="2" stroke-dasharray="2 8"/></svg><div class="t28" style="position:relative">नमस्ते, Ravi</div><div class="t16 mut" style="position:relative;max-width:260px">आज 19 नवंबर · 5 नौकरियाँ आपका जवाब माँग रही हैं</div>
+      <div class="pills"><span class="pill today"><span class="ms " aria-hidden="true">alarm</span><span class="tnum">1</span> आज</span><span class="pill urgent"><span class="ms " aria-hidden="true">timer</span><span class="tnum">1</span> 3 दिन में</span><span class="pill calm"><span class="ms " aria-hidden="true">event</span><span class="tnum">3</span> बाद में</span></div></div>
+    <div class="sh today t19"><span class="ms " aria-hidden="true">alarm</span><span>आज आखिरी दिन</span><span class="n">1</span></div><div class="card"><div class="rib today"><span class="ms " aria-hidden="true">alarm</span>आज आखिरी दिन · रात 11 बजे तक</div><div class="cb">
+    <div class="row" style="gap:12px;align-items:flex-start"><span class="tile police"><span class="ms " aria-hidden="true">local_police</span></span><div class="grow"><div class="t19">UP Police कांस्टेबल भर्ती 2026</div><div class="t14 mut">UPPRPB · 19,220 पद</div></div></div>
+    <div class="facts"><div><span class="ms " aria-hidden="true">currency_rupee</span><span class="tnum">400</span></div><div style="flex:1.6"><span class="ms " aria-hidden="true">school</span>12वीं पास</div></div>
+    <div class="why ok t16"><span class="ms " aria-hidden="true">check_circle</span><span><span class="b">उम्र:</span> 23 (सीमा 22, OBC +5 = 27)</span></div>
+    <div class="acts"><span class="btn pri sm" style="flex:1"><span class="ms " aria-hidden="true">task_alt</span>फ़ॉर्म भर दिया</span><span class="btn ton sm"><span class="ms " aria-hidden="true">snooze</span>बाद में</span></div>
+  </div></div><div class="sh urgent t19"><span class="ms " aria-hidden="true">timer</span><span>3 दिन में</span><span class="n">1</span></div><div class="card"><div class="rib urgent"><span class="ms " aria-hidden="true">timer</span>सिर्फ़ 2 दिन बाकी · 21 नवं तक</div><div class="cb">
+    <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ssc"><span class="ms " aria-hidden="true">account_balance</span></span><div class="grow"><div class="t19">SSC GD कांस्टेबल भर्ती 2027</div><div class="t14 mut">कर्मचारी चयन आयोग · 39,481 पद</div></div></div>
+    <div class="facts"><div><span class="ms " aria-hidden="true">currency_rupee</span><span class="tnum">100</span></div><div style="flex:1.6"><span class="ms " aria-hidden="true">school</span>10वीं पास</div></div>
+    <div class="why ok t16"><span class="ms " aria-hidden="true">check_circle</span><span><span class="b">उम्र:</span> 23 (सीमा 23, OBC +3 = 26)</span></div>
+    <div class="acts"><span class="btn pri sm" style="flex:1"><span class="ms " aria-hidden="true">task_alt</span>फ़ॉर्म भर दिया</span><span class="btn ton sm"><span class="ms " aria-hidden="true">snooze</span>बाद में</span></div>
+  </div></div>
+  </div><div class="nav"><div class="on"><span class="pp"><span class="ms " aria-hidden="true">work</span><span class="bdg">5</span></span>नौकरियाँ</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">assignment_turned_in</span></span>मेरे फ़ॉर्म</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">account_circle</span></span>प्रोफ़ाइल</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1</b> · Home · matches feed</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="logo"><i><span class="ms " aria-hidden="true">notifications_active</span></i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms o" aria-hidden="true">notifications</span></span></div>
+    <div class="sh t19"><span class="ms " aria-hidden="true">event</span><span>बाद में</span><span class="n">3</span></div>
+    <div class="card"><div class="lr"><span class="tile rail"><span class="ms " aria-hidden="true">train</span></span><div class="grow"><div class="t16 b">RRB NTPC ग्रेजुएट 2026</div><div class="t14 mut tnum">₹500 · ग्रेजुएट · आखिरी तारीख 25 नवं</div><div class="row" style="gap:6px;margin-top:6px"><span class="vchip ok"><span class="ms " aria-hidden="true">check_circle</span>योग्य</span><span class="vchip n"><span class="ms " aria-hidden="true">event</span>6 दिन बाकी</span></div></div></div><div class="lr"><span class="tile bank"><span class="ms " aria-hidden="true">savings</span></span><div class="grow"><div class="t16 b">IBPS क्लर्क (CSA) 2026</div><div class="t14 mut tnum">₹850 · ग्रेजुएट · आखिरी तारीख 28 नवं</div><div class="row" style="gap:6px;margin-top:6px"><span class="vchip ok"><span class="ms " aria-hidden="true">check_circle</span>योग्य</span><span class="vchip n"><span class="ms " aria-hidden="true">event</span>9 दिन बाकी</span></div></div></div><div class="lr"><span class="tile state"><span class="ms " aria-hidden="true">location_city</span></span><div class="grow"><div class="t16 b">UPSSSC जूनियर असिस्टेंट</div><div class="t14 mut tnum">₹25 · 12वीं + CCC · आखिरी तारीख 10 दिसं</div><div class="row" style="gap:6px;margin-top:6px"><span class="vchip q"><span class="ms " aria-hidden="true">help</span>ख़ुद जाँचें</span><span class="vchip n"><span class="ms " aria-hidden="true">event</span>10 दिसं तक</span></div></div></div></div>
+    <div class="ad"><span class="adimg"><span class="ms o" aria-hidden="true">storefront</span></span><div class="grow"><div class="row" style="gap:6px"><span class="adl">विज्ञापन</span><span class="t14 mut">विज्ञापन हटाएँ</span></div><div class="t16 b">किसान मोबाइल स्टोर</div><div class="t14 mut">नया स्मार्टफ़ोन आसान EMI पर</div></div><span class="btn out sm">देखें</span></div>
+    <div class="disc t14"><span class="ms o" aria-hidden="true">info</span><span>सरकारी ऐप नहीं · हर जानकारी आधिकारिक नोटिस से मिलाएँ</span></div>
+  </div><div class="nav"><div class="on"><span class="pp"><span class="ms " aria-hidden="true">work</span><span class="bdg">5</span></span>नौकरियाँ</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">assignment_turned_in</span></span>मेरे फ़ॉर्म</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">account_circle</span></span>प्रोफ़ाइल</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1b</b> · Home · feed end with ad slot</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill"><div class="tb" style="padding-left:8px"><span class="ib c"><span class="ms o" aria-hidden="true">arrow_back</span></span><span class="grow"></span><span class="ib c"><span class="ms o" aria-hidden="true">share</span></span><span class="ib c"><span class="ms o" aria-hidden="true">more_vert</span></span></div>
+    <div class="dh">
+      <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ssc"><span class="ms " aria-hidden="true">account_balance</span></span><div class="grow"><div class="t19">SSC GD कांस्टेबल भर्ती 2027</div><div class="t14 mut">कर्मचारी चयन आयोग (SSC) · 39,481 पद · पूरे भारत में</div></div></div>
+      <div class="row" style="gap:14px;margin-top:14px"><div class="cal"><div class="m">नवंबर</div><div class="dd tnum">21</div><div class="wd">शुक्रवार</div></div>
+        <div class="grow"><span class="vchip ok"><span class="ms " aria-hidden="true">check_circle</span>योग्य</span><div style="margin-top:8px"><span class="left"><span class="ms " aria-hidden="true">timer</span>2 दिन बाकी</span></div><div class="t14 mut" style="margin-top:6px">रात 11 बजे तक</div></div></div>
+      <div class="chg"><span class="ms " aria-hidden="true">update</span><span>आखिरी तारीख बढ़ी: 14 → 21 नवंबर</span></div>
+    </div>
+    <div class="sec"><div class="st"><span class="ic"><span class="ms " aria-hidden="true">fact_check</span></span><span class="t19">आप योग्य क्यों हैं</span></div>
+      <div class="wy ok t16"><span class="bub"><span class="ms " aria-hidden="true">check</span></span><span><span class="b">उम्र:</span> 23 साल 9 महीने — सीमा 23, OBC +3 = 26 तक</span></div><div class="wy ok t16"><span class="bub"><span class="ms " aria-hidden="true">check</span></span><span><span class="b">पढ़ाई:</span> 10वीं पास चाहिए — आप ग्रेजुएट हैं</span></div><div class="wy ok t16"><span class="bub"><span class="ms " aria-hidden="true">check</span></span><span><span class="b">वर्ग:</span> OBC (नॉन-क्रीमी लेयर) — केंद्र की सूची</span></div><div class="wy q t16"><span class="bub"><span class="ms " aria-hidden="true">question_mark</span></span><span><span class="b">शारीरिक मानक:</span> ऊँचाई/छाती ख़ुद जाँचें — नोटिस पेज 12</span></div>
+    </div>
+    <div class="sec"><div class="st"><span class="ic"><span class="ms " aria-hidden="true">event</span></span><span class="t19">ज़रूरी तारीख़ें</span></div>
+      <div class="dts"><div class="dt past"><span class="t14 mut">फ़ॉर्म शुरू</span><b class="tnum">5 नवं</b></div><div class="dt key"><span class="t14 mut">आखिरी तारीख</span><b class="tnum">21 नवं · रात 11</b></div><div class="dt next"><span class="t14 mut">फ़ीस की आखिरी तारीख</span><b class="tnum">22 नवं</b></div><div class="dt next"><span class="t14 mut">सुधार विंडो</span><b class="tnum">25–27 नवं</b></div><div class="dt next"><span class="t14 mut">परीक्षा (संभावित)</span><b class="tnum">फ़र–मार्च 2027</b></div></div>
+    </div>
+  </div><div class="abar"><div class="ni"><span class="ms o" aria-hidden="true">visibility_off</span>मुझे इसमें रुचि नहीं</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5"><span class="ms " aria-hidden="true">task_alt</span>फ़ॉर्म भर दिया</span><span class="btn out" style="flex:1"><span class="ms o" aria-hidden="true">snooze</span>बाद में</span></div></div></div><div class="gb"><i></i></div></div><figcaption><b>2</b> · Job detail · calendar, why you match, dates</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill"><div class="tb" style="padding-left:8px"><span class="ib c"><span class="ms o" aria-hidden="true">arrow_back</span></span><span class="grow"></span><span class="ib c"><span class="ms o" aria-hidden="true">share</span></span><span class="ib c"><span class="ms o" aria-hidden="true">more_vert</span></span></div>
+    <div class="sec" style="margin-top:0"><div class="st"><span class="ic"><span class="ms " aria-hidden="true">checklist</span></span><span class="t19">आपको क्या चाहिए</span></div>
+      <div class="row" style="gap:12px;padding:10px 12px;border-radius:16px;background:var(--sunk)"><span class="t28 tnum">₹100</span><div class="grow"><div class="t14 b">आपकी फ़ीस · OBC, पुरुष</div><div class="t14 mut">SC/ST/महिला/पूर्व सैनिक: कोई फ़ीस नहीं</div></div></div>
+      <div class="row" style="margin:14px 0 4px"><span class="t16 b grow">दस्तावेज़ तैयार रखें</span><span class="vchip ok">2/4 तैयार</span></div>
+      <div class="chk t16"><span class="cbx on"><span class="ms " aria-hidden="true">check</span></span><span class="mut">10वीं की मार्कशीट</span></div><div class="chk t16"><span class="cbx "></span><span class="">OBC-NCL सर्टिफ़िकेट (केंद्र वाला)</span></div><div class="chk t16"><span class="cbx "></span><span class="">आधार या कोई फ़ोटो ID</span></div><div class="chk t16"><span class="cbx on"><span class="ms " aria-hidden="true">check</span></span><span class="mut">चालू मोबाइल नंबर और ईमेल</span></div>
+      <div class="specs" style="margin-top:10px">
+        <div class="spc"><div class="hdr t14"><span class="ms " aria-hidden="true">photo_camera</span>फ़ोटो</div><div class="t14 tnum">JPEG · 20–50 KB</div><div class="t14 tnum">3.5 × 4.5 cm</div><div class="t14 mut">सफ़ेद</div></div>
+        <div class="spc"><div class="hdr t14"><span class="ms " aria-hidden="true">draw</span>हस्ताक्षर</div><div class="t14 tnum">JPEG · 10–20 KB</div><div class="t14 tnum">6 × 2 cm</div><div class="t14 mut">काली/नीली</div></div>
+      </div>
+    </div>
+    <div class="sec" style="padding:4px 16px">
+      <div class="lnk"><span class="tile rail" style="width:40px;height:40px;border-radius:12px"><span class="ms " aria-hidden="true">picture_as_pdf</span></span><div class="grow"><div class="t16 b">आधिकारिक नोटिस (PDF)</div><div class="t14 mut">ssc.gov.in · 2.1 MB</div></div><span class="ms o" aria-hidden="true">download</span></div>
+      <div class="lnk"><span class="tile ssc" style="width:40px;height:40px;border-radius:12px"><span class="ms " aria-hidden="true">language</span></span><div class="grow"><div class="t16 b">फ़ॉर्म भरने की साइट खोलें</div><div class="t14 mut">ssc.gov.in — आधिकारिक वेबसाइट</div></div><span class="ms o" aria-hidden="true">open_in_new</span></div>
+    </div>
+  </div><div class="abar"><div class="ni"><span class="ms o" aria-hidden="true">visibility_off</span>मुझे इसमें रुचि नहीं</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:1.5"><span class="ms " aria-hidden="true">task_alt</span>फ़ॉर्म भर दिया</span><span class="btn out" style="flex:1"><span class="ms o" aria-hidden="true">snooze</span>बाद में</span></div></div></div><div class="gb"><i></i></div></div><figcaption><b>2b</b> · Job detail · what you need, links</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="t28">मेरे फ़ॉर्म</span></div>
+    <div class="segs"><div class="on">चालू (3)</div><div class="">पूरे हुए (1)</div></div>
+    <div class="up"><span class="ms " aria-hidden="true">workspace_premium</span><span class="t14 b grow">फ़ॉर्म भरने के बाद की सूचना Pro में मिलती है</span><span class="btn mari sm" style="height:40px;padding:0 12px;font-size:14px">₹17/महीना से</span></div>
+    <div class="sec">
+      <div class="row" style="gap:12px"><span class="tile ssc"><span class="ms " aria-hidden="true">account_balance</span></span><div class="grow"><div class="t19">SSC CGL 2026</div><div class="t14 mut">भरा: 15 जुलाई</div></div></div>
+      <div class="path"><div class="stp done"><span class="cc"><span class="ms " aria-hidden="true">check</span></span><div class="grow tt"><div class="t16 b">फ़ॉर्म भरा</div><div class="t14 mut tnum">15 जुलाई</div></div></div><div class="stp next"><span class="cc"><span class="ms " aria-hidden="true">location_city</span></span><div class="grow tt"><div class="t16 b">सिटी स्लिप <span class="t14 mut">· अगला</span></div><div class="t14 mut tnum">संभावित 25 नवं</div></div></div><div class="stp locked"><span class="cc"><span class="ms " aria-hidden="true">badge</span></span><div class="grow tt"><div class="t16 ">एडमिट कार्ड</div><div class="t14 mut tnum">संभावित 1 दिसं</div></div><span class="lockp"><span class="ms " aria-hidden="true">lock</span>Pro</span></div><div class="stp locked"><span class="cc"><span class="ms " aria-hidden="true">edit_note</span></span><div class="grow tt"><div class="t16 ">परीक्षा</div><div class="t14 mut tnum">9–26 दिसं</div></div><span class="lockp"><span class="ms " aria-hidden="true">lock</span>Pro</span></div><div class="stp locked"><span class="cc"><span class="ms " aria-hidden="true">key</span></span><div class="grow tt"><div class="t16 ">आंसर की</div><div class="t14 mut tnum">संभावित जनवरी</div></div><span class="lockp"><span class="ms " aria-hidden="true">lock</span>Pro</span></div><div class="stp locked"><span class="cc"><span class="ms " aria-hidden="true">emoji_events</span></span><div class="grow tt"><div class="t16 ">रिज़ल्ट</div><div class="t14 mut tnum">संभावित फ़रवरी</div></div><span class="lockp"><span class="ms " aria-hidden="true">lock</span>Pro</span></div><div class="stp locked"><span class="cc"><span class="ms " aria-hidden="true">fact_check</span></span><div class="grow tt"><div class="t16 ">DV (दस्तावेज़ जाँच)</div><div class="t14 mut tnum">रिज़ल्ट के बाद</div></div><span class="lockp"><span class="ms " aria-hidden="true">lock</span>Pro</span></div></div>
+    </div>
+  </div><div class="nav"><div class=""><span class="pp"><span class="ms o" aria-hidden="true">work</span><span class="bdg">5</span></span>नौकरियाँ</div><div class="on"><span class="pp"><span class="ms " aria-hidden="true">assignment_turned_in</span></span>मेरे फ़ॉर्म</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">account_circle</span></span>प्रोफ़ाइल</div></div></div><div class="gb"><i></i></div></div><figcaption><b>3</b> · My forms · journey path, free user (Pro-locked)</figcaption></figure>
+<figure class="fr"><div class="ph light" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb" style="height:48px;padding-left:4px"><span class="ib"><span class="ms o" aria-hidden="true">close</span></span></div>
+    <div class="peak"><svg width="300" height="120" viewBox="0 0 300 120" style="position:absolute;left:30px;top:-6px" aria-hidden="true">
+<g fill="#F2A93B"><rect x="40" y="30" width="8" height="14" rx="3" transform="rotate(-25 44 37)"/><rect x="250" y="40" width="8" height="14" rx="3" transform="rotate(30 254 47)"/><circle cx="70" cy="80" r="4"/><circle cx="232" cy="88" r="5"/></g>
+<g fill="#1E5B46" opacity=".55"><rect x="20" y="70" width="6" height="12" rx="3" transform="rotate(40 23 76)"/><rect x="268" y="74" width="6" height="12" rx="3" transform="rotate(-35 271 80)"/><circle cx="210" cy="20" r="3"/></g>
+<g fill="#B3361E" opacity=".6"><circle cx="96" cy="16" r="3"/><rect x="190" y="60" width="6" height="10" rx="2" transform="rotate(20 193 65)"/><circle cx="18" cy="30" r="3"/></g>
+</svg><div class="medal"><span class="ms " aria-hidden="true">check</span></div><div class="t28" style="position:relative">शाबाश! फ़ॉर्म भर दिया</div><div class="t14 mut">SSC GD कांस्टेबल 2027 · मेरे फ़ॉर्म में जुड़ गया</div></div>
+    <div class="pcard">
+      <div class="row" style="gap:8px"><span class="vchip" style="background:var(--mari);color:var(--onMari)"><span class="ms " aria-hidden="true">workspace_premium</span>Pro</span></div>
+      <div class="t19" style="margin-top:8px">इसे आखिर तक ट्रैक करें?</div>
+      <div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">badge</span></span><span>एडमिट कार्ड, सिटी स्लिप — आते ही सूचना</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">update</span></span><span>परीक्षा की तारीख बदली तो तुरंत</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">key</span></span><span>आंसर की, रिज़ल्ट, कट-ऑफ़, DV</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">block</span></span><span>कोई विज्ञापन नहीं</span></div>
+      <div class="plans"><div class="plan sel"><span class="bd">सबसे सस्ता</span><span class="ck"><span class="ms " aria-hidden="true">check_circle</span></span><div class="t14 mut">साल भर</div><div class="pr tnum">₹199</div><div class="t14 mut">सिर्फ़ ₹17/महीना</div></div><div class="plan "><div class="t14 mut">एक सीज़न</div><div class="pr tnum">₹49</div><div class="t14 mut">4 महीने</div></div></div>
+      <span class="btn pri full">14 दिन मुफ़्त आज़माएँ</span>
+      <div class="t14 mut" style="text-align:center;margin-top:4px">कोई पैसा नहीं, कार्ड नहीं चाहिए</div>
+      <div class="t14 b" style="color:var(--pri);display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px">₹199 में Pro लें · Google Play</div>
+    </div>
+  </div></div><div class="gb"><i></i></div></div><figcaption><b>4</b> · Applied ✓ celebration + Pro paywall</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb"><span class="logo"><i><span class="ms " aria-hidden="true">notifications_active</span></i>Sarkari Match</span><span class="grow"></span><span class="ib"><span class="ms o" aria-hidden="true">notifications</span><span class="dot"></span></span></div>
+    <div class="greet"><svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle cx="80" cy="40" r="26" fill="#F2A93B" opacity=".35"/><circle cx="80" cy="40" r="44" fill="none" stroke="#F2A93B" stroke-opacity=".25" stroke-width="2" stroke-dasharray="2 8"/></svg><div class="t28" style="position:relative">नमस्ते, Ravi</div><div class="t16 mut" style="position:relative;max-width:260px">आज 19 नवंबर · 5 नौकरियाँ आपका जवाब माँग रही हैं</div>
+      <div class="pills"><span class="pill today"><span class="ms " aria-hidden="true">alarm</span><span class="tnum">1</span> आज</span><span class="pill urgent"><span class="ms " aria-hidden="true">timer</span><span class="tnum">1</span> 3 दिन में</span><span class="pill calm"><span class="ms " aria-hidden="true">event</span><span class="tnum">3</span> बाद में</span></div></div>
+    <div class="sh today t19"><span class="ms " aria-hidden="true">alarm</span><span>आज आखिरी दिन</span><span class="n">1</span></div><div class="card"><div class="rib today"><span class="ms " aria-hidden="true">alarm</span>आज आखिरी दिन · रात 11 बजे तक</div><div class="cb">
+    <div class="row" style="gap:12px;align-items:flex-start"><span class="tile police"><span class="ms " aria-hidden="true">local_police</span></span><div class="grow"><div class="t19">UP Police कांस्टेबल भर्ती 2026</div><div class="t14 mut">UPPRPB · 19,220 पद</div></div></div>
+    <div class="facts"><div><span class="ms " aria-hidden="true">currency_rupee</span><span class="tnum">400</span></div><div style="flex:1.6"><span class="ms " aria-hidden="true">school</span>12वीं पास</div></div>
+    <div class="why ok t16"><span class="ms " aria-hidden="true">check_circle</span><span><span class="b">उम्र:</span> 23 (सीमा 22, OBC +5 = 27)</span></div>
+    <div class="acts"><span class="btn pri sm" style="flex:1"><span class="ms " aria-hidden="true">task_alt</span>फ़ॉर्म भर दिया</span><span class="btn ton sm"><span class="ms " aria-hidden="true">snooze</span>बाद में</span></div>
+  </div></div><div class="sh urgent t19"><span class="ms " aria-hidden="true">timer</span><span>3 दिन में</span><span class="n">1</span></div><div class="card"><div class="rib urgent"><span class="ms " aria-hidden="true">timer</span>सिर्फ़ 2 दिन बाकी · 21 नवं तक</div><div class="cb">
+    <div class="row" style="gap:12px;align-items:flex-start"><span class="tile ssc"><span class="ms " aria-hidden="true">account_balance</span></span><div class="grow"><div class="t19">SSC GD कांस्टेबल भर्ती 2027</div><div class="t14 mut">कर्मचारी चयन आयोग · 39,481 पद</div></div></div>
+    <div class="facts"><div><span class="ms " aria-hidden="true">currency_rupee</span><span class="tnum">100</span></div><div style="flex:1.6"><span class="ms " aria-hidden="true">school</span>10वीं पास</div></div>
+    <div class="why ok t16"><span class="ms " aria-hidden="true">check_circle</span><span><span class="b">उम्र:</span> 23 (सीमा 23, OBC +3 = 26)</span></div>
+    <div class="acts"><span class="btn pri sm" style="flex:1"><span class="ms " aria-hidden="true">task_alt</span>फ़ॉर्म भर दिया</span><span class="btn ton sm"><span class="ms " aria-hidden="true">snooze</span>बाद में</span></div>
+  </div></div>
+  </div><div class="nav"><div class="on"><span class="pp"><span class="ms " aria-hidden="true">work</span><span class="bdg">5</span></span>नौकरियाँ</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">assignment_turned_in</span></span>मेरे फ़ॉर्म</div><div class=""><span class="pp"><span class="ms o" aria-hidden="true">account_circle</span></span>प्रोफ़ाइल</div></div></div><div class="gb"><i></i></div></div><figcaption><b>1</b> · Home · dark mode</figcaption></figure>
+<figure class="fr"><div class="ph dark" lang="hi"><div class="sb"><span>9:41</span><span class="sbi"><span class="ms " aria-hidden="true">signal_cellular_alt</span><span class="ms " aria-hidden="true">wifi</span><span class="ms " aria-hidden="true">battery_full</span></span></div><div class="scr"><div class="fill">
+    <div class="tb" style="height:48px;padding-left:4px"><span class="ib"><span class="ms o" aria-hidden="true">close</span></span></div>
+    <div class="peak"><svg width="300" height="120" viewBox="0 0 300 120" style="position:absolute;left:30px;top:-6px" aria-hidden="true">
+<g fill="#F2A93B"><rect x="40" y="30" width="8" height="14" rx="3" transform="rotate(-25 44 37)"/><rect x="250" y="40" width="8" height="14" rx="3" transform="rotate(30 254 47)"/><circle cx="70" cy="80" r="4"/><circle cx="232" cy="88" r="5"/></g>
+<g fill="#1E5B46" opacity=".55"><rect x="20" y="70" width="6" height="12" rx="3" transform="rotate(40 23 76)"/><rect x="268" y="74" width="6" height="12" rx="3" transform="rotate(-35 271 80)"/><circle cx="210" cy="20" r="3"/></g>
+<g fill="#B3361E" opacity=".6"><circle cx="96" cy="16" r="3"/><rect x="190" y="60" width="6" height="10" rx="2" transform="rotate(20 193 65)"/><circle cx="18" cy="30" r="3"/></g>
+</svg><div class="medal"><span class="ms " aria-hidden="true">check</span></div><div class="t28" style="position:relative">शाबाश! फ़ॉर्म भर दिया</div><div class="t14 mut">SSC GD कांस्टेबल 2027 · मेरे फ़ॉर्म में जुड़ गया</div></div>
+    <div class="pcard">
+      <div class="row" style="gap:8px"><span class="vchip" style="background:var(--mari);color:var(--onMari)"><span class="ms " aria-hidden="true">workspace_premium</span>Pro</span></div>
+      <div class="t19" style="margin-top:8px">इसे आखिर तक ट्रैक करें?</div>
+      <div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">badge</span></span><span>एडमिट कार्ड, सिटी स्लिप — आते ही सूचना</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">update</span></span><span>परीक्षा की तारीख बदली तो तुरंत</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">key</span></span><span>आंसर की, रिज़ल्ट, कट-ऑफ़, DV</span></div><div class="bn t14"><span class="bi"><span class="ms " aria-hidden="true">block</span></span><span>कोई विज्ञापन नहीं</span></div>
+      <div class="plans"><div class="plan sel"><span class="bd">सबसे सस्ता</span><span class="ck"><span class="ms " aria-hidden="true">check_circle</span></span><div class="t14 mut">साल भर</div><div class="pr tnum">₹199</div><div class="t14 mut">सिर्फ़ ₹17/महीना</div></div><div class="plan "><div class="t14 mut">एक सीज़न</div><div class="pr tnum">₹49</div><div class="t14 mut">4 महीने</div></div></div>
+      <span class="btn pri full">14 दिन मुफ़्त आज़माएँ</span>
+      <div class="t14 mut" style="text-align:center;margin-top:4px">कोई पैसा नहीं, कार्ड नहीं चाहिए</div>
+      <div class="t14 b" style="color:var(--pri);display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px">₹199 में Pro लें · Google Play</div>
+    </div>
+  </div></div><div class="gb"><i></i></div></div><figcaption><b>4</b> · Paywall · dark mode</figcaption></figure></div></section>
+</body></html>
